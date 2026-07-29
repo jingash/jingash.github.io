@@ -1543,7 +1543,7 @@ function renderDashboard() {
           return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;color:' + (tk.done ? 'var(--text-sec)' : 'var(--text)') + ';text-decoration:' + (tk.done ? 'line-through' : 'none') + ';">' +
             '<span style="color:' + (tk.done ? 'var(--success)' : 'var(--text-light)') + ';">' + (tk.done ? '✓' : '○') + '</span>' +
             '<span style="font-size:11px;color:var(--text-sec);min-width:48px;">' + tk.startTime + '</span>' +
-            '<span>' + esc(tk.text) + '</span></div>';
+            '<span>' + esc(tk.text) + (tk.delayed && !tk.done ? ' <span style="font-size:10px;padding:1px 5px;border-radius:8px;background:var(--warning-light);color:var(--warning);font-weight:600;">延期</span>' : '') + '</span></div>';
         }).join('') +
         (planTotal > 4 ? '<div style="text-align:center;padding-top:4px;"><button class="btn btn-ghost btn-sm" style="font-size:12px;" onclick="switchTab(\'dailyplan\')">查看全部 ' + planTotal + ' 项</button></div>' : '') +
       '</div>';
@@ -2790,6 +2790,41 @@ function deletePlanTask(date, id) {
   renderPlan();
 }
 
+function rolloverTasks() {
+  var t = today();
+  var allDates = Object.keys(planData);
+  var rolled = 0;
+  allDates.forEach(function(date) {
+    if (date >= t) return;
+    var tasks = planData[date];
+    if (!tasks || !tasks.length) return;
+    var undone = [];
+    var remaining = [];
+    tasks.forEach(function(task) {
+      if (!task.done) {
+        task.delayed = true;
+        if (!task.originalDate) task.originalDate = date;
+        undone.push(task);
+      } else {
+        remaining.push(task);
+      }
+    });
+    if (undone.length > 0) {
+      if (!planData[t]) planData[t] = [];
+      planData[t] = planData[t].concat(undone);
+      planData[date] = remaining;
+      rolled += undone.length;
+    }
+  });
+  if (rolled > 0) {
+    if (planData[t]) {
+      planData[t].sort(function(a, b) { return a.startTime.localeCompare(b.startTime); });
+    }
+    savePlanData();
+    showToast(rolled + ' 个昨日未完成任务已延期到今天', 'success');
+  }
+}
+
 function renderPlan() {
   var dateInput = document.getElementById('plan-date-input');
   if (dateInput && !planCurrentDate) {
@@ -2836,8 +2871,8 @@ function renderPlan() {
     return '<div style="display:flex;align-items:center;gap:12px;padding:14px;background:' + (isDone ? 'var(--success-light)' : 'white') + ';border-radius:10px;margin-bottom:8px;border:1px solid ' + (isDone ? 'var(--success)' : 'var(--border)') + ';transition:all 0.2s;">' +
       '<button onclick="togglePlanTask(\'' + date + '\',\'' + task.id + '\')" style="width:32px;height:32px;border-radius:50%;border:2px solid ' + (isDone ? 'var(--success)' : 'var(--border)') + ';background:' + (isDone ? 'var(--success)' : 'white') + ';color:white;font-size:16px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;min-width:32px;">' + (isDone ? '✓' : '') + '</button>' +
       '<div style="flex:1;min-width:0;cursor:pointer;" onclick="togglePlanTask(\'' + date + '\',\'' + task.id + '\')">' +
-        '<div style="font-size:14px;font-weight:' + (isDone ? '400' : '600') + ';color:' + (isDone ? 'var(--text-sec)' : 'var(--text)') + ';text-decoration:' + (isDone ? 'line-through' : 'none') + ';margin-bottom:4px;">' + esc(task.text) + '</div>' +
-        '<div style="font-size:12px;color:var(--text-sec);">⏰ ' + timeStr + '</div>' +
+        '<div style="font-size:14px;font-weight:' + (isDone ? '400' : '600') + ';color:' + (isDone ? 'var(--text-sec)' : 'var(--text)') + ';text-decoration:' + (isDone ? 'line-through' : 'none') + ';margin-bottom:4px;">' + esc(task.text) + (task.delayed && !isDone ? ' <span style="font-size:11px;padding:1px 6px;border-radius:8px;background:var(--warning-light);color:var(--warning);font-weight:600;vertical-align:middle;">延期</span>' : '') + '</div>' +
+        '<div style="font-size:12px;color:var(--text-sec);">⏰ ' + timeStr + (task.delayed && task.originalDate ? ' · 原计划 ' + fmtDate(task.originalDate) : '') + '</div>' +
       '</div>' +
       '<button onclick="deletePlanTask(\'' + date + '\',\'' + task.id + '\')" style="width:32px;height:32px;border:none;background:var(--danger-light);color:var(--danger);border-radius:50%;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">✕</button>' +
     '</div>';
@@ -2849,6 +2884,7 @@ function init() {
   load();
   loadIdiomState();
   loadPlanData();
+  rolloverTasks();
   document.getElementById('f-date').value = today();
 
   // Initialize group dropdown with all groups
