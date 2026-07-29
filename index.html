@@ -844,6 +844,22 @@ body {
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
+<!-- Delayed Task Alert Modal -->
+<div class="modal-overlay" id="delayed-alert-modal" style="display:none;">
+  <div class="modal-content" style="max-width:420px;">
+    <div style="text-align:center;padding-bottom:16px;border-bottom:1px solid var(--border);margin-bottom:16px;">
+      <div style="font-size:48px;margin-bottom:8px;">⚠️</div>
+      <h2 style="font-size:20px;font-weight:700;color:var(--danger);margin-bottom:4px;">有任务延期了！</h2>
+      <p style="font-size:13px;color:var(--text-sec);">以下是之前未完成的任务，今天务必清掉：</p>
+    </div>
+    <div id="delayed-alert-list" style="max-height:300px;overflow-y:auto;margin-bottom:16px;"></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary btn-block" onclick="closeDelayedAlert();switchTab('dailyplan')" style="flex:1;">立即去处理</button>
+      <button class="btn btn-outline btn-block" onclick="closeDelayedAlert()" style="flex:1;">稍后处理</button>
+    </div>
+  </div>
+</div>
+
 <!-- Export Modal -->
 
 <script>
@@ -2821,8 +2837,37 @@ function rolloverTasks() {
       planData[t].sort(function(a, b) { return a.startTime.localeCompare(b.startTime); });
     }
     savePlanData();
-    showToast(rolled + ' 个昨日未完成任务已延期到今天', 'success');
   }
+}
+
+function getDelayedTasks() {
+  var t = today();
+  var tasks = planData[t] || [];
+  return tasks.filter(function(tk) { return tk.delayed && !tk.done; });
+}
+
+function showDelayedAlert() {
+  var delayed = getDelayedTasks();
+  if (!delayed.length) return;
+  var list = document.getElementById('delayed-alert-list');
+  list.innerHTML = delayed.map(function(tk) {
+    var daysLate = tk.originalDate ? daysDiff(tk.originalDate, today()) : 0;
+    return '<div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--warning-light);border-radius:var(--radius-sm);margin-bottom:8px;border-left:3px solid var(--warning);">' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div style="font-size:14px;font-weight:600;color:var(--text);">' + esc(tk.text) + '</div>' +
+        '<div style="font-size:12px;color:var(--text-sec);margin-top:2px;">⏰ ' + tk.startTime + (tk.endTime ? ' - ' + tk.endTime : '') +
+          (daysLate > 0 ? ' · <span style="color:var(--danger);font-weight:600;">已延期 ' + daysLate + ' 天</span>' : '') +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+  document.getElementById('delayed-alert-modal').style.display = 'flex';
+  document.getElementById('delayed-alert-modal').classList.add('active');
+}
+
+function closeDelayedAlert() {
+  document.getElementById('delayed-alert-modal').style.display = 'none';
+  document.getElementById('delayed-alert-modal').classList.remove('active');
 }
 
 function renderPlan() {
@@ -2903,6 +2948,9 @@ function init() {
   }
 
   renderAll();
+  
+  // Show delayed task alert if any
+  setTimeout(function() { showDelayedAlert(); }, 300);
 }
 
 init();
