@@ -7,7 +7,7 @@
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>考公助手</title>
+<title>考公助手工作台</title>
 <style>
 :root {
   --primary: #4361ee;
@@ -409,9 +409,19 @@ body {
   <div style="max-width:820px;margin:0 auto;padding:0 4px;">
     <h1>考公助手工作台</h1>
     <div class="header-sub">系统复盘 · 高效上岸</div>
-    <div class="countdown-badge" onclick="editExamDate()">
-      <span>📅</span>
-      <span id="countdown-text">国考倒计时 -- 天</span>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+      <div class="countdown-badge" onclick="editExamDate('guokao')">
+        <span>🇨🇳</span>
+        <span id="countdown-guokao">国考 -- 天</span>
+      </div>
+      <div class="countdown-badge" onclick="editExamDate('shengkao')">
+        <span>🏛️</span>
+        <span id="countdown-shengkao">省考 -- 天</span>
+      </div>
+      <div class="countdown-badge" onclick="editExamDate('shiye')">
+        <span>📋</span>
+        <span id="countdown-shiye">事业编 -- 天</span>
+      </div>
     </div>
   </div>
 </div>
@@ -869,14 +879,27 @@ const STATUS_FILTERS = [
 ];
 
 // ============ State ============
-let state = { reviews: [], examDate: '2026-11-29' };
+let state = { reviews: [], examDates: { guokao: '2026-11-29', shengkao: '2026-12-06', shiye: '2027-03-21' } };
 let ui = { tab: 'dashboard', catFilter: 'all', statusFilter: 'all' };
 
 // ============ Storage ============
 function load() {
   try {
     const d = localStorage.getItem('kaogong_data');
-    if (d) { const p = JSON.parse(d); state.reviews = p.reviews || []; state.examDate = p.examDate || '2026-11-29'; }
+    if (d) {
+      const p = JSON.parse(d);
+      state.reviews = p.reviews || [];
+      // Handle old format (single examDate) vs new format (examDates)
+      if (p.examDates) {
+        state.examDates = {
+          guokao: p.examDates.guokao || '2026-11-29',
+          shengkao: p.examDates.shengkao || '2026-12-06',
+          shiye: p.examDates.shiye || '2027-03-21'
+        };
+      } else if (p.examDate) {
+        state.examDates = { guokao: p.examDate, shengkao: '2026-12-06', shiye: '2027-03-21' };
+      }
+    }
   } catch(e) {}
 }
 function save() {
@@ -1211,7 +1234,7 @@ function exportData() {
     version: 1,
     exportDate: new Date().toISOString(),
     reviews: state.reviews,
-    examDate: state.examDate,
+    examDates: state.examDates,
     idiomState: idiomUserState,
     planData: planData
   };
@@ -1259,7 +1282,15 @@ function doImportFromText() {
       return;
     }
     state.reviews = data.reviews || [];
-    state.examDate = data.examDate || state.examDate;
+    if (data.examDates) {
+      state.examDates = {
+        guokao: data.examDates.guokao || state.examDates.guokao,
+        shengkao: data.examDates.shengkao || state.examDates.shengkao,
+        shiye: data.examDates.shiye || state.examDates.shiye
+      };
+    } else if (data.examDate) {
+      state.examDates.guokao = data.examDate;
+    }
     if (data.idiomState) {
       idiomUserState = data.idiomState;
       saveIdiomState();
@@ -1289,7 +1320,15 @@ function importData(event) {
         return;
       }
       state.reviews = data.reviews || [];
-      state.examDate = data.examDate || state.examDate;
+      if (data.examDates) {
+        state.examDates = {
+          guokao: data.examDates.guokao || state.examDates.guokao,
+          shengkao: data.examDates.shengkao || state.examDates.shengkao,
+          shiye: data.examDates.shiye || state.examDates.shiye
+        };
+      } else if (data.examDate) {
+        state.examDates.guokao = data.examDate;
+      }
       if (data.idiomState) {
         idiomUserState = data.idiomState;
         saveIdiomState();
@@ -1408,10 +1447,16 @@ function renderOverviewBar() {
 }
 
 function renderCountdown() {
-  const days = daysDiff(today(), state.examDate);
-  const text = days > 0 ? `国考倒计时 ${days} 天` : days === 0 ? '今天就是国考日！' : '国考已结束';
-  document.getElementById('countdown-text').textContent = text;
-  document.getElementById('s-countdown').textContent = days > 0 ? days : 0;
+  const labels = { guokao: '国考', shengkao: '省考', shiye: '事业编' };
+  for (const key of ['guokao', 'shengkao', 'shiye']) {
+    const days = daysDiff(today(), state.examDates[key]);
+    const el = document.getElementById('countdown-' + key);
+    if (el) {
+      el.textContent = days > 0 ? `${labels[key]} ${days}天` : days === 0 ? `${labels[key]} 今天！` : `${labels[key]} 已结束`;
+    }
+  }
+  const gkDays = daysDiff(today(), state.examDates.guokao);
+  document.getElementById('s-countdown').textContent = gkDays > 0 ? gkDays : 0;
 }
 
 function renderDashboard() {
@@ -1870,13 +1915,15 @@ function submitComplete() {
 }
 
 // ============ Exam Date ============
-function editExamDate() {
-  const newDate = prompt('请输入国考日期 (格式: YYYY-MM-DD)', state.examDate);
+function editExamDate(type) {
+  const labels = { guokao: '国考', shengkao: '山东省考', shiye: '山东事业编' };
+  const newDate = prompt(`请输入${labels[type]}笔试日期 (格式: YYYY-MM-DD)`, state.examDates[type]);
   if (newDate && /^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
-    state.examDate = newDate;
+    state.examDates[type] = newDate;
     save();
     renderCountdown();
-    showToast('考试日期已更新', 'success');
+    renderOverviewBar();
+    showToast(`${labels[type]}日期已更新`, 'success');
   }
 }
 
