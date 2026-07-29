@@ -2888,6 +2888,82 @@ function deletePlanTask(date, id) {
   renderPlan();
 }
 
+function editPlanTask(date, id) {
+  if (!planData[date]) return;
+  var task = planData[date].find(function(t) { return t.id === id; });
+  if (!task) return;
+
+  // 创建编辑弹窗
+  var modal = document.getElementById('edit-task-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'edit-task-modal';
+    modal.className = 'modal-overlay';
+    modal.onclick = function(e) { if (e.target === modal) closeEditTask(); };
+    document.body.appendChild(modal);
+  }
+
+  modal.innerHTML = '<div class="modal-content" style="max-width:420px;">' +
+    '<div class="modal-header"><h2>编辑任务</h2><button class="modal-close" onclick="closeEditTask()">✕</button></div>' +
+    '<div class="form-group"><label class="form-label">任务内容</label>' +
+    '<input class="form-input" id="edit-task-text" value="' + esc(task.text).replace(/"/g, '&quot;') + '"></div>' +
+    '<div class="form-group"><label class="form-label">日期</label>' +
+    '<input class="form-input" id="edit-task-date" type="date" value="' + date + '"></div>' +
+    '<div class="form-group"><label class="form-label">时间</label>' +
+    '<div style="display:flex;gap:8px;align-items:center;">' +
+    '<input class="form-input" id="edit-task-start" type="time" value="' + task.startTime + '">' +
+    '<span style="color:var(--text-sec);">至</span>' +
+    '<input class="form-input" id="edit-task-end" type="time" value="' + (task.endTime || '') + '">' +
+    '</div></div>' +
+    '<button class="btn btn-primary btn-block" onclick="saveEditTask(\'' + date + '\',\'' + id + '\')">保存修改</button>' +
+  '</div>';
+  modal.classList.add('active');
+  modal.style.display = 'flex';
+  document.getElementById('edit-task-text').focus();
+}
+
+function closeEditTask() {
+  var modal = document.getElementById('edit-task-modal');
+  if (modal) { modal.classList.remove('active'); modal.style.display = 'none'; }
+}
+
+function saveEditTask(oldDate, id) {
+  if (!planData[oldDate]) return;
+  var taskIdx = planData[oldDate].findIndex(function(t) { return t.id === id; });
+  if (taskIdx === -1) return;
+
+  var newText = document.getElementById('edit-task-text').value.trim();
+  var newDate = document.getElementById('edit-task-date').value;
+  var newStart = document.getElementById('edit-task-start').value;
+  var newEnd = document.getElementById('edit-task-end').value;
+
+  if (!newText) { showToast('任务内容不能为空', 'error'); return; }
+  if (!newDate) { showToast('请选择日期', 'error'); return; }
+  if (!newStart) { showToast('请设置开始时间', 'error'); return; }
+
+  var task = planData[oldDate][taskIdx];
+  task.text = newText;
+  task.startTime = newStart;
+  task.endTime = newEnd || '';
+
+  // 如果日期变了，移动任务到新日期
+  if (newDate !== oldDate) {
+    planData[oldDate].splice(taskIdx, 1);
+    if (!planData[newDate]) planData[newDate] = [];
+    planData[newDate].push(task);
+    planData[newDate].sort(function(a, b) { return a.startTime.localeCompare(b.startTime); });
+  } else {
+    planData[oldDate].sort(function(a, b) { return a.startTime.localeCompare(b.startTime); });
+  }
+
+  savePlanData();
+  closeEditTask();
+  showToast('已保存', 'success');
+  // 切换到任务所在日期
+  planCurrentDate = newDate;
+  renderPlan();
+}
+
 function rolloverTasks() {
   var t = today();
   var allDates = Object.keys(planData);
@@ -3017,6 +3093,7 @@ function renderPlan() {
         '<div style="font-size:14px;font-weight:' + (isDone ? '400' : '600') + ';color:' + (isDone ? 'var(--text-sec)' : 'var(--text)') + ';text-decoration:' + (isDone ? 'line-through' : 'none') + ';margin-bottom:4px;">' + esc(task.text) + (task.delayed && !isDone ? ' <span style="font-size:11px;padding:1px 6px;border-radius:8px;background:var(--warning-light);color:var(--warning);font-weight:600;vertical-align:middle;">延期</span>' : '') + '</div>' +
         '<div style="font-size:12px;color:var(--text-sec);">⏰ ' + timeStr + (task.delayed && task.originalDate ? ' · 原计划 ' + fmtDate(task.originalDate) : '') + '</div>' +
       '</div>' +
+      '<button onclick="editPlanTask(\'' + date + '\',\'' + task.id + '\')" style="width:32px;height:32px;border:none;background:var(--primary-light);color:var(--primary);border-radius:50%;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">✎</button>' +
       '<button onclick="deletePlanTask(\'' + date + '\',\'' + task.id + '\')" style="width:32px;height:32px;border:none;background:var(--danger-light);color:var(--danger);border-radius:50%;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">✕</button>' +
     '</div>';
   }).join('');
