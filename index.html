@@ -689,44 +689,6 @@ body {
         <div class="filter-bar" id="cat-filters"></div>
         <div class="filter-bar" id="status-filters"></div>
         <div id="manage-list"></div>
-
-        <!-- 数据管理卡片 -->
-        <div class="card" style="margin-top:20px;">
-          <div class="card-title"><span class="icon">⚙️</span> 数据管理 <span style="margin-left:auto;font-size:13px;font-weight:400;color:var(--text-sec);" id="manage-count"></span></div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;">
-            <button class="btn btn-sm" style="flex:1;min-width:100px;background:var(--success-light);color:var(--success);border:1px solid var(--success);min-height:44px;" onclick="event.stopPropagation();showImportArea()">📥 导入数据</button>
-            <button class="btn btn-sm" style="flex:1;min-width:100px;background:var(--primary-light);color:var(--primary);border:1px solid var(--primary);min-height:44px;" onclick="event.stopPropagation();exportData()">📤 导出数据</button>
-            <button class="btn btn-sm" style="flex:1;min-width:100px;background:var(--danger-light);color:var(--danger);border:1px solid var(--danger);min-height:44px;" onclick="event.stopPropagation();doClearAll(this)">🗑️ 清空所有</button>
-          </div>
-        </div>
-
-        <!-- Export area (inline) -->
-        <div id="export-area" style="display:none;background:var(--card);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);margin-bottom:16px;border:2px solid var(--primary);">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-            <h3 style="font-size:16px;font-weight:700;">📦 导出备份数据</h3>
-            <button class="btn btn-sm btn-ghost" onclick="hideExport()">收起</button>
-          </div>
-          <p style="font-size:13px;color:var(--text-sec);margin-bottom:10px;">长按下方文本框，全选后复制，粘贴到备忘录或笔记中保存：</p>
-          <textarea readonly style="width:100%;min-height:150px;font-size:11px;font-family:monospace;word-break:break-all;padding:12px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);resize:vertical;"></textarea>
-          <div style="display:flex;gap:10px;margin-top:12px;">
-            <button class="btn btn-primary" style="flex:1;min-height:48px;" onclick="copyExportData()">📋 一键复制</button>
-            <button class="btn btn-outline" style="flex:1;min-height:48px;" onclick="hideExport()">收起</button>
-          </div>
-        </div>
-
-        <!-- Import area (inline) -->
-        <div id="import-area" style="display:none;background:var(--card);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);margin-bottom:16px;border:2px solid var(--success);">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-            <h3 style="font-size:16px;font-weight:700;">📥 粘贴导入数据</h3>
-            <button class="btn btn-sm btn-ghost" onclick="hideImport()">收起</button>
-          </div>
-          <p style="font-size:13px;color:var(--text-sec);margin-bottom:10px;">将之前复制的备份数据粘贴到下方，然后点击导入：</p>
-          <textarea placeholder="在此粘贴备份数据..." style="width:100%;min-height:150px;font-size:11px;font-family:monospace;padding:12px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);resize:vertical;"></textarea>
-          <div style="display:flex;gap:10px;margin-top:12px;">
-            <button class="btn btn-success" style="flex:1;min-height:48px;" onclick="doImportFromText()">✅ 导入</button>
-            <button class="btn btn-outline" style="flex:1;min-height:48px;" onclick="hideImport()">取消</button>
-          </div>
-        </div>
       </div>
     </div>
   </div><!-- end tab-review -->
@@ -834,6 +796,44 @@ body {
     <div class="card">
       <div class="card-title"><span class="icon">💡</span> 复盘建议</div>
       <div id="stats-tips" style="font-size:13px;color:var(--text-sec);line-height:1.8;"></div>
+    </div>
+
+    <!-- 数据管理 -->
+    <div class="card">
+      <div class="card-title"><span class="icon">⚙️</span> 数据管理</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-sm" style="flex:1;min-width:100px;background:var(--success-light);color:var(--success);border:1px solid var(--success);min-height:44px;" onclick="showImportArea()">📥 导入数据</button>
+        <button class="btn btn-sm" style="flex:1;min-width:100px;background:var(--primary-light);color:var(--primary);border:1px solid var(--primary);min-height:44px;" onclick="exportData()">📤 导出数据</button>
+        <button class="btn btn-sm" style="flex:1;min-width:100px;background:var(--danger-light);color:var(--danger);border:1px solid var(--danger);min-height:44px;" onclick="doClearAll(this)">🗑️ 清空所有</button>
+      </div>
+    </div>
+
+    <!-- Export area -->
+    <div id="export-area" style="display:none;background:var(--card);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);margin-bottom:16px;border:2px solid var(--primary);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3 style="font-size:16px;font-weight:700;">📦 导出备份数据</h3>
+        <button class="btn btn-sm btn-ghost" onclick="hideExport()">收起</button>
+      </div>
+      <p style="font-size:13px;color:var(--text-sec);margin-bottom:10px;">长按下方文本框，全选后复制，粘贴到备忘录或笔记中保存：</p>
+      <textarea readonly style="width:100%;min-height:150px;font-size:11px;font-family:monospace;word-break:break-all;padding:12px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);resize:vertical;"></textarea>
+      <div style="display:flex;gap:10px;margin-top:12px;">
+        <button class="btn btn-primary" style="flex:1;min-height:48px;" onclick="copyExportData()">📋 一键复制</button>
+        <button class="btn btn-outline" style="flex:1;min-height:48px;" onclick="hideExport()">收起</button>
+      </div>
+    </div>
+
+    <!-- Import area -->
+    <div id="import-area" style="display:none;background:var(--card);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);margin-bottom:16px;border:2px solid var(--success);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3 style="font-size:16px;font-weight:700;">📥 粘贴导入数据</h3>
+        <button class="btn btn-sm btn-ghost" onclick="hideImport()">收起</button>
+      </div>
+      <p style="font-size:13px;color:var(--text-sec);margin-bottom:10px;">将之前复制的备份数据粘贴到下方，然后点击导入：</p>
+      <textarea placeholder="在此粘贴备份数据..." style="width:100%;min-height:150px;font-size:11px;font-family:monospace;padding:12px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);resize:vertical;"></textarea>
+      <div style="display:flex;gap:10px;margin-top:12px;">
+        <button class="btn btn-success" style="flex:1;min-height:48px;" onclick="doImportFromText()">✅ 导入</button>
+        <button class="btn btn-outline" style="flex:1;min-height:48px;" onclick="hideImport()">取消</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1550,7 +1550,7 @@ function renderDashboard() {
       const r = item.review;
       const round = r.reviews[item.roundIdx];
       const overdue = item.overdue;
-      return `<div class="today-item ${overdue ? 'overdue' : ''}" onclick="openComplete('${r.id}', ${item.roundIdx})">
+      return `<div class="today-item ${overdue ? 'overdue' : ''}" onclick="openTodayDetail('${r.id}', ${item.roundIdx})" style="cursor:pointer;">
         <div class="today-item-info">
           <div class="today-item-name">${esc(r.name)}</div>
           <div class="today-item-detail">
@@ -1558,7 +1558,7 @@ function renderDashboard() {
           </div>
         </div>
         <div class="today-item-round ${overdue ? 'overdue' : ''}">
-          ${overdue ? '逾期' : '待复盘'}
+          ${overdue ? '逾期' : '查看'}
         </div>
       </div>`;
     }).join('');
@@ -1635,7 +1635,7 @@ function renderToday() {
       const round = r.reviews[item.roundIdx];
       const overdue = item.overdue;
       const daysLate = overdue ? daysDiff(round.date, today()) : 0;
-      return `<div class="today-item ${overdue ? 'overdue' : ''}" onclick="openComplete('${r.id}', ${item.roundIdx})" style="cursor:pointer;">
+      return `<div class="today-item ${overdue ? 'overdue' : ''}" onclick="openTodayDetail('${r.id}', ${item.roundIdx})" style="cursor:pointer;">
         <div class="today-item-info">
           <div class="today-item-name">${esc(r.name)}</div>
           <div class="today-item-detail">
@@ -1644,8 +1644,8 @@ function renderToday() {
             ${overdue ? ` · <span style="color:var(--danger);font-weight:600;">逾期${daysLate}天</span>` : ''}
           </div>
         </div>
-        <button class="btn btn-sm ${overdue ? 'btn-danger' : 'btn-success'}" onclick="event.stopPropagation();openComplete('${r.id}', ${item.roundIdx})">
-          ${overdue ? '补复盘' : '去复盘'}
+        <button class="btn btn-sm ${overdue ? 'btn-danger' : 'btn-success'}" onclick="event.stopPropagation();openTodayDetail('${r.id}', ${item.roundIdx})">
+          ${overdue ? '查看' : '查看'}
         </button>
       </div>`;
     }).join('');
@@ -1659,14 +1659,14 @@ function renderToday() {
       const r = item.review;
       const round = r.reviews[item.roundIdx];
       const daysLate = daysDiff(round.date, today());
-      return `<div class="today-item overdue" onclick="openComplete('${r.id}', ${item.roundIdx})" style="cursor:pointer;">
+      return `<div class="today-item overdue" onclick="openTodayDetail('${r.id}', ${item.roundIdx})" style="cursor:pointer;">
         <div class="today-item-info">
           <div class="today-item-name">${esc(r.name)}</div>
           <div class="today-item-detail">
             ${CAT_LABELS[r.category] || r.category} · ${ROUND_NAMES[item.roundIdx]} · 逾期${daysLate}天
           </div>
         </div>
-        <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();openComplete('${r.id}', ${item.roundIdx})">补复盘</button>
+        <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();openTodayDetail('${r.id}', ${item.roundIdx})">查看</button>
       </div>`;
     }).join('');
   } else {
@@ -1918,6 +1918,63 @@ function openDetail(id) {
 }
 
 function closeDetail() { document.getElementById('detail-modal').classList.remove('active'); }
+
+// 从今日复盘任务列表打开详情，先看内容再复盘
+function openTodayDetail(reviewId, roundIdx) {
+  const review = state.reviews.find(r => r.id === reviewId);
+  if (!review) return;
+  
+  const mastery = getMastery(review);
+  const rr = review.reviews[roundIdx];
+  const overdue = rr.date < today();
+  const daysLate = overdue ? daysDiff(rr.date, today()) : 0;
+  
+  document.getElementById('detail-name').textContent = review.name;
+  const body = document.getElementById('detail-body');
+  
+  body.innerHTML = `
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
+      <span class="review-item-cat" style="background:${(CAT_COLORS[review.category]||'#adb5bd')}20;color:${CAT_COLORS[review.category]||'#adb5bd'};">${CAT_LABELS[review.category] || review.category}</span>
+      <span style="font-size:12px;color:var(--text-sec);">完成于 ${fmtDateFull(review.completionDate)}</span>
+    </div>
+    <div class="mastery-bar" style="margin-bottom:16px;"><div class="mastery-bar-fill" style="width:${mastery}%"></div></div>
+    <div style="font-size:13px;color:var(--text-sec);margin-bottom:16px;">掌握度 ${mastery}%</div>
+
+    <!-- 当前轮次高亮 -->
+    <div class="detail-round current" style="border-width:2px;">
+      <div class="detail-round-header">
+        <div>
+          <div class="detail-round-title">${ROUND_NAMES[roundIdx]}<span style="font-size:12px;font-weight:400;color:var(--text-sec);margin-left:6px;">${ROUND_DESCS[roundIdx]}</span></div>
+          <div class="detail-round-date">计划日期: ${fmtDateFull(rr.date)}${overdue ? ` · <span style="color:var(--danger);font-weight:600;">逾期${daysLate}天</span>` : ''}</div>
+        </div>
+        <span class="detail-round-status" style="background:${overdue ? 'var(--danger)' : 'var(--warning)'}20;color:${overdue ? 'var(--danger)' : 'var(--warning)'};">待复盘</span>
+      </div>
+    </div>
+
+    ${roundIdx > 0 ? `
+    <div style="margin-top:16px;margin-bottom:12px;">
+      <div style="font-size:13px;font-weight:600;color:var(--text-sec);margin-bottom:8px;">之前的复盘记录：</div>
+      ${review.reviews.slice(0, roundIdx).map((prev, i) => {
+        if (prev.status !== 'done') return '';
+        const ratingText = prev.rating === 'easy' ? '轻松' : prev.rating === 'ok' ? '还行' : prev.rating === 'hard' ? '吃力' : '';
+        const ratingColor = prev.rating === 'easy' ? 'var(--success)' : prev.rating === 'hard' ? 'var(--danger)' : 'var(--primary)';
+        return `<div style="padding:10px;background:var(--bg);border-radius:var(--radius-sm);margin-bottom:6px;font-size:13px;">
+          <div style="font-weight:600;margin-bottom:4px;">${ROUND_NAMES[i]} · <span style="color:${ratingColor};">${ratingText}</span> · ${fmtDate(prev.completedDate || prev.date)}</div>
+          ${prev.notes ? `<div style="color:var(--text-sec);font-style:italic;">"${esc(prev.notes)}"</div>` : '<div style="color:var(--text-light);">无笔记</div>'}
+        </div>`;
+      }).join('')}
+    </div>
+    ` : ''}
+
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+      <button class="btn ${overdue ? 'btn-danger' : 'btn-success'} btn-block" onclick="closeDetail();openComplete('${reviewId}', ${roundIdx})">
+        ${overdue ? '补复盘' : '去复盘'}
+      </button>
+    </div>
+  `;
+  
+  document.getElementById('detail-modal').classList.add('active');
+}
 
 let completingReview = null;
 function openComplete(reviewId, roundIdx) {
