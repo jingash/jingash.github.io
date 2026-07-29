@@ -506,6 +506,14 @@ body {
     <div class="card">
       <input type="hidden" id="plan-date-input">
 
+      <!-- 日期切换 -->
+      <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:16px;">
+        <button class="btn btn-ghost btn-sm" onclick="changePlanDate(-1)" style="font-size:18px;padding:6px 10px;">◀</button>
+        <div style="font-size:15px;font-weight:600;min-width:160px;text-align:center;" id="plan-date-display"></div>
+        <button class="btn btn-ghost btn-sm" onclick="changePlanDate(1)" style="font-size:18px;padding:6px 10px;">▶</button>
+        <button class="btn btn-sm btn-outline" onclick="changePlanDate(0)" style="font-size:12px;padding:4px 10px;min-height:32px;" id="plan-today-btn">回到今天</button>
+      </div>
+
       <!-- 进度条 -->
       <div style="margin-bottom:20px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
@@ -527,6 +535,10 @@ body {
           <div style="display:flex;flex-direction:column;gap:12px;">
             <input type="text" id="plan-task-input" class="form-input" placeholder="输入学习内容..." style="font-size:14px;">
             <div style="display:flex;gap:8px;align-items:center;">
+              <span style="font-size:13px;color:var(--text-sec);white-space:nowrap;">日期：</span>
+              <input type="date" id="plan-task-date" class="form-input" style="flex:1;font-size:13px;">
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
               <span style="font-size:13px;color:var(--text-sec);white-space:nowrap;">时间：</span>
               <input type="time" id="plan-start-time" class="form-input" style="flex:1;font-size:13px;">
               <span style="color:var(--text-sec);">至</span>
@@ -543,7 +555,7 @@ body {
       <!-- 空状态 -->
       <div id="plan-empty-state" style="text-align:center;padding:40px 20px;color:var(--text-sec);">
         <div style="font-size:48px;margin-bottom:12px;">📝</div>
-        <div style="font-size:14px;">今天还没有学习计划</div>
+        <div style="font-size:14px;" id="plan-empty-text">今天还没有学习计划</div>
         <div style="font-size:13px;margin-top:4px;">添加你的第一个学习任务吧</div>
       </div>
     </div>
@@ -2808,15 +2820,28 @@ function setPlanDateToToday() {
   renderPlan();
 }
 
+function changePlanDate(offset) {
+  if (offset === 0) {
+    planCurrentDate = today();
+  } else {
+    var d = new Date(planCurrentDate + 'T00:00:00');
+    d.setDate(d.getDate() + offset);
+    planCurrentDate = d.toISOString().split('T')[0];
+  }
+  renderPlan();
+}
+
 function addPlanTask() {
   var input = document.getElementById('plan-task-input');
+  var taskDate = document.getElementById('plan-task-date').value;
   var startTime = document.getElementById('plan-start-time').value;
   var endTime = document.getElementById('plan-end-time').value;
   var text = input.value.trim();
   if (!text) { showToast('请输入任务内容', 'error'); return; }
+  if (!taskDate) { showToast('请选择日期', 'error'); return; }
   if (!startTime) { showToast('请设置开始时间', 'error'); return; }
 
-  var date = planCurrentDate || today();
+  var date = taskDate;
   if (!planData[date]) planData[date] = [];
 
   planData[date].push({
@@ -2832,9 +2857,10 @@ function addPlanTask() {
   savePlanData();
 
   input.value = '';
+  document.getElementById('plan-task-date').value = planCurrentDate || today();
   document.getElementById('plan-start-time').value = '';
   document.getElementById('plan-end-time').value = '';
-  showToast('任务已添加', 'success');
+  showToast('任务已添加到 ' + fmtDate(date), 'success');
   renderPlan();
 }
 
@@ -2927,10 +2953,6 @@ function renderPlan() {
   if (dateInput && !planCurrentDate) {
     planCurrentDate = today();
     dateInput.value = today();
-    dateInput.onchange = function() {
-      planCurrentDate = this.value;
-      renderPlan();
-    };
   }
 
   var date = planCurrentDate || today();
@@ -2944,7 +2966,18 @@ function renderPlan() {
   if (dateDisplay) {
     var parts = date.split('-');
     var isToday = date === today();
-    dateDisplay.textContent = (isToday ? '今天 · ' : '') + parts[0] + '年' + parseInt(parts[1]) + '月' + parseInt(parts[2]) + '日';
+    var d = new Date(date + 'T00:00:00');
+    var weekDays = ['周日','周一','周二','周三','周四','周五','周六'];
+    var tomorrow = addDays(today(), 1);
+    var isTomorrow = date === tomorrow;
+    var prefix = isToday ? '📅 今天' : isTomorrow ? '📅 明天' : '📅';
+    dateDisplay.innerHTML = prefix + ' · ' + parseInt(parts[1]) + '月' + parseInt(parts[2]) + '日 ' + weekDays[d.getDay()];
+  }
+
+  // "回到今天"按钮
+  var todayBtn = document.getElementById('plan-today-btn');
+  if (todayBtn) {
+    todayBtn.style.display = date === today() ? 'none' : 'inline-flex';
   }
 
   // Progress
@@ -2955,7 +2988,16 @@ function renderPlan() {
 
   // Empty state
   var emptyState = document.getElementById('plan-empty-state');
-  if (emptyState) emptyState.style.display = tasks.length === 0 ? 'block' : 'none';
+  var emptyText = document.getElementById('plan-empty-text');
+  if (emptyState) {
+    emptyState.style.display = tasks.length === 0 ? 'block' : 'none';
+    if (emptyText) {
+      var isToday2 = date === today();
+      var tomorrow2 = addDays(today(), 1);
+      var isTomorrow2 = date === tomorrow2;
+      emptyText.textContent = isToday2 ? '今天还没有学习计划' : isTomorrow2 ? '明天还没有学习计划' : '这一天还没有学习计划';
+    }
+  }
 
   // Task list
   var list = document.getElementById('plan-task-list');
@@ -2974,6 +3016,12 @@ function renderPlan() {
       '<button onclick="deletePlanTask(\'' + date + '\',\'' + task.id + '\')" style="width:32px;height:32px;border:none;background:var(--danger-light);color:var(--danger);border-radius:50%;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">✕</button>' +
     '</div>';
   }).join('');
+
+  // 设置添加表单的日期默认值
+  var taskDateInput = document.getElementById('plan-task-date');
+  if (taskDateInput && !taskDateInput.value) {
+    taskDateInput.value = date;
+  }
 }
 
 // ============ Init ============
