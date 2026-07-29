@@ -1,0 +1,2875 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<script>
+!(function(j,a,g){j.__itrace_conf = {bid: 'f43basl8-6nqu7l3w',rel: '0.0.1', spa: true, uid: '', plugins:['jserror','interface','perf','resource','flow','blank']};var b = a.createElement("script");var d = a.getElementsByTagName("script")[0];b.type = "text/javascript";b.crossorigin = true;b.async = true;b.onload = function(){j.__itrace && j.__itrace.setReady()};d.parentNode.insertBefore(b,d);b.src = g})(window, document, "https://g.alicdn.com/woodpeckerx/itrace-next/itrace.iife.js")
+</script>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>考公助手</title>
+<style>
+:root {
+  --primary: #4361ee;
+  --primary-light: #e8eeff;
+  --primary-dark: #3a56d4;
+  --secondary: #7209b7;
+  --success: #06d6a0;
+  --success-light: #e6faf4;
+  --warning: #f77f00;
+  --warning-light: #fff4e6;
+  --danger: #ef476f;
+  --danger-light: #fde8ed;
+  --bg: #f0f2f8;
+  --card: #ffffff;
+  --text: #1a1a2e;
+  --text-sec: #6c757d;
+  --text-light: #adb5bd;
+  --border: #e9ecef;
+  --shadow: 0 2px 12px rgba(0,0,0,0.06);
+  --radius: 14px;
+  --radius-sm: 8px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+.container {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 0 16px;
+  padding-bottom: 40px;
+}
+/* Header */
+.header {
+  background: linear-gradient(135deg, #4361ee 0%, #7209b7 100%);
+  color: white;
+  padding: 28px 20px 24px;
+  border-radius: 0 0 24px 24px;
+  margin-bottom: 20px;
+}
+.header h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+.header-sub { font-size: 13px; opacity: 0.85; }
+.countdown-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,0.2); border-radius: 20px;
+  padding: 4px 14px; font-size: 14px; font-weight: 600;
+  margin-top: 12px; cursor: pointer; backdrop-filter: blur(4px);
+}
+.countdown-badge:hover { background: rgba(255,255,255,0.3); }
+/* Tabs */
+.tabs {
+  display: flex; gap: 4px; background: var(--card);
+  border-radius: var(--radius); padding: 4px;
+  box-shadow: var(--shadow); margin-bottom: 20px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+}
+.tab {
+  flex: 1; min-width: 0; padding: 10px 8px;
+  border: none; background: none; border-radius: 10px;
+  font-size: 13px; font-weight: 500; color: var(--text-sec);
+  cursor: pointer; transition: all 0.2s; white-space: nowrap;
+  text-align: center;
+}
+.tab.active { background: var(--primary); color: white; font-weight: 600; }
+.tab:not(.active):hover { background: var(--primary-light); color: var(--primary); }
+/* Tab content */
+.tab-content { display: none; }
+.tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+/* Cards */
+.card {
+  background: var(--card); border-radius: var(--radius);
+  padding: 20px; box-shadow: var(--shadow); margin-bottom: 16px;
+}
+.card-title {
+  font-size: 15px; font-weight: 600; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.card-title .icon { font-size: 18px; }
+/* Stat cards */
+.stats-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 16px; }
+.stat-card {
+  background: var(--card); border-radius: var(--radius);
+  padding: 16px 14px; box-shadow: var(--shadow); text-align: center;
+}
+.stat-value { font-size: 28px; font-weight: 700; line-height: 1.2; }
+.stat-value.primary { color: var(--primary); }
+.stat-value.success { color: var(--success); }
+.stat-value.warning { color: var(--warning); }
+.stat-label { font-size: 12px; color: var(--text-sec); margin-top: 4px; }
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 12px 20px; border-radius: var(--radius-sm);
+  border: none; font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s; min-height: 44px;
+}
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); }
+.btn-success { background: var(--success); color: white; }
+.btn-success:hover { background: #05c090; }
+.btn-outline {
+  background: transparent; color: var(--primary);
+  border: 1.5px solid var(--primary);
+}
+.btn-outline:hover { background: var(--primary-light); }
+.btn-sm { padding: 8px 14px; font-size: 13px; min-height: 36px; }
+.btn-block { width: 100%; }
+.btn-danger { background: var(--danger); color: white; }
+.btn-ghost { background: none; border: none; color: var(--text-sec); padding: 8px; cursor: pointer; }
+.btn-ghost:hover { color: var(--primary); }
+/* Review rounds (dots) */
+.rounds-dots { display: flex; gap: 6px; align-items: center; }
+.round-dot {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600; transition: all 0.2s;
+}
+.round-dot.done { background: var(--success); color: white; }
+.round-dot.pending { background: var(--border); color: var(--text-sec); }
+.round-dot.overdue { background: var(--danger); color: white; animation: pulse 2s infinite; }
+.round-dot.current { background: var(--warning); color: white; box-shadow: 0 0 0 3px var(--warning-light); }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.7; } }
+.round-dot-line {
+  width: 16px; height: 2px; background: var(--border); border-radius: 1px;
+}
+.round-dot-line.done { background: var(--success); }
+/* Mastery bar */
+.mastery-bar {
+  height: 6px; background: var(--border); border-radius: 3px;
+  overflow: hidden; margin-top: 8px;
+}
+.mastery-bar-fill {
+  height: 100%; border-radius: 3px; transition: width 0.5s ease;
+  background: linear-gradient(90deg, var(--primary), var(--success));
+}
+/* Review item card */
+.review-item {
+  background: var(--card); border-radius: var(--radius);
+  padding: 16px; box-shadow: var(--shadow); margin-bottom: 12px;
+  cursor: pointer; transition: all 0.2s; border-left: 4px solid transparent;
+}
+.review-item:hover { transform: translateX(2px); }
+.review-item.overdue { border-left-color: var(--danger); }
+.review-item.pending { border-left-color: var(--warning); }
+.review-item.done { border-left-color: var(--success); opacity: 0.7; }
+.review-item-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.review-item-name { font-size: 15px; font-weight: 600; }
+.review-item-cat {
+  font-size: 11px; padding: 2px 8px; border-radius: 10px;
+  font-weight: 500; white-space: nowrap;
+}
+.review-item-meta { font-size: 12px; color: var(--text-sec); margin-bottom: 8px; }
+/* Today item */
+.today-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px; background: var(--card); border-radius: var(--radius-sm);
+  margin-bottom: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  transition: all 0.2s;
+}
+.today-item.overdue { background: var(--danger-light); }
+.today-item-info { flex: 1; min-width: 0; }
+.today-item-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.today-item-detail { font-size: 12px; color: var(--text-sec); margin-top: 2px; }
+.today-item-round { font-size: 12px; font-weight: 600; color: var(--warning); }
+.today-item-round.overdue { color: var(--danger); }
+/* Form */
+.form-group { margin-bottom: 16px; }
+.form-label { display: block; font-size: 13px; font-weight: 600; color: var(--text-sec); margin-bottom: 6px; }
+.form-input, .form-select, .form-textarea {
+  width: 100%; padding: 12px 14px; border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); font-size: 15px;
+  transition: border-color 0.2s; background: white;
+  font-family: inherit;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  outline: none; border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(67,97,238,0.1);
+}
+.form-textarea { resize: vertical; min-height: 80px; }
+/* Modal */
+.modal-overlay {
+  display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5); z-index: 1000;
+  align-items: flex-end; justify-content: center;
+  backdrop-filter: blur(2px);
+}
+.modal-overlay.active { display: flex; }
+.modal-content {
+  background: white; border-radius: 20px 20px 0 0;
+  width: 100%; max-width: 500px; max-height: 90vh;
+  overflow-y: auto; padding: 24px;
+  animation: slideUp 0.3s ease;
+}
+@keyframes slideUp { from { transform:translateY(100%); } to { transform:translateY(0); } }
+.modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 20px;
+}
+.modal-header h2 { font-size: 18px; font-weight: 700; }
+.modal-close {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: none; background: var(--bg); font-size: 18px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.modal-close:hover { background: var(--border); }
+/* Detail modal rounds */
+.detail-rounds { margin: 16px 0; }
+.detail-round {
+  padding: 14px; border-radius: var(--radius-sm);
+  margin-bottom: 8px; border: 1.5px solid var(--border);
+  transition: all 0.2s;
+}
+.detail-round.done { border-color: var(--success); background: var(--success-light); }
+.detail-round.current { border-color: var(--warning); background: var(--warning-light); }
+.detail-round.overdue { border-color: var(--danger); background: var(--danger-light); }
+.detail-round-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 6px;
+}
+.detail-round-title { font-weight: 600; font-size: 14px; }
+.detail-round-date { font-size: 12px; color: var(--text-sec); }
+.detail-round-status { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
+.detail-round-notes { font-size: 13px; color: var(--text-sec); margin-top: 6px; font-style: italic; }
+/* Rating buttons */
+.rating-group { display: flex; gap: 8px; margin-top: 8px; }
+.rating-btn {
+  flex: 1; padding: 10px; border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border); background: white;
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  transition: all 0.2s; text-align: center; min-height: 44px;
+}
+.rating-btn:hover { border-color: var(--primary); }
+.rating-btn.selected { border-color: var(--primary); background: var(--primary-light); color: var(--primary); }
+.rating-btn.easy { border-color: var(--success); }
+.rating-btn.easy.selected { background: var(--success-light); color: #059669; border-color: var(--success); }
+.rating-btn.ok { border-color: var(--primary); }
+.rating-btn.ok.selected { background: var(--primary-light); color: var(--primary); }
+.rating-btn.hard { border-color: var(--danger); }
+.rating-btn.hard.selected { background: var(--danger-light); color: var(--danger); }
+/* Filter bar */
+.filter-bar {
+  display: flex; gap: 8px; margin-bottom: 16px;
+  overflow-x: auto; padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+.filter-chip {
+  padding: 6px 14px; border-radius: 20px;
+  border: 1.5px solid var(--border); background: white;
+  font-size: 12px; font-weight: 500; color: var(--text-sec);
+  cursor: pointer; white-space: nowrap; transition: all 0.2s;
+  min-height: 32px;
+}
+.filter-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
+.filter-chip:hover:not(.active) { border-color: var(--primary); color: var(--primary); }
+/* Chart bars */
+.chart-section { margin-bottom: 20px; }
+.chart-title { font-size: 13px; font-weight: 600; color: var(--text-sec); margin-bottom: 10px; }
+.chart-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.chart-label { font-size: 12px; width: 60px; text-align: right; color: var(--text-sec); flex-shrink: 0; }
+.chart-bar-wrap { flex: 1; height: 24px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+.chart-bar {
+  height: 100%; border-radius: 4px; transition: width 0.5s ease;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+  min-width: 0;
+}
+.chart-count { font-size: 12px; font-weight: 600; width: 30px; color: var(--text); }
+/* Progress ring */
+.progress-ring-wrap { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+.progress-ring { position: relative; width: 72px; height: 72px; flex-shrink: 0; }
+.progress-ring svg { transform: rotate(-90deg); }
+.progress-ring-text {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  font-size: 16px; font-weight: 700; color: var(--primary);
+}
+.progress-info { flex: 1; }
+.progress-info-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.progress-info-desc { font-size: 12px; color: var(--text-sec); }
+/* Empty state */
+.empty-state {
+  text-align: center; padding: 40px 20px; color: var(--text-sec);
+}
+.empty-icon { font-size: 48px; margin-bottom: 12px; }
+.empty-text { font-size: 14px; margin-bottom: 16px; }
+/* Toast */
+.toast {
+  position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+  background: var(--text); color: white; padding: 12px 24px;
+  border-radius: var(--radius-sm); font-size: 14px; font-weight: 500;
+  z-index: 2000; opacity: 0; transition: opacity 0.3s;
+  pointer-events: none; max-width: 90vw; text-align: center;
+}
+.toast.show { opacity: 1; }
+.toast.success { background: var(--success); }
+.toast.error { background: var(--danger); }
+/* Weak modules */
+.weak-list { }
+.weak-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.weak-item:last-child { border-bottom: none; }
+.weak-rank {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--danger-light); color: var(--danger);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; flex-shrink: 0;
+}
+.weak-name { flex: 1; font-size: 13px; font-weight: 500; }
+.weak-score { font-size: 12px; color: var(--danger); font-weight: 600; }
+/* Action buttons row */
+.action-row { display: flex; gap: 8px; margin-top: 12px; }
+/* Responsive */
+@media (max-width: 480px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .stats-grid .stat-card:last-child { grid-column: span 2; }
+  .header { padding: 20px 16px 18px; }
+  .header h1 { font-size: 19px; }
+  .modal-content { padding: 20px 16px; }
+  .container { padding: 0 12px; padding-bottom: 30px; }
+}
+@media (min-width: 768px) {
+  .modal-overlay { align-items: center; }
+  .modal-content { border-radius: 20px; margin: 0 20px; }
+}
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+/* Sticky overview bar */
+.overview-bar {
+  position: sticky;
+  top: 8px;
+  z-index: 100;
+  background: white;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  border-radius: var(--radius);
+  margin: 0 auto 12px auto;
+  max-width: calc(820px - 32px);
+  border: 1px solid var(--border);
+}
+.overview-bar-inner {
+  padding: 10px 16px;
+}
+.overview-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: space-between;
+}
+.overview-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  min-height: 28px;
+}
+.overview-chip:hover { opacity: 0.8; transform: scale(1.02); }
+.overview-chip.plan { background: var(--primary-light); color: var(--primary); }
+.overview-chip.review { background: var(--warning-light); color: var(--warning); }
+.overview-chip.overdue { background: var(--danger-light); color: var(--danger); }
+.overview-chip.mastery { background: var(--success-light); color: #059669; }
+.overview-date {
+  font-size: 11px;
+  color: var(--text-sec);
+  text-align: center;
+  margin-bottom: 6px;
+}
+.overview-progress-wrap {
+  height: 4px;
+  background: var(--bg);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+.overview-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+  background: linear-gradient(90deg, var(--primary), var(--success));
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div style="max-width:820px;margin:0 auto;padding:0 4px;">
+    <h1>考公助手</h1>
+    <div class="header-sub">系统复盘 · 高效上岸</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+      <div class="countdown-badge" onclick="editExamDate('guokao')">
+        <span>🇨🇳</span>
+        <span id="countdown-guokao">国考 -- 天</span>
+      </div>
+      <div class="countdown-badge" onclick="editExamDate('shengkao')">
+        <span>🏛️</span>
+        <span id="countdown-shengkao">省考 -- 天</span>
+      </div>
+      <div class="countdown-badge" onclick="editExamDate('shiye')">
+        <span>📋</span>
+        <span id="countdown-shiye">事业编 -- 天</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Sticky Overview Bar -->
+<div class="overview-bar" id="overview-bar">
+  <div class="overview-bar-inner">
+    <div class="overview-date" id="overview-date"></div>
+    <div class="overview-row" id="overview-row"></div>
+    <div class="overview-progress-wrap">
+      <div class="overview-progress-fill" id="overview-progress-fill" style="width:0%"></div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('dashboard')">今日学习</button>
+    <button class="tab" onclick="switchTab('dailyplan')">计划</button>
+    <button class="tab" onclick="switchTab('review')">复盘</button>
+    <button class="tab" onclick="switchTab('manage')">管理</button>
+    <button class="tab" onclick="switchTab('idioms')">成语</button>
+    <button class="tab" onclick="switchTab('stats')">统计</button>
+  </div>
+
+  <!-- ===== 今日学习 ===== -->
+  <div class="tab-content active" id="tab-dashboard">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value primary" id="s-countdown">--</div>
+        <div class="stat-label">距国考(天)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value warning" id="s-pending">0</div>
+        <div class="stat-label">今日待复盘</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value success" id="s-done">0</div>
+        <div class="stat-label">已完成轮次</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">📅</span> 今日计划</div>
+      <div id="dash-plan"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">📊</span> 复盘进度</div>
+      <div class="progress-ring-wrap">
+        <div class="progress-ring">
+          <svg width="72" height="72">
+            <circle cx="36" cy="36" r="30" stroke="#e9ecef" stroke-width="6" fill="none"/>
+            <circle id="progress-circle" cx="36" cy="36" r="30" stroke="url(#grad)" stroke-width="6" fill="none"
+              stroke-linecap="round" stroke-dasharray="188.5" stroke-dashoffset="188.5"/>
+            <defs><linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#4361ee"/><stop offset="100%" stop-color="#06d6a0"/>
+            </linearGradient></defs>
+          </svg>
+          <div class="progress-ring-text" id="progress-pct">0%</div>
+        </div>
+        <div class="progress-info">
+          <div class="progress-info-title" id="progress-title">整体复盘完成度</div>
+          <div class="progress-info-desc" id="progress-desc">还没有复盘记录，去添加一个吧</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">⚡</span> 今日待办</div>
+      <div id="dash-today"></div>
+    </div>
+
+    <div class="card" id="weak-card" style="display:none">
+      <div class="card-title"><span class="icon">🎯</span> 薄弱模块 (复盘标记"吃力"较多)</div>
+      <div class="weak-list" id="weak-list"></div>
+    </div>
+  </div>
+
+  <!-- ===== 计划 ===== -->
+  <div class="tab-content" id="tab-dailyplan">
+
+    <div class="card">
+      <input type="hidden" id="plan-date-input">
+
+      <!-- 进度条 -->
+      <div style="margin-bottom:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-size:14px;font-weight:500;">计划进度</span>
+          <span style="font-size:13px;color:var(--text-sec);" id="plan-progress-text">0/0 已完成</span>
+        </div>
+        <div class="progress-bar" style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden;">
+          <div id="plan-progress-bar" style="height:100%;background:linear-gradient(90deg,var(--primary),var(--success));width:0%;transition:width 0.3s ease;"></div>
+        </div>
+      </div>
+
+      <!-- 添加计划（可折叠） -->
+      <div style="margin-bottom:20px;">
+        <button class="btn btn-outline" style="width:100%;min-height:44px;justify-content:center;gap:8px;" onclick="togglePlanForm(this)">
+          <span style="font-size:16px;">➕</span> 添加新任务
+          <span style="margin-left:auto;font-size:12px;transition:transform 0.2s;" class="plan-toggle-icon">▼</span>
+        </button>
+        <div id="plan-form-area" style="display:none;background:var(--bg);padding:16px;border-radius:0 0 12px 12px;margin-top:-1px;">
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <input type="text" id="plan-task-input" class="form-input" placeholder="输入学习内容..." style="font-size:14px;">
+            <div style="display:flex;gap:8px;align-items:center;">
+              <span style="font-size:13px;color:var(--text-sec);white-space:nowrap;">时间：</span>
+              <input type="time" id="plan-start-time" class="form-input" style="flex:1;font-size:13px;">
+              <span style="color:var(--text-sec);">至</span>
+              <input type="time" id="plan-end-time" class="form-input" style="flex:1;font-size:13px;">
+            </div>
+            <button class="btn btn-primary" onclick="addPlanTask()">添加任务</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 任务列表 -->
+      <div id="plan-task-list"></div>
+      
+      <!-- 空状态 -->
+      <div id="plan-empty-state" style="text-align:center;padding:40px 20px;color:var(--text-sec);">
+        <div style="font-size:48px;margin-bottom:12px;">📝</div>
+        <div style="font-size:14px;">今天还没有学习计划</div>
+        <div style="font-size:13px;margin-top:4px;">添加你的第一个学习任务吧</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 复盘 ===== -->
+  <div class="tab-content" id="tab-review">
+
+    <!-- 今日复盘任务 -->
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="padding:16px 20px 0;">
+        <div class="card-title" style="margin-bottom:8px;">
+          <span class="icon">📋</span> 今日复盘任务
+          <span style="margin-left:auto;font-size:12px;color:var(--text-sec);font-weight:400;" id="today-summary"></span>
+        </div>
+      </div>
+      <div style="padding:8px 12px 16px;" id="today-list"></div>
+    </div>
+    <div id="today-overdue-section" style="display:none;">
+      <div class="card" style="border-left:3px solid var(--danger);">
+        <div class="card-title" style="color:var(--danger);"><span class="icon">⏰</span> 逾期未复盘</div>
+        <div id="overdue-list"></div>
+      </div>
+    </div>
+
+    <!-- 新增复盘（折叠） -->
+    <div class="card" style="padding:0;">
+      <button style="width:100%;padding:16px 20px;background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:8px;text-align:left;min-height:44px;" onclick="toggleAddReview(this)">
+        <span style="font-size:18px;">➕</span>
+        <span style="font-size:15px;font-weight:600;">新增复盘记录</span>
+        <span style="margin-left:auto;font-size:14px;color:var(--text-sec);transition:transform 0.2s;" class="add-toggle-icon">▼</span>
+      </button>
+      <div id="add-review-area" style="display:none;padding:0 20px 20px;">
+        <div style="display:flex;gap:8px;margin-bottom:16px;">
+          <button class="btn btn-sm btn-primary" id="add-mode-single" onclick="setAddMode('single')">单科专项</button>
+          <button class="btn btn-sm btn-outline" id="add-mode-exam" onclick="setAddMode('exam')">模考套卷</button>
+        </div>
+
+        <!-- 单科模式 -->
+        <div id="add-single">
+          <p style="font-size:13px;color:var(--text-sec);margin-bottom:16px;">
+            完成一个专项模块后录入，系统自动生成 5 轮复盘计划。
+          </p>
+          <div class="form-group">
+            <label class="form-label">模块名称 *</label>
+            <input class="form-input" id="f-name" placeholder="例：资料分析-增长率专项">
+          </div>
+          <div class="form-group">
+            <label class="form-label">模块分类</label>
+            <select class="form-select" id="f-cat">
+              <option value="行测-言语">行测-言语理解</option>
+              <option value="行测-数量">行测-数量关系</option>
+              <option value="行测-判断">行测-判断推理</option>
+              <option value="行测-资料">行测-资料分析</option>
+              <option value="行测-常识">行测-常识判断</option>
+              <option value="申论">申论</option>
+              <option value="公基">公共基础知识</option>
+              <option value="面试">面试</option>
+              <option value="其他">其他</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">完成日期</label>
+            <input class="form-input" id="f-date" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">首次复盘感受 (可选)</label>
+            <textarea class="form-textarea" id="f-notes" placeholder="记录薄弱点、易错题型、下次重点..."></textarea>
+          </div>
+          <div style="margin-top:8px;">
+            <button class="btn btn-primary btn-block" onclick="addReview()">生成复盘计划</button>
+          </div>
+        </div>
+
+        <!-- 模考套卷模式 -->
+        <div id="add-exam" style="display:none;">
+          <p style="font-size:13px;color:var(--text-sec);margin-bottom:16px;">
+            完成一套模考后录入，勾选已做板块，每个板块各自生成 5 轮复盘计划。
+          </p>
+        <div class="form-group">
+          <label class="form-label">模考名称 *</label>
+          <input class="form-input" id="f-exam-name" placeholder="例：粉笔模考第12期 / 华图万人模考第3期">
+        </div>
+        <div class="form-group">
+          <label class="form-label">模考日期</label>
+          <input class="form-input" id="f-exam-date" type="date">
+        </div>
+        <div class="form-group">
+          <label class="form-label">勾选已完成的板块 *</label>
+          <div id="exam-sections" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;"></div>
+        </div>
+        <div id="exam-section-notes" style="display:none;margin-top:12px;">
+          <div style="font-size:13px;font-weight:600;color:var(--text-sec);margin-bottom:8px;">各板块首次复盘感受（可选）</div>
+          <div id="section-notes-area"></div>
+        </div>
+        <div style="margin-top:16px;">
+          <button class="btn btn-primary btn-block" onclick="addExamReview()">生成套卷复盘计划</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;background:var(--primary-light);box-shadow:none;padding:14px;">
+        <div style="font-size:13px;font-weight:600;color:var(--primary);margin-bottom:8px;">📖 复盘间隔 (艾宾浩斯遗忘曲线)</div>
+        <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
+          <span style="font-size:12px;color:var(--primary);">完成</span>
+          <span style="color:var(--primary);">→</span>
+          <span class="filter-chip active" style="font-size:11px;padding:3px 8px;cursor:default;">1天</span>
+          <span style="color:var(--text-light);">→</span>
+          <span class="filter-chip active" style="font-size:11px;padding:3px 8px;cursor:default;">3天</span>
+          <span style="color:var(--text-light);">→</span>
+          <span class="filter-chip active" style="font-size:11px;padding:3px 8px;cursor:default;">7天</span>
+          <span style="color:var(--text-light);">→</span>
+          <span class="filter-chip active" style="font-size:11px;padding:3px 8px;cursor:default;">15天</span>
+          <span style="color:var(--text-light);">→</span>
+          <span class="filter-chip active" style="font-size:11px;padding:3px 8px;cursor:default;">30天</span>
+        </div>
+      </div>
+      </div><!-- end add-review-area -->
+    </div><!-- end card -->
+  </div><!-- end tab-review -->
+
+  <!-- ===== 管理 ===== -->
+  <div class="tab-content" id="tab-manage">
+    <input type="file" id="import-file" accept=".json" style="display:none;" onchange="importData(event)">
+
+    <div class="filter-bar" id="cat-filters"></div>
+    <div class="filter-bar" id="status-filters"></div>
+    <div id="manage-list"></div>
+
+    <!-- 数据管理卡片（底部） -->
+    <div class="card" style="margin-top:20px;">
+      <div class="card-title"><span class="icon">⚙️</span> 数据管理 <span style="margin-left:auto;font-size:13px;font-weight:400;color:var(--text-sec);" id="manage-count"></span></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-sm" style="flex:1;min-width:100px;background:var(--success-light);color:var(--success);border:1px solid var(--success);min-height:44px;" onclick="event.stopPropagation();showImportArea()">📥 导入数据</button>
+        <button class="btn btn-sm" style="flex:1;min-width:100px;background:var(--primary-light);color:var(--primary);border:1px solid var(--primary);min-height:44px;" onclick="event.stopPropagation();exportData()">📤 导出数据</button>
+        <button class="btn btn-sm" style="flex:1;min-width:100px;background:var(--danger-light);color:var(--danger);border:1px solid var(--danger);min-height:44px;" onclick="event.stopPropagation();doClearAll(this)">🗑️ 清空所有</button>
+      </div>
+    </div>
+
+    <!-- Export area (inline) -->
+    <div id="export-area" style="display:none;background:var(--card);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);margin-bottom:16px;border:2px solid var(--primary);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3 style="font-size:16px;font-weight:700;">📦 导出备份数据</h3>
+        <button class="btn btn-sm btn-ghost" onclick="hideExport()">收起</button>
+      </div>
+      <p style="font-size:13px;color:var(--text-sec);margin-bottom:10px;">长按下方文本框，全选后复制，粘贴到备忘录或笔记中保存：</p>
+      <textarea readonly style="width:100%;min-height:150px;font-size:11px;font-family:monospace;word-break:break-all;padding:12px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);resize:vertical;"></textarea>
+      <div style="display:flex;gap:10px;margin-top:12px;">
+        <button class="btn btn-primary" style="flex:1;min-height:48px;" onclick="copyExportData()">📋 一键复制</button>
+        <button class="btn btn-outline" style="flex:1;min-height:48px;" onclick="hideExport()">收起</button>
+      </div>
+    </div>
+
+    <!-- Import area (inline) -->
+    <div id="import-area" style="display:none;background:var(--card);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);margin-bottom:16px;border:2px solid var(--success);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h3 style="font-size:16px;font-weight:700;">📥 粘贴导入数据</h3>
+        <button class="btn btn-sm btn-ghost" onclick="hideImport()">收起</button>
+      </div>
+      <p style="font-size:13px;color:var(--text-sec);margin-bottom:10px;">将之前复制的备份数据粘贴到下方，然后点击导入：</p>
+      <textarea placeholder="在此粘贴备份数据..." style="width:100%;min-height:150px;font-size:11px;font-family:monospace;padding:12px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);resize:vertical;"></textarea>
+      <div style="display:flex;gap:10px;margin-top:12px;">
+        <button class="btn btn-success" style="flex:1;min-height:48px;" onclick="doImportFromText()">✅ 导入</button>
+        <button class="btn btn-outline" style="flex:1;min-height:48px;" onclick="hideImport()">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 成语速查 ===== -->
+  <div class="tab-content" id="tab-idioms">
+    <div class="card" style="margin-bottom:12px;">
+      <div class="card-title"><span class="icon">📖</span> 行测言语高频成语</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <button class="btn btn-sm btn-primary" id="mode-browse-btn" onclick="setIdiomMode('browse')">浏览模式</button>
+        <button class="btn btn-sm btn-outline" id="mode-quiz-btn" onclick="setIdiomMode('quiz')">翻卡模式</button>
+      </div>
+      <!-- Browse mode controls -->
+      <div id="browse-controls">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
+          <select class="form-select" id="idiom-chapter-filter" onchange="onChapterFilterChange()" style="flex:1;min-width:140px;font-size:13px;padding:10px;">
+            <option value="all">全部章节</option>
+            <option value="事态演变与应对方式">第一章：事态演变与应对方式</option>
+            <option value="创新守旧">第二章：创新守旧</option>
+            <option value="对待事物消极态度">第三章：对待事物消极态度</option>
+            <option value="对待事物积极态度">第四章：对待事物积极态度</option>
+            <option value="感知与实践">第五章：感知与实践</option>
+            <option value="其他类">第六章：其他类</option>
+          </select>
+          <select class="form-select" id="idiom-group-filter" onchange="onGroupFilterChange()" style="flex:1;min-width:140px;font-size:13px;padding:10px;">
+            <option value="all">全部分组</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+          <input class="form-input" id="idiom-search" placeholder="搜索成语、释义、侧重..." oninput="filterIdioms()" style="flex:1;font-size:14px;padding:10px 14px;">
+        </div>
+        <div class="filter-bar" id="idiom-status-filters">
+          <button class="filter-chip active" onclick="setIdiomStatusFilter('all')">全部</button>
+          <button class="filter-chip" onclick="setIdiomStatusFilter('unmarked')">未标记</button>
+          <button class="filter-chip" onclick="setIdiomStatusFilter('known')">已掌握</button>
+          <button class="filter-chip" onclick="setIdiomStatusFilter('fuzzy')">模糊</button>
+          <button class="filter-chip" onclick="setIdiomStatusFilter('unknown')">未掌握</button>
+        </div>
+        <div style="font-size:12px;color:var(--text-sec);margin-top:8px;" id="idiom-stats"></div>
+      </div>
+      <!-- Quiz mode controls -->
+      <div id="quiz-controls" style="display:none;">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
+          <span style="font-size:13px;color:var(--text-sec);">范围：</span>
+          <select class="form-select" id="quiz-scope" style="flex:1;min-width:120px;font-size:13px;padding:8px;">
+            <option value="all">全部成语</option>
+            <option value="unknown">仅未掌握</option>
+          </select>
+          <span style="font-size:13px;color:var(--text-sec);">数量：</span>
+          <select class="form-select" id="quiz-count" style="width:auto;font-size:13px;padding:8px;">
+            <option value="10">10个</option>
+            <option value="20">20个</option>
+            <option value="50">50个</option>
+            <option value="0">全部</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
+          <span style="font-size:13px;color:var(--text-sec);">分组：</span>
+          <select class="form-select" id="quiz-group" style="flex:1;min-width:120px;font-size:13px;padding:8px;">
+            <option value="all">全部分组</option>
+          </select>
+        </div>
+        <button class="btn btn-sm btn-primary btn-block" onclick="startQuiz()">开始翻卡</button>
+        <div style="font-size:12px;color:var(--text-sec);margin-top:6px;text-align:center;">看到成语 → 心里默念释义 → 点击卡片翻转查看答案</div>
+      </div>
+    </div>
+    <div id="idiom-list"></div>
+    <div id="idiom-quiz-area" style="display:none;"></div>
+    <div id="idiom-pagination" style="text-align:center;padding:12px 0;"></div>
+  </div>
+
+  <!-- ===== 统计 ===== -->
+  <div class="tab-content" id="tab-stats">
+    <div class="card">
+      <div class="card-title"><span class="icon">📈</span> 复盘数据</div>
+      <div class="progress-ring-wrap">
+        <div class="progress-ring">
+          <svg width="72" height="72">
+            <circle cx="36" cy="36" r="30" stroke="#e9ecef" stroke-width="6" fill="none"/>
+            <circle id="stats-progress-circle" cx="36" cy="36" r="30" stroke="url(#grad2)" stroke-width="6" fill="none"
+              stroke-linecap="round" stroke-dasharray="188.5" stroke-dashoffset="188.5"/>
+            <defs><linearGradient id="grad2" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#4361ee"/><stop offset="100%" stop-color="#06d6a0"/>
+            </linearGradient></defs>
+          </svg>
+          <div class="progress-ring-text" id="stats-progress-pct">0%</div>
+        </div>
+        <div class="progress-info">
+          <div class="progress-info-title">整体掌握度</div>
+          <div class="progress-info-desc" id="stats-progress-desc">加权计算各模块复盘完成度</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">📚</span> 各分类复盘量</div>
+      <div class="chart-section" id="cat-chart"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">🎯</span> 各分类掌握度</div>
+      <div class="chart-section" id="mastery-chart"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">💡</span> 复盘建议</div>
+      <div id="stats-tips" style="font-size:13px;color:var(--text-sec);line-height:1.8;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="detail-modal" onclick="if(event.target===this)closeDetail()">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="detail-name">复盘详情</h2>
+      <button class="modal-close" onclick="closeDetail()">✕</button>
+    </div>
+    <div id="detail-body"></div>
+  </div>
+</div>
+
+<!-- Complete Review Modal -->
+<div class="modal-overlay" id="complete-modal" onclick="if(event.target===this)closeComplete()">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="complete-title">完成复盘</h2>
+      <button class="modal-close" onclick="closeComplete()">✕</button>
+    </div>
+    <div id="complete-body"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Export Modal -->
+
+<script>
+// ============ Constants ============
+const INTERVALS = [1, 3, 7, 15, 30];
+const ROUND_NAMES = ['第一轮', '第二轮', '第三轮', '第四轮', '第五轮'];
+const ROUND_DESCS = ['巩固记忆', '加深理解', '查漏补缺', '融会贯通', '长期掌握'];
+const CAT_COLORS = {
+  '行测-言语': '#4361ee',
+  '行测-数量': '#7209b7',
+  '行测-判断': '#f72585',
+  '行测-资料': '#4cc9f0',
+  '行测-常识': '#4895ef',
+  '申论': '#06d6a0',
+  '公基': '#f77f00',
+  '面试': '#ef476f',
+  '其他': '#adb5bd'
+};
+const CAT_LABELS = {
+  '行测-言语': '言语理解',
+  '行测-数量': '数量关系',
+  '行测-判断': '判断推理',
+  '行测-资料': '资料分析',
+  '行测-常识': '常识判断',
+  '申论': '申论',
+  '公基': '公基',
+  '面试': '面试',
+  '其他': '其他'
+};
+const STATUS_FILTERS = [
+  { value: 'all', label: '全部' },
+  { value: 'active', label: '进行中' },
+  { value: 'done', label: '已完成' }
+];
+
+// ============ State ============
+let state = { reviews: [], examDates: { guokao: '2026-11-29', shengkao: '2026-12-06', shiye: '2027-03-21' } };
+let ui = { tab: 'dashboard', catFilter: 'all', statusFilter: 'all' };
+
+// ============ Storage ============
+function load() {
+  try {
+    const d = localStorage.getItem('kaogong_data');
+    if (d) {
+      const p = JSON.parse(d);
+      state.reviews = p.reviews || [];
+      // Handle old format (single examDate) vs new format (examDates)
+      if (p.examDates) {
+        state.examDates = {
+          guokao: p.examDates.guokao || '2026-11-29',
+          shengkao: p.examDates.shengkao || '2026-12-06',
+          shiye: p.examDates.shiye || '2027-03-21'
+        };
+      } else if (p.examDate) {
+        state.examDates = { guokao: p.examDate, shengkao: '2026-12-06', shiye: '2027-03-21' };
+      }
+    }
+  } catch(e) {}
+}
+function save() {
+  localStorage.setItem('kaogong_data', JSON.stringify(state));
+}
+
+// ============ Helpers ============
+function genId() { return Date.now().toString(36) + Math.random().toString(36).substr(2,5); }
+function today() { return new Date().toISOString().split('T')[0]; }
+function addDays(dateStr, days) {
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+function daysDiff(a, b) {
+  return Math.round((new Date(b+'T00:00:00') - new Date(a+'T00:00:00')) / 86400000);
+}
+function fmtDate(d) {
+  if (!d) return '--';
+  const parts = d.split('-');
+  return `${parseInt(parts[1])}月${parseInt(parts[2])}日`;
+}
+function fmtDateFull(d) {
+  if (!d) return '--';
+  const parts = d.split('-');
+  return `${parts[0]}年${parseInt(parts[1])}月${parseInt(parts[2])}日`;
+}
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show ' + type;
+  setTimeout(() => t.className = 'toast', 2500);
+}
+
+// ============ Review Logic ============
+function calcReviewDates(completionDate) {
+  return INTERVALS.map((iv, i) => ({
+    round: i + 1,
+    date: addDays(completionDate, iv),
+    status: 'pending',
+    rating: null,
+    notes: ''
+  }));
+}
+
+function getMastery(review) {
+  const done = review.reviews.filter(r => r.status === 'done').length;
+  return Math.round((done / 5) * 100);
+}
+
+function getCurrentRound(review) {
+  for (let i = 0; i < review.reviews.length; i++) {
+    if (review.reviews[i].status === 'pending') return i;
+  }
+  return review.reviews.length - 1;
+}
+
+function isOverdue(review) {
+  const t = today();
+  for (const r of review.reviews) {
+    if (r.status === 'pending' && r.date < t) return true;
+  }
+  return false;
+}
+
+function getTodayItems() {
+  const t = today();
+  const items = [];
+  state.reviews.forEach(review => {
+    review.reviews.forEach((r, idx) => {
+      if (r.status === 'pending' && r.date <= t) {
+        items.push({ review, roundIdx: idx, round: r, overdue: r.date < t });
+      }
+    });
+  });
+  items.sort((a,b) => a.round.date.localeCompare(b.round.date));
+  return items;
+}
+
+function getOverdueItems() {
+  return getTodayItems().filter(i => i.overdue);
+}
+
+function getDueTodayItems() {
+  const t = today();
+  return getTodayItems().filter(i => i.round.date === t);
+}
+
+function getAllDoneRounds() {
+  let count = 0;
+  state.reviews.forEach(r => r.reviews.forEach(rr => { if (rr.status === 'done') count++; }));
+  return count;
+}
+
+function getAllTotalRounds() {
+  return state.reviews.length * 5;
+}
+
+function getOverallMastery() {
+  if (!state.reviews.length) return 0;
+  const total = state.reviews.reduce((sum, r) => sum + getMastery(r), 0);
+  return Math.round(total / state.reviews.length);
+}
+
+function getWeakModules() {
+  const hardCounts = {};
+  state.reviews.forEach(r => {
+    r.reviews.forEach(rr => {
+      if (rr.rating === 'hard') {
+        hardCounts[r.name] = (hardCounts[r.name] || 0) + 1;
+      }
+    });
+  });
+  return Object.entries(hardCounts)
+    .sort((a,b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([name, count]) => ({ name, count }));
+}
+
+// ============ CRUD ============
+function addReview() {
+  const name = document.getElementById('f-name').value.trim();
+  const cat = document.getElementById('f-cat').value;
+  const date = document.getElementById('f-date').value || today();
+  const notes = document.getElementById('f-notes').value.trim();
+
+  if (!name) { showToast('请输入模块名称', 'error'); return; }
+
+  const review = {
+    id: genId(),
+    name,
+    category: cat,
+    completionDate: date,
+    reviews: calcReviewDates(date)
+  };
+
+  if (notes) review.reviews[0].notes = notes;
+
+  state.reviews.unshift(review);
+  save();
+
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-notes').value = '';
+
+  showToast('复盘计划已生成！', 'success');
+  switchTab('manage');
+  renderAll();
+}
+
+// ============ Add Mode (Single / Exam) ============
+const EXAM_SECTIONS = [
+  {id:'言语',cat:'行测-言语',label:'言语理解'},
+  {id:'数量',cat:'行测-数量',label:'数量关系'},
+  {id:'判断',cat:'行测-判断',label:'判断推理'},
+  {id:'资料',cat:'行测-资料',label:'资料分析'},
+  {id:'常识',cat:'行测-常识',label:'常识判断'},
+  {id:'申论',cat:'申论',label:'申论'},
+  {id:'公基',cat:'公基',label:'公共基础知识'},
+  {id:'政治',cat:'公基',label:'政治理论'},
+  {id:'面试',cat:'面试',label:'面试'}
+];
+
+function setAddMode(mode) {
+  document.getElementById('add-single').style.display = mode === 'single' ? 'block' : 'none';
+  document.getElementById('add-exam').style.display = mode === 'exam' ? 'block' : 'none';
+  document.getElementById('add-mode-single').className = 'btn btn-sm ' + (mode === 'single' ? 'btn-primary' : 'btn-outline');
+  document.getElementById('add-mode-exam').className = 'btn btn-sm ' + (mode === 'exam' ? 'btn-primary' : 'btn-outline');
+  if (mode === 'exam') initExamSections();
+}
+
+function initExamSections() {
+  document.getElementById('f-exam-date').value = today();
+  const container = document.getElementById('exam-sections');
+  container.innerHTML = EXAM_SECTIONS.map(s =>
+    '<label style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg);border-radius:var(--radius-sm);cursor:pointer;min-height:44px;user-select:none;">' +
+    '<input type="checkbox" value="' + s.id + '" onchange="onExamSectionChange()" style="width:20px;height:20px;accent-color:var(--primary);">' +
+    '<span style="font-size:14px;font-weight:500;">' + s.label + '</span></label>'
+  ).join('');
+  document.getElementById('exam-section-notes').style.display = 'none';
+  document.getElementById('section-notes-area').innerHTML = '';
+}
+
+function onExamSectionChange() {
+  var checked = getCheckedExamSections();
+  var notesDiv = document.getElementById('exam-section-notes');
+  var notesArea = document.getElementById('section-notes-area');
+  if (checked.length > 0) {
+    notesDiv.style.display = 'block';
+    notesArea.innerHTML = checked.map(function(s) {
+      return '<div class="form-group" style="margin-bottom:10px;">' +
+        '<label class="form-label" style="font-size:12px;">' + s.label + '</label>' +
+        '<textarea class="form-textarea" id="exam-note-' + s.id + '" placeholder="' + s.label + '的薄弱点、易错题..." style="min-height:50px;font-size:13px;padding:8px;"></textarea></div>';
+    }).join('');
+  } else {
+    notesDiv.style.display = 'none';
+  }
+}
+
+function getCheckedExamSections() {
+  var boxes = document.querySelectorAll('#exam-sections input[type=checkbox]:checked');
+  var result = [];
+  boxes.forEach(function(cb) {
+    var sec = EXAM_SECTIONS.find(function(s) { return s.id === cb.value; });
+    if (sec) result.push(sec);
+  });
+  return result;
+}
+
+function addExamReview() {
+  var examName = document.getElementById('f-exam-name').value.trim();
+  if (!examName) { showToast('请输入模考名称', 'error'); return; }
+
+  var date = document.getElementById('f-exam-date').value || today();
+  var sections = getCheckedExamSections();
+  if (!sections.length) { showToast('请至少勾选一个板块', 'error'); return; }
+
+  var examId = genId();
+  sections.forEach(function(sec) {
+    var noteEl = document.getElementById('exam-note-' + sec.id);
+    var note = noteEl ? noteEl.value.trim() : '';
+    var review = {
+      id: genId(),
+      name: examName + '-' + sec.label,
+      category: sec.cat,
+      completionDate: date,
+      reviews: calcReviewDates(date),
+      examId: examId,
+      examName: examName
+    };
+    if (note) review.reviews[0].notes = note;
+    state.reviews.unshift(review);
+  });
+
+  save();
+  document.getElementById('f-exam-name').value = '';
+  showToast('套卷复盘已生成！共 ' + sections.length + ' 个板块', 'success');
+  switchTab('manage');
+  renderAll();
+}
+
+function completeRound(reviewId, roundIdx, rating, notes) {
+  const review = state.reviews.find(r => r.id === reviewId);
+  if (!review) return;
+  review.reviews[roundIdx].status = 'done';
+  review.reviews[roundIdx].rating = rating;
+  review.reviews[roundIdx].notes = notes || '';
+  review.reviews[roundIdx].completedDate = today();
+  save();
+  closeComplete();
+  showToast(ROUND_NAMES[roundIdx] + '复盘完成！', 'success');
+  renderAll();
+}
+
+function deleteReview(id) {
+  state.reviews = state.reviews.filter(r => r.id !== id);
+  save();
+  closeDetail();
+  showToast('已删除', 'success');
+  renderAll();
+}
+
+function doDetailDelete(btn) {
+  var id = btn.getAttribute('data-id');
+  if (!id) return;
+  btn.textContent = '确定删除？再点一次';
+  btn.style.background = 'var(--danger)';
+  btn.style.color = 'white';
+  btn.onclick = function() { deleteReview(id); };
+  setTimeout(function() {
+    if (btn.parentNode) {
+      btn.textContent = '删除此记录';
+      btn.style.background = 'transparent';
+      btn.style.color = 'var(--danger)';
+      btn.onclick = function() { doDetailDelete(btn); };
+    }
+  }, 3000);
+}
+
+function quickDelete(id) {
+  state.reviews = state.reviews.filter(r => r.id !== id);
+  save();
+  showToast('已删除', 'success');
+  renderAll();
+}
+
+function doDelete(btn) {
+  var id = btn.getAttribute('data-id');
+  if (!id) return;
+  btn.textContent = '确定删除？';
+  btn.style.background = 'var(--danger)';
+  btn.style.color = 'white';
+  btn.onclick = function(e) {
+    e.stopPropagation();
+    state.reviews = state.reviews.filter(r => r.id !== id);
+    save();
+    showToast('已删除', 'success');
+    renderAll();
+  };
+  setTimeout(function() {
+    if (btn.parentNode) {
+      btn.textContent = '删除';
+      btn.style.background = 'var(--danger-light)';
+      btn.style.color = 'var(--danger)';
+      btn.onclick = function(e) { e.stopPropagation(); doDelete(btn); };
+    }
+  }, 3000);
+}
+
+function clearAllData() {
+  state.reviews = [];
+  save();
+  showToast('所有数据已清空', 'success');
+  renderAll();
+}
+
+function doClearAll(btn) {
+  btn.textContent = '确定清空？再点一次';
+  btn.style.background = 'var(--danger)';
+  btn.style.color = 'white';
+  btn.onclick = function(e) { e.stopPropagation(); clearAllData(); };
+  setTimeout(function() {
+    if (btn.parentNode) {
+      btn.textContent = '清空所有数据';
+      btn.style.background = 'var(--danger-light)';
+      btn.style.color = 'var(--danger)';
+      btn.onclick = function(e) { e.stopPropagation(); doClearAll(btn); };
+    }
+  }, 3000);
+}
+
+function exportData() {
+  var data = {
+    version: 1,
+    exportDate: new Date().toISOString(),
+    reviews: state.reviews,
+    examDates: state.examDates,
+    idiomState: idiomUserState,
+    planData: planData
+  };
+  var jsonStr = JSON.stringify(data);
+  var area = document.getElementById('export-area');
+  area.style.display = 'block';
+  area.querySelector('textarea').value = jsonStr;
+  area.scrollIntoView({behavior: 'smooth'});
+}
+
+function copyExportData() {
+  var textarea = document.getElementById('export-area').querySelector('textarea');
+  textarea.select();
+  textarea.setSelectionRange(0, 99999);
+  try {
+    document.execCommand('copy');
+    showToast('已复制！请粘贴到备忘录保存', 'success');
+  } catch(e) {
+    showToast('请手动长按文本框全选复制', 'error');
+  }
+}
+
+function hideExport() {
+  document.getElementById('export-area').style.display = 'none';
+}
+
+function showImportArea() {
+  var area = document.getElementById('import-area');
+  area.style.display = 'block';
+  area.querySelector('textarea').value = '';
+  area.scrollIntoView({behavior: 'smooth'});
+}
+
+function hideImport() {
+  document.getElementById('import-area').style.display = 'none';
+}
+
+function doImportFromText() {
+  var text = document.getElementById('import-area').querySelector('textarea').value.trim();
+  if (!text) { showToast('请粘贴备份数据', 'error'); return; }
+  try {
+    var data = JSON.parse(text);
+    if (!data.version || !data.reviews) {
+      showToast('数据格式不正确', 'error');
+      return;
+    }
+    state.reviews = data.reviews || [];
+    if (data.examDates) {
+      state.examDates = {
+        guokao: data.examDates.guokao || state.examDates.guokao,
+        shengkao: data.examDates.shengkao || state.examDates.shengkao,
+        shiye: data.examDates.shiye || state.examDates.shiye
+      };
+    } else if (data.examDate) {
+      state.examDates.guokao = data.examDate;
+    }
+    if (data.idiomState) {
+      idiomUserState = data.idiomState;
+      saveIdiomState();
+    }
+    if (data.planData) {
+      planData = data.planData;
+      savePlanData();
+    }
+    save();
+    renderAll();
+    document.getElementById('import-area').style.display = 'none';
+    showToast('导入成功！恢复 ' + state.reviews.length + ' 条记录', 'success');
+  } catch(err) {
+    showToast('导入失败：格式错误', 'error');
+  }
+}
+
+function importData(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = JSON.parse(e.target.result);
+      if (!data.version || !data.reviews) {
+        showToast('文件格式不正确', 'error');
+        return;
+      }
+      state.reviews = data.reviews || [];
+      if (data.examDates) {
+        state.examDates = {
+          guokao: data.examDates.guokao || state.examDates.guokao,
+          shengkao: data.examDates.shengkao || state.examDates.shengkao,
+          shiye: data.examDates.shiye || state.examDates.shiye
+        };
+      } else if (data.examDate) {
+        state.examDates.guokao = data.examDate;
+      }
+      if (data.idiomState) {
+        idiomUserState = data.idiomState;
+        saveIdiomState();
+      }
+      if (data.planData) {
+        planData = data.planData;
+        savePlanData();
+      }
+      save();
+      renderAll();
+      showToast('数据导入成功！共恢复 ' + state.reviews.length + ' 条复盘记录', 'success');
+    } catch(err) {
+      showToast('导入失败：文件解析错误', 'error');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function skipRound(reviewId, roundIdx) {
+  const review = state.reviews.find(r => r.id === reviewId);
+  if (!review) return;
+  review.reviews[roundIdx].status = 'done';
+  review.reviews[roundIdx].rating = 'skip';
+  review.reviews[roundIdx].completedDate = today();
+  save();
+  closeDetail();
+  showToast('已跳过该轮');
+  renderAll();
+}
+
+// ============ Tab & Navigation ============
+function switchTab(tab) {
+  ui.tab = tab;
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    const tabs = ['dashboard','dailyplan','review','manage','idioms','stats'];
+    t.classList.toggle('active', tabs[i] === tab);
+  });
+  document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  renderAll();
+}
+
+// ============ Render Functions ============
+function renderAll() {
+  renderCountdown();
+  renderOverviewBar();
+  renderDashboard();
+  renderToday();
+  renderManage();
+  renderPlan();
+  renderIdioms();
+  renderStats();
+}
+
+function renderOverviewBar() {
+  // Date
+  var t = today();
+  var parts = t.split('-');
+  var weekDays = ['周日','周一','周二','周三','周四','周五','周六'];
+  var d = new Date(t + 'T00:00:00');
+  var dateStr = parts[0] + '年' + parseInt(parts[1]) + '月' + parseInt(parts[2]) + '日 ' + weekDays[d.getDay()];
+  var dateEl = document.getElementById('overview-date');
+  if (dateEl) dateEl.textContent = dateStr;
+
+  // Plan progress
+  var tasks = planData[t] || [];
+  var planDone = tasks.filter(function(tk) { return tk.done; }).length;
+  var planTotal = tasks.length;
+  var planPct = planTotal > 0 ? Math.round((planDone / planTotal) * 100) : 0;
+
+  // Review items
+  var todayItems = getTodayItems();
+  var overdueItems = getOverdueItems();
+  var dueToday = todayItems.filter(function(i) { return i.round.date === t; });
+
+  // Mastery
+  var mastery = getOverallMastery();
+
+  // Progress bar (combined: plan + review)
+  var totalActions = planTotal + todayItems.length;
+  var doneActions = planDone + getAllDoneRounds();
+  var barPct = totalActions > 0 ? Math.round(((planDone + (todayItems.length - todayItems.filter(function(i) { return i.round.date <= t; }).length)) / Math.max(planTotal + dueToday.length, 1)) * 100) : mastery;
+  // Simpler: just use plan progress for the bar
+  var progressFill = document.getElementById('overview-progress-fill');
+  if (progressFill) progressFill.style.width = (planTotal > 0 ? planPct : mastery) + '%';
+
+  // Build chips
+  var row = document.getElementById('overview-row');
+  if (!row) return;
+  var chips = '';
+
+  // Plan chip
+  if (planTotal > 0) {
+    chips += '<div class="overview-chip plan" onclick="switchTab(\'dailyplan\')">📅 ' + planDone + '/' + planTotal + ' ' + planPct + '%</div>';
+  } else {
+    chips += '<div class="overview-chip plan" onclick="switchTab(\'dailyplan\')">📅 暂无计划</div>';
+  }
+
+  // Review chip
+  if (dueToday.length > 0) {
+    chips += '<div class="overview-chip review" onclick="switchTab(\'dailyplan\')">🔄 待复盘 ' + dueToday.length + '</div>';
+  } else {
+    chips += '<div class="overview-chip" style="background:var(--success-light);color:var(--success);" onclick="switchTab(\'dailyplan\')">✅ 复盘已清</div>';
+  }
+
+  // Overdue chip
+  if (overdueItems.length > 0) {
+    chips += '<div class="overview-chip overdue" onclick="switchTab(\'dailyplan\')">⚠️ 逾期 ' + overdueItems.length + '</div>';
+  }
+
+  // Mastery chip
+  chips += '<div class="overview-chip mastery" onclick="switchTab(\'stats\')">📊 掌握 ' + mastery + '%</div>';
+
+  row.innerHTML = chips;
+}
+
+function renderCountdown() {
+  const labels = { guokao: '国考', shengkao: '省考', shiye: '事业编' };
+  for (const key of ['guokao', 'shengkao', 'shiye']) {
+    const days = daysDiff(today(), state.examDates[key]);
+    const el = document.getElementById('countdown-' + key);
+    if (el) {
+      el.textContent = days > 0 ? `${labels[key]} ${days}天` : days === 0 ? `${labels[key]} 今天！` : `${labels[key]} 已结束`;
+    }
+  }
+  const gkDays = daysDiff(today(), state.examDates.guokao);
+  document.getElementById('s-countdown').textContent = gkDays > 0 ? gkDays : 0;
+}
+
+function renderDashboard() {
+  const todayItems = getTodayItems();
+  document.getElementById('s-pending').textContent = todayItems.length;
+  document.getElementById('s-done').textContent = getAllDoneRounds();
+
+  const mastery = getOverallMastery();
+  const circ = 2 * Math.PI * 30; // 188.5
+  const offset = circ - (circ * mastery / 100);
+  document.getElementById('progress-circle').setAttribute('stroke-dashoffset', offset);
+  document.getElementById('progress-pct').textContent = mastery + '%';
+
+  const total = state.reviews.length;
+  const totalRounds = getAllTotalRounds();
+  const doneRounds = getAllDoneRounds();
+  document.getElementById('progress-desc').textContent = total
+    ? `共 ${total} 个模块，${doneRounds}/${totalRounds} 轮次已完成`
+    : '还没有复盘记录，去添加一个吧';
+
+  // Today items on dashboard
+  const container = document.getElementById('dash-today');
+  if (!todayItems.length) {
+    container.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-sec);font-size:13px;">今天暂无待复盘任务 ✨</div>';
+  } else {
+    container.innerHTML = todayItems.slice(0, 5).map(item => {
+      const r = item.review;
+      const round = r.reviews[item.roundIdx];
+      const overdue = item.overdue;
+      return `<div class="today-item ${overdue ? 'overdue' : ''}" onclick="openComplete('${r.id}', ${item.roundIdx})">
+        <div class="today-item-info">
+          <div class="today-item-name">${esc(r.name)}</div>
+          <div class="today-item-detail">
+            ${CAT_LABELS[r.category] || r.category} · ${ROUND_NAMES[item.roundIdx]} · ${fmtDate(round.date)}
+          </div>
+        </div>
+        <div class="today-item-round ${overdue ? 'overdue' : ''}">
+          ${overdue ? '逾期' : '待复盘'}
+        </div>
+      </div>`;
+    }).join('');
+    if (todayItems.length > 5) {
+      container.innerHTML += `<div style="text-align:center;padding:8px;">
+        <button class="btn btn-outline btn-sm" onclick="switchTab('dailyplan')">查看全部 ${todayItems.length} 项</button>
+      </div>`;
+    }
+  }
+
+  // Weak modules
+  const weaks = getWeakModules();
+  const weakCard = document.getElementById('weak-card');
+  if (weaks.length) {
+    weakCard.style.display = 'block';
+    document.getElementById('weak-list').innerHTML = weaks.map((w, i) => `
+      <div class="weak-item">
+        <div class="weak-rank">${i + 1}</div>
+        <div class="weak-name">${esc(w.name)}</div>
+        <div class="weak-score">${w.count}次吃力</div>
+      </div>
+    `).join('');
+  } else {
+    weakCard.style.display = 'none';
+  }
+
+  // Today's plan summary
+  var planSummary = document.getElementById('dash-plan');
+  if (planSummary) {
+    var t = today();
+    var tasks = planData[t] || [];
+    var planDone = tasks.filter(function(tk) { return tk.done; }).length;
+    var planTotal = tasks.length;
+    if (!planTotal) {
+      planSummary.innerHTML = '<div style="text-align:center;padding:12px;color:var(--text-sec);font-size:13px;cursor:pointer;" onclick="switchTab(\'dailyplan\')">今天还没有计划，点击去制定 →</div>';
+    } else {
+      var planPct = Math.round((planDone / planTotal) * 100);
+      planSummary.innerHTML = '<div style="padding:8px 0;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+          '<span style="font-size:13px;font-weight:500;">已完成 ' + planDone + '/' + planTotal + ' 项</span>' +
+          '<span style="font-size:12px;color:var(--primary);font-weight:600;">' + planPct + '%</span>' +
+        '</div>' +
+        '<div class="mastery-bar"><div class="mastery-bar-fill" style="width:' + planPct + '%"></div></div>' +
+        tasks.slice(0, 4).map(function(tk) {
+          return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;color:' + (tk.done ? 'var(--text-sec)' : 'var(--text)') + ';text-decoration:' + (tk.done ? 'line-through' : 'none') + ';">' +
+            '<span style="color:' + (tk.done ? 'var(--success)' : 'var(--text-light)') + ';">' + (tk.done ? '✓' : '○') + '</span>' +
+            '<span style="font-size:11px;color:var(--text-sec);min-width:48px;">' + tk.startTime + '</span>' +
+            '<span>' + esc(tk.text) + '</span></div>';
+        }).join('') +
+        (planTotal > 4 ? '<div style="text-align:center;padding-top:4px;"><button class="btn btn-ghost btn-sm" style="font-size:12px;" onclick="switchTab(\'dailyplan\')">查看全部 ' + planTotal + ' 项</button></div>' : '') +
+      '</div>';
+    }
+  }
+}
+
+function renderToday() {
+  const overdue = getOverdueItems();
+  const dueToday = getDueTodayItems();
+  const allToday = [...overdue, ...dueToday];
+
+  const summary = document.getElementById('today-summary');
+  summary.textContent = allToday.length ? `${allToday.length} 项待完成` : '全部完成';
+
+  const list = document.getElementById('today-list');
+  if (!allToday.length) {
+    list.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">🎉</div>
+      <div class="empty-text">今天没有待复盘的任务</div>
+      <button class="btn btn-outline btn-sm" onclick="switchTab('review')">去添加新记录</button>
+    </div>`;
+  } else {
+    list.innerHTML = allToday.map(item => {
+      const r = item.review;
+      const round = r.reviews[item.roundIdx];
+      const overdue = item.overdue;
+      const daysLate = overdue ? daysDiff(round.date, today()) : 0;
+      return `<div class="today-item ${overdue ? 'overdue' : ''}" onclick="openComplete('${r.id}', ${item.roundIdx})" style="cursor:pointer;">
+        <div class="today-item-info">
+          <div class="today-item-name">${esc(r.name)}</div>
+          <div class="today-item-detail">
+            ${CAT_LABELS[r.category] || r.category} · ${ROUND_NAMES[item.roundIdx]}(${ROUND_DESCS[item.roundIdx]})
+            · 计划日期 ${fmtDate(round.date)}
+            ${overdue ? ` · <span style="color:var(--danger);font-weight:600;">逾期${daysLate}天</span>` : ''}
+          </div>
+        </div>
+        <button class="btn btn-sm ${overdue ? 'btn-danger' : 'btn-success'}" onclick="event.stopPropagation();openComplete('${r.id}', ${item.roundIdx})">
+          ${overdue ? '补复盘' : '去复盘'}
+        </button>
+      </div>`;
+    }).join('');
+  }
+
+  // Overdue section in today tab
+  const overdueSection = document.getElementById('today-overdue-section');
+  if (overdue.length > 0) {
+    overdueSection.style.display = 'block';
+    document.getElementById('overdue-list').innerHTML = overdue.map(item => {
+      const r = item.review;
+      const round = r.reviews[item.roundIdx];
+      const daysLate = daysDiff(round.date, today());
+      return `<div class="today-item overdue" onclick="openComplete('${r.id}', ${item.roundIdx})" style="cursor:pointer;">
+        <div class="today-item-info">
+          <div class="today-item-name">${esc(r.name)}</div>
+          <div class="today-item-detail">
+            ${CAT_LABELS[r.category] || r.category} · ${ROUND_NAMES[item.roundIdx]} · 逾期${daysLate}天
+          </div>
+        </div>
+        <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();openComplete('${r.id}', ${item.roundIdx})">补复盘</button>
+      </div>`;
+    }).join('');
+  } else {
+    overdueSection.style.display = 'none';
+  }
+}
+
+function renderManage() {
+  // Category filters
+  const cats = ['all', ...new Set(state.reviews.map(r => r.category))];
+  document.getElementById('cat-filters').innerHTML = cats.map(c => `
+    <button class="filter-chip ${ui.catFilter === c ? 'active' : ''}"
+      onclick="ui.catFilter='${c}';renderManage()">
+      ${c === 'all' ? '全部' : (CAT_LABELS[c] || c)}
+    </button>
+  `).join('');
+
+  // Status filters
+  document.getElementById('status-filters').innerHTML = STATUS_FILTERS.map(s => `
+    <button class="filter-chip ${ui.statusFilter === s.value ? 'active' : ''}"
+      onclick="ui.statusFilter='${s.value}';renderManage()">
+      ${s.label}
+    </button>
+  `).join('');
+
+  // Filter reviews
+  let filtered = state.reviews;
+  if (ui.catFilter !== 'all') filtered = filtered.filter(r => r.category === ui.catFilter);
+  if (ui.statusFilter === 'active') filtered = filtered.filter(r => getMastery(r) < 100);
+  if (ui.statusFilter === 'done') filtered = filtered.filter(r => getMastery(r) >= 100);
+
+  const container = document.getElementById('manage-list');
+  if (!filtered.length) {
+    container.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">📝</div>
+      <div class="empty-text">暂无复盘记录</div>
+      <button class="btn btn-primary btn-sm" onclick="switchTab('review')">添加第一个</button>
+    </div>`;
+    return;
+  }
+
+  document.getElementById('manage-count').textContent = filtered.length ? `共 ${filtered.length} 条记录` : '';
+
+  // Group exam records by examId
+  var examGroups = {};
+  var singles = [];
+  filtered.forEach(function(r) {
+    if (r.examId) {
+      if (!examGroups[r.examId]) examGroups[r.examId] = { name: r.examName || r.examId, items: [] };
+      examGroups[r.examId].items.push(r);
+    } else {
+      singles.push(r);
+    }
+  });
+
+  var html = '';
+
+  // Render exam groups
+  Object.keys(examGroups).forEach(function(examId) {
+    var group = examGroups[examId];
+    var avgMastery = Math.round(group.items.reduce(function(s,r) { return s + getMastery(r); }, 0) / group.items.length);
+    var anyOverdue = group.items.some(function(r) { return isOverdue(r); });
+    var borderColor = anyOverdue ? 'var(--danger)' : 'var(--primary)';
+
+    html += '<div class="card" style="padding:0;margin-bottom:16px;border-left:4px solid ' + borderColor + ';">' +
+      '<div style="padding:16px;cursor:pointer;" onclick="toggleExamGroup(this)">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+      '<div><div style="font-size:15px;font-weight:700;">📋 ' + esc(group.name) + '</div>' +
+      '<div style="font-size:12px;color:var(--text-sec);margin-top:2px;">' + group.items.length + ' 个板块 · 平均掌握度 ' + avgMastery + '%' +
+      (anyOverdue ? ' · <span style="color:var(--danger);font-weight:600;">有逾期</span>' : '') + '</div></div>' +
+      '<span style="font-size:18px;color:var(--text-sec);transition:transform 0.2s;" class="exam-toggle">▼</span></div></div>' +
+      '<div class="exam-subs" style="display:none;padding:0 16px 16px;">' +
+      group.items.map(function(r) { return renderManageItem(r); }).join('') +
+      '</div></div>';
+  });
+
+  // Render single records
+  singles.forEach(function(r) {
+    html += renderManageItem(r);
+  });
+
+  container.innerHTML = html;
+}
+
+function renderManageItem(r) {
+  var mastery = getMastery(r);
+  var overdue = isOverdue(r);
+  var curRound = getCurrentRound(r);
+  var allDone = mastery >= 100;
+  var statusClass = allDone ? 'done' : overdue ? 'overdue' : 'pending';
+  var catColor = CAT_COLORS[r.category] || '#adb5bd';
+
+  return '<div class="review-item ' + statusClass + '" style="margin-bottom:8px;">' +
+    '<div class="review-item-header" onclick="openDetail(\'' + r.id + '\')" style="cursor:pointer;">' +
+    '<div class="review-item-name">' + esc(r.name) + '</div>' +
+    '<span class="review-item-cat" style="background:' + catColor + '20;color:' + catColor + ';">' + (CAT_LABELS[r.category] || r.category) + '</span></div>' +
+    '<div class="review-item-meta" onclick="openDetail(\'' + r.id + '\')" style="cursor:pointer;">完成于 ' + fmtDateFull(r.completionDate) + ' · 掌握度 ' + mastery + '%</div>' +
+    '<div class="rounds-dots" onclick="openDetail(\'' + r.id + '\')" style="cursor:pointer;">' +
+    r.reviews.map(function(rr, i) {
+      var isDone = rr.status === 'done';
+      var isOver = rr.status === 'pending' && rr.date < today();
+      var isCur = !isDone && !isOver && i === curRound;
+      var dotClass = isDone ? 'done' : isOver ? 'overdue' : isCur ? 'current' : 'pending';
+      var lineClass = i > 0 && r.reviews[i-1].status === 'done' ? 'done' : '';
+      return (i > 0 ? '<div class="round-dot-line ' + lineClass + '"></div>' : '') + '<div class="round-dot ' + dotClass + '">' + (i+1) + '</div>';
+    }).join('') +
+    '</div>' +
+    '<div class="mastery-bar" onclick="openDetail(\'' + r.id + '\')" style="cursor:pointer;"><div class="mastery-bar-fill" style="width:' + mastery + '%"></div></div>' +
+    '<div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end;">' +
+    '<button class="btn btn-sm btn-outline" onclick="event.stopPropagation();openDetail(\'' + r.id + '\')">查看详情</button>' +
+    '<button class="btn btn-sm" data-id="' + r.id + '" style="background:var(--danger-light);color:var(--danger);border:none;min-height:44px;padding:8px 16px;" onclick="event.stopPropagation();doDelete(this)">删除</button>' +
+    '</div></div>';
+}
+
+function toggleExamGroup(header) {
+  var subs = header.nextElementSibling;
+  var toggle = header.querySelector('.exam-toggle');
+  if (subs.style.display === 'none') {
+    subs.style.display = 'block';
+    toggle.style.transform = 'rotate(180deg)';
+  } else {
+    subs.style.display = 'none';
+    toggle.style.transform = 'rotate(0deg)';
+  }
+}
+
+function renderStats() {
+  const mastery = getOverallMastery();
+  const circ = 2 * Math.PI * 30;
+  const offset = circ - (circ * mastery / 100);
+  document.getElementById('stats-progress-circle').setAttribute('stroke-dashoffset', offset);
+  document.getElementById('stats-progress-pct').textContent = mastery + '%';
+  document.getElementById('stats-progress-desc').textContent =
+    `共 ${state.reviews.length} 个模块，${getAllDoneRounds()}/${getAllTotalRounds()} 轮次已完成`;
+
+  // Category chart
+  const catCounts = {};
+  state.reviews.forEach(r => { catCounts[r.category] = (catCounts[r.category] || 0) + 1; });
+  const maxCat = Math.max(...Object.values(catCounts), 1);
+  const catChart = document.getElementById('cat-chart');
+  if (!Object.keys(catCounts).length) {
+    catChart.innerHTML = '<div style="text-align:center;color:var(--text-sec);font-size:13px;padding:12px;">暂无数据</div>';
+  } else {
+    catChart.innerHTML = Object.entries(catCounts).sort((a,b) => b[1]-a[1]).map(([cat, count]) => `
+      <div class="chart-row">
+        <div class="chart-label">${CAT_LABELS[cat] || cat}</div>
+        <div class="chart-bar-wrap">
+          <div class="chart-bar" style="width:${(count/maxCat)*100}%;background:${CAT_COLORS[cat] || '#adb5bd'}"></div>
+        </div>
+        <div class="chart-count">${count}</div>
+      </div>
+    `).join('');
+  }
+
+  // Mastery chart by category
+  const catMastery = {};
+  state.reviews.forEach(r => {
+    if (!catMastery[r.category]) catMastery[r.category] = { total: 0, done: 0 };
+    catMastery[r.category].total += 5;
+    catMastery[r.category].done += r.reviews.filter(rr => rr.status === 'done').length;
+  });
+  const masteryChart = document.getElementById('mastery-chart');
+  if (!Object.keys(catMastery).length) {
+    masteryChart.innerHTML = '<div style="text-align:center;color:var(--text-sec);font-size:13px;padding:12px;">暂无数据</div>';
+  } else {
+    masteryChart.innerHTML = Object.entries(catMastery).sort((a,b) => (b[1].done/b[1].total)-(a[1].done/a[1].total)).map(([cat, data]) => {
+      const pct = Math.round((data.done / data.total) * 100);
+      return `<div class="chart-row">
+        <div class="chart-label">${CAT_LABELS[cat] || cat}</div>
+        <div class="chart-bar-wrap">
+          <div class="chart-bar" style="width:${pct}%;background:linear-gradient(90deg,${CAT_COLORS[cat] || '#adb5bd'},${pct > 60 ? '#06d6a0' : '#f77f00'})"></div>
+        </div>
+        <div class="chart-count">${pct}%</div>
+      </div>`;
+    }).join('');
+  }
+
+  // Tips
+  const tips = [];
+  const overdueCount = getOverdueItems().length;
+  const weaks = getWeakModules();
+  if (overdueCount > 0) tips.push(`⚠️ 有 ${overdueCount} 个复盘任务逾期，建议尽快补齐，避免遗忘加深。`);
+  if (weaks.length) tips.push(`🎯 「${weaks[0].name}」被标记为"吃力"最多(${weaks[0].count}次)，建议重点突破。`);
+  const lowMasteryCats = Object.entries(catMastery).filter(([,d]) => (d.done/d.total) < 0.4).map(([c]) => CAT_LABELS[c] || c);
+  if (lowMasteryCats.length) tips.push(`📚 ${lowMasteryCats.join('、')} 的整体掌握度偏低，需要加强训练。`);
+  if (!state.reviews.length) tips.push('💡 还没有复盘记录。完成一套题后，立即在"新增"页录入，开始你的复盘闭环！');
+  if (state.reviews.length && !tips.length) tips.push('🎉 当前没有逾期任务，各模块掌握度良好，继续保持！');
+  tips.push('📖 建议每轮复盘时，先不看答案回忆知识点，再对照检查，效果更佳。');
+  document.getElementById('stats-tips').innerHTML = tips.map(t => `<p style="margin-bottom:8px;">${t}</p>`).join('');
+}
+
+// ============ Modals ============
+function openDetail(id) {
+  const review = state.reviews.find(r => r.id === id);
+  if (!review) return;
+  document.getElementById('detail-name').textContent = review.name;
+
+  const mastery = getMastery(review);
+  const body = document.getElementById('detail-body');
+  body.innerHTML = `
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
+      <span class="review-item-cat" style="background:${(CAT_COLORS[review.category]||'#adb5bd')}20;color:${CAT_COLORS[review.category]||'#adb5bd'};">${CAT_LABELS[review.category] || review.category}</span>
+      <span style="font-size:12px;color:var(--text-sec);">完成于 ${fmtDateFull(review.completionDate)}</span>
+    </div>
+    <div class="mastery-bar" style="margin-bottom:16px;"><div class="mastery-bar-fill" style="width:${mastery}%"></div></div>
+    <div style="font-size:13px;color:var(--text-sec);margin-bottom:12px;">掌握度 ${mastery}%</div>
+
+    <div class="detail-rounds">
+      ${review.reviews.map((rr, i) => {
+        const isDone = rr.status === 'done';
+        const isOver = rr.status === 'pending' && rr.date < today();
+        const isCur = !isDone && !isOver;
+        const cls = isDone ? 'done' : isOver ? 'overdue' : 'current';
+        const statusText = isDone ? '已完成' : isOver ? `逾期${daysDiff(rr.date, today())}天` : '待复盘';
+        const statusColor = isDone ? 'var(--success)' : isOver ? 'var(--danger)' : 'var(--warning)';
+        const ratingText = rr.rating === 'easy' ? '轻松' : rr.rating === 'ok' ? '还行' : rr.rating === 'hard' ? '吃力' : rr.rating === 'skip' ? '已跳过' : '';
+        const ratingColor = rr.rating === 'easy' ? 'var(--success)' : rr.rating === 'hard' ? 'var(--danger)' : rr.rating === 'ok' ? 'var(--primary)' : 'var(--text-sec)';
+
+        return `<div class="detail-round ${cls}">
+          <div class="detail-round-header">
+            <div>
+              <div class="detail-round-title">${ROUND_NAMES[i]}<span style="font-size:12px;font-weight:400;color:var(--text-sec);margin-left:6px;">${ROUND_DESCS[i]}</span></div>
+              <div class="detail-round-date">计划日期: ${fmtDateFull(rr.date)}${rr.completedDate ? ' · 完成于 ' + fmtDateFull(rr.completedDate) : ''}</div>
+            </div>
+            <span class="detail-round-status" style="background:${statusColor}20;color:${statusColor};">${statusText}</span>
+          </div>
+          ${ratingText ? `<div style="font-size:12px;margin-top:4px;">自评: <span style="color:${ratingColor};font-weight:600;">${ratingText}</span></div>` : ''}
+          ${rr.notes ? `<div class="detail-round-notes">📝 ${esc(rr.notes)}</div>` : ''}
+          ${!isDone ? `<div class="action-row">
+            <button class="btn btn-sm btn-success" onclick="closeDetail();openComplete('${review.id}',${i})">完成复盘</button>
+            <button class="btn btn-sm btn-ghost" onclick="skipRound('${review.id}',${i})">跳过</button>
+          </div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+      <button class="btn btn-sm btn-outline" data-id="${review.id}" style="color:var(--danger);border-color:var(--danger);min-height:44px;" onclick="doDetailDelete(this)">删除此记录</button>
+    </div>
+  `;
+  document.getElementById('detail-modal').classList.add('active');
+}
+
+function closeDetail() { document.getElementById('detail-modal').classList.remove('active'); }
+
+let completingReview = null;
+function openComplete(reviewId, roundIdx) {
+  const review = state.reviews.find(r => r.id === reviewId);
+  if (!review) return;
+  completingReview = { reviewId, roundIdx };
+
+  const rr = review.reviews[roundIdx];
+  document.getElementById('complete-title').textContent = `${review.name} - ${ROUND_NAMES[roundIdx]}`;
+
+  document.getElementById('complete-body').innerHTML = `
+    <div style="font-size:13px;color:var(--text-sec);margin-bottom:16px;">
+      ${CAT_LABELS[review.category] || review.category} · 计划日期 ${fmtDateFull(rr.date)}
+      ${rr.date < today() ? `<span style="color:var(--danger);"> · 逾期${daysDiff(rr.date,today())}天</span>` : ''}
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">本轮自评</label>
+      <div class="rating-group">
+        <button class="rating-btn easy" onclick="selectRating('easy')">😊 轻松</button>
+        <button class="rating-btn ok" onclick="selectRating('ok')">🤔 还行</button>
+        <button class="rating-btn hard" onclick="selectRating('hard')">😰 吃力</button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">复盘笔记</label>
+      <textarea class="form-textarea" id="complete-notes" placeholder="记录本轮复盘心得：哪些知识点还需要加强？有什么新的理解？"></textarea>
+    </div>
+
+    ${roundIdx < 4 ? `
+    <div class="card" style="background:var(--primary-light);box-shadow:none;padding:12px;margin-bottom:16px;">
+      <div style="font-size:12px;color:var(--primary);">
+        完成后，下一轮复盘将在 <strong>${INTERVALS[roundIdx+1]}</strong> 天后 (${fmtDate(addDays(review.completionDate, INTERVALS[roundIdx+1]))})
+      </div>
+    </div>` : `
+    <div class="card" style="background:var(--success-light);box-shadow:none;padding:12px;margin-bottom:16px;">
+      <div style="font-size:12px;color:#059669;">这是最后一轮复盘，完成后此模块即达到100%掌握度！</div>
+    </div>`}
+
+    <button class="btn btn-success btn-block" onclick="submitComplete()">确认完成</button>
+  `;
+
+  document.getElementById('complete-modal').classList.add('active');
+}
+
+function closeComplete() {
+  document.getElementById('complete-modal').classList.remove('active');
+  completingReview = null;
+  document.querySelectorAll('.rating-btn').forEach(b => b.classList.remove('selected'));
+}
+
+let selectedRating = null;
+function selectRating(rating) {
+  selectedRating = rating;
+  document.querySelectorAll('.rating-btn').forEach(b => b.classList.remove('selected'));
+  document.querySelector(`.rating-btn.${rating}`).classList.add('selected');
+}
+
+function submitComplete() {
+  if (!completingReview) return;
+  const notes = document.getElementById('complete-notes').value.trim();
+  if (!selectedRating) { showToast('请选择本轮自评', 'error'); return; }
+  completeRound(completingReview.reviewId, completingReview.roundIdx, selectedRating, notes);
+  selectedRating = null;
+}
+
+// ============ Exam Date ============
+function editExamDate(type) {
+  const labels = { guokao: '国考', shengkao: '山东省考', shiye: '山东事业编' };
+  const newDate = prompt(`请输入${labels[type]}笔试日期 (格式: YYYY-MM-DD)`, state.examDates[type]);
+  if (newDate && /^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
+    state.examDates[type] = newDate;
+    save();
+    renderCountdown();
+    renderOverviewBar();
+    showToast(`${labels[type]}日期已更新`, 'success');
+  }
+}
+
+// ============ Utility ============
+function esc(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// Safe ID escaping for onclick (only alphanum + short hash)
+function safeStr(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ============ Idiom Data (400 High-Frequency Idioms) ============
+const IDIOM_GROUPS = [
+  {id:1,name:"发展情况",chapter:"事态演变与应对方式"},
+  {id:2,name:"事前防范",chapter:"事态演变与应对方式"},
+  {id:3,name:"无效方法",chapter:"事态演变与应对方式"},
+  {id:4,name:"有效方法",chapter:"事态演变与应对方式"},
+  {id:5,name:"剖析过程",chapter:"事态演变与应对方式"},
+  {id:6,name:"针对性措施",chapter:"事态演变与应对方式"},
+  {id:7,name:"差异化策略",chapter:"事态演变与应对方式"},
+  {id:8,name:"效果好",chapter:"事态演变与应对方式"},
+  {id:9,name:"效果不好",chapter:"事态演变与应对方式"},
+  {id:10,name:"难以应对",chapter:"事态演变与应对方式"},
+  {id:11,name:"抄袭模仿",chapter:"事态演变与应对方式"},
+  {id:12,name:"空谈理论、无实际行动",chapter:"事态演变与应对方式"},
+  {id:13,name:"方向错位",chapter:"事态演变与应对方式"},
+  {id:14,name:"主次颠倒",chapter:"事态演变与应对方式"},
+  {id:15,name:"创新演变",chapter:"创新守旧"},
+  {id:16,name:"客观事物不变、主观坚守不变",chapter:"创新守旧"},
+  {id:17,name:"守旧不变",chapter:"创新守旧"},
+  {id:18,name:"自我封闭、自我束缚",chapter:"对待事物消极态度"},
+  {id:19,name:"眼界狭窄",chapter:"对待事物消极态度"},
+  {id:20,name:"畏难退缩",chapter:"对待事物消极态度"},
+  {id:21,name:"不重视",chapter:"对待事物消极态度"},
+  {id:22,name:"不参与、不介入",chapter:"对待事物消极态度"},
+  {id:23,name:"做事浮于表面、不深入类",chapter:"对待事物消极态度"},
+  {id:24,name:"掩盖错误",chapter:"对待事物消极态度"},
+  {id:25,name:"故作姿态",chapter:"对待事物消极态度"},
+  {id:26,name:"态度摇摆",chapter:"对待事物消极态度"},
+  {id:27,name:"自大/自卑/自谦",chapter:"对待事物消极态度"},
+  {id:28,name:"专注谨慎",chapter:"对待事物积极态度"},
+  {id:29,name:"团结协作",chapter:"对待事物积极态度"},
+  {id:30,name:"关系密切、彼此合作",chapter:"对待事物积极态度"},
+  {id:31,name:"责任担当",chapter:"对待事物积极态度"},
+  {id:32,name:"心态稳定",chapter:"对待事物积极态度"},
+  {id:33,name:"细心全面",chapter:"对待事物积极态度"},
+  {id:34,name:"竞争拔尖",chapter:"对待事物积极态度"},
+  {id:35,name:"出众独特",chapter:"对待事物积极态度"},
+  {id:36,name:"勤俭节约",chapter:"对待事物积极态度"},
+  {id:37,name:"修正错误",chapter:"对待事物积极态度"},
+  {id:38,name:"视觉相关",chapter:"感知与实践"},
+  {id:39,name:"听觉相关",chapter:"感知与实践"},
+  {id:40,name:"做事轻松",chapter:"感知与实践"},
+  {id:41,name:"心口相悖",chapter:"感知与实践"},
+  {id:42,name:"顺着线索去探寻",chapter:"感知与实践"},
+  {id:43,name:"立意新颖、自成风格",chapter:"感知与实践"},
+  {id:44,name:"好坏、真假混杂类",chapter:"其他类"},
+  {id:45,name:"内容全",chapter:"其他类"},
+  {id:46,name:"数量多",chapter:"其他类"},
+  {id:47,name:"数量少",chapter:"其他类"},
+  {id:48,name:"思想传承",chapter:"其他类"},
+  {id:49,name:"观点评价",chapter:"其他类"},
+  {id:50,name:"默默影响",chapter:"其他类"},
+  {id:51,name:"与逼真有关",chapter:"其他类"},
+  {id:52,name:"时间流逝",chapter:"其他类"},
+  {id:53,name:"情势紧迫",chapter:"其他类"},
+  {id:54,name:"语言文字的表达效果",chapter:"其他类"},
+  {id:55,name:"内部分裂、管控失序",chapter:"其他类"},
+  {id:56,name:"事物雷同相近",chapter:"其他类"},
+  {id:57,name:"二者差距极大",chapter:"其他类"},
+  {id:58,name:"二者对比",chapter:"其他类"},
+  {id:59,name:"彼此对照",chapter:"其他类"},
+  {id:60,name:"见闻稀少",chapter:"其他类"},
+  {id:61,name:"广为熟知",chapter:"其他类"},
+  {id:62,name:"趁危加害",chapter:"其他类"},
+  {id:63,name:"适时相助",chapter:"其他类"},
+  {id:64,name:"与积累有关",chapter:"其他类"},
+  {id:65,name:"绵长持续",chapter:"其他类"},
+];
+
+const IDIOMS_DATA = [
+  {g:1,n:"呼之欲出",d:"仿佛一叫就要从画里走出来。",f:"①画作/文字里的人物形象刻画极其生动逼真；②马上就要正式推出、落地面世。",s:"中偏褒",ex:["不远处的山市一白塔三期工地上，推土机正忙着平整土地，又一处新园区呼之欲出。"]},
+  {g:1,n:"粉墨登场",d:"演员化妆抹粉、勾画脸谱，登台表演戏曲。",f:"比喻心怀私欲、品行不端的人登上政坛、掌控局面。",s:"贬",ex:["粉墨登场的投机者打着“公益”旗号谋取私利，最终被群众揭穿。"]},
+  {g:1,n:"崭露头角",d:"头上的尖角微微显露出来。",f:"刚刚展露实力，成就、影响力尚浅，处于起步发光阶段。",s:"褒",ex:["初创公司成立半年就研发出3项专利，在行业论坛上被专家关注，在细分领域崭露头角，获得天使投资。"]},
+  {g:1,n:"异军突起",d:"一支与众不同的新军突然崛起。",f:"在原有成熟行业、竞争格局中，新的势力、品牌、团队突然快速发展，打破原有平衡；暗含和老牌群体对比竞争的关系。",s:"中偏褒",ex:["在做强传统水电的同时，抽水蓄能、新能源业务异军突起，绿色砂石、建材产业成为发展新增长极，水环境治理与生态修复业务擦亮绿色品牌。"]},
+  {g:1,n:"横空出世",d:"横跨长空、凭空出现。",f:"人、作品、划时代产品毫无预兆突然问世，自带强大冲击力与震撼力。",s:"褒",ex:["新一代高铁技术实现时速与能耗的双重突破，横空出世，刷新世界铁路纪录。"]},
+  {g:1,n:"应运而生",d:"顺应时代大势、客观需求而产生。",f:"事物的出现是外部环境、市场、时代需求催生的结果，出现具备合理性。",s:"中偏褒",ex:["应运而生的数据安全保护法规为数字经济发展提供保障，规范行业秩序。1"]},
+  {g:1,n:"水到渠成",d:"水流汇集到位，沟渠自然形成。",f:"积累充分、顺势成事。",s:"褒",ex:["中国企业技术实力强，发展理念与墨方高度契合，双方合作水到渠成。"]},
+  {g:1,n:"方兴未艾",d:"事物刚刚兴起，发展势头正盛，还没有走向衰落。",f:"发展起步、上升初期。",s:"中偏褒",ex:["新能源汽车充电基础设施建设方兴未艾，从城市快充站到乡镇充电桩，布局范围持续扩大，配套体系不断完善。"]},
+  {g:1,n:"蒸蒸日上",d:"热气不断向上蒸腾，一天比一天兴旺。",f:"稳步持续向好、逐日提升。",s:"褒",ex:["从了解国家战略的落地，到参访科技创新的热土，再到感受蒸蒸日上的生活，世界“向东看”背后，是中国式现代化的万千气象和世界感召力。"]},
+  {g:1,n:"蔚然成风",d:"草木繁茂生长，逐渐形成一片风貌。",f:"优良道德、文明习惯形成好的社会风气。",s:"褒",ex:["从一个人到一群人，从一次帮扶到多年坚守，爱心接力从未间断，凡人善举在青县大地蔚然成风。"]},
+  {g:1,n:"如火如荼",d:"军队军旗火红、茅草花白，场面盛大；现形容气氛热烈。",f:"活动、建设、运动开展的场面热烈、声势浩大。",s:"中偏褒",ex:["全国“全民阅读”活动如火如荼，社区书屋座无虚席，校园读书节持续1个月，线上阅读打卡参与量破千万，书香氛围浓厚。"]},
+  {g:1,n:"如日中天",d:"如同正午时分的太阳，光亮强盛、热力最足。",f:"发展抵达巅峰、全盛阶段。",s:"褒",ex:["用户覆盖190个国家，年交易额突破万亿，成为行业标杆——这家跨境电商的发展态势，可谓如日中天。2"]},
+  {g:1,n:"今非昔比",d:"当下的境况，不是往日可以相比的。",f:"既可变好也可变坏，现在多指形势变得比以前好。",s:"中",ex:["目前，我国金融衍生品市场逐步壮大，金融衍生品市场服务实体经济的能力已今非昔比。"]},
+  {g:1,n:"每况愈下",d:"事态越往后发展，状况就越发糟糕。",f:"状态持续走下坡路，一天比一天差。",s:"贬",ex:["过去，由于工业化加速、城市人口倍增，穿城而过的小凌河及其支流不堪重负，一度断流，城区段水质因工业和生活污水直排而每况愈下。"]},
+  {g:1,n:"难以为继",d:"很难再维持、持续进行下去。",f:"当下的事业、项目因客观条件不足，无法继续运转。",s:"中",ex:["企业舍本逐末，只盯着营销话术的花哨却不提升产品质量，客户买后纷纷退货，经营难以为继。"]},
+  {g:1,n:"后继无人",d:"没有后人、合适的接班人来接续传承。",f:"传承链条断裂，缺少继承者。",s:"贬",ex:["近些年来，技艺传承人逐渐老去，这门紫云人“压箱底”的手艺曾一度面临后继无人的窘迫。"]},
+  {g:1,n:"孤注一掷",d:"赌博的人把所有钱投在一次赌注上以求获胜。",f:"一般用于绝境时倾尽所有以求这一次的成功。",s:"贬",ex:["购彩行为，特别是计划投注、大额倍投行为，偏离理性购彩的轨道，演变为孤注一掷的“致富梦”，其风险与隐患不容忽视。"]},
+  {g:1,n:"破釜沉舟",d:"下定决心，不顾一切的干到底。",f:"全力以赴，不留任何退路。",s:"",ex:["村干部的坚决态度，让村民明白，转型发展没有后路可退，唯有破釜沉舟，才能闯出一条生路。3"]},
+  {g:1,n:"铤而走险",d:"无路可走的时候采取冒险行动。",f:"没有退路的时候冒险一试，一般用于违法犯罪。",s:"贬",ex:["他明知这些设备用于电信网络诈骗活动，但在利益驱使下仍铤而走险，成为了诈骗链条上的关键一环。"]},
+  {g:1,n:"分崩离析",d:"整体分裂、崩塌，成员四散分离。",f:"从内里慢慢撕裂解体，分裂是从内部滋生的。",s:"贬",ex:["最终，各界民主人士奔赴人民政权的同心之路，与国民党分崩离析的裂解之路形成了鲜明对比。"]},
+  {g:1,n:"土崩瓦解",d:"泥土崩塌、瓦片碎裂。",f:"强调崩溃速度快、整体性覆灭，内外冲击皆可引发。",s:"贬",ex:["核心团队解散、资金链断裂、合作方终止协议——这家企业的崩塌速度，堪称土崩瓦解。"]},
+  {g:1,n:"无影无踪",d:"连影子和踪迹都不存在。",f:"多用于实体事物，突出彻底失去行踪，找不到去向。",s:"中",ex:["这里现在已是游客爆满的地方，但林深似海，人一旦撒进去，便无影无踪，就像被一个庞大的绿色海绵体所吸食。"]},
+  {g:1,n:"消失殆尽",d:"几乎全部消失，仅剩极少残余。",f:"数量几乎耗尽。",s:"中",ex:["宽容是有限度的，忍耐是有底线的，再宽厚的胸怀，也经不起反复消耗；终有一天，这份宽容会消失殆尽，留下的只有疏远与冷漠，更可能是人家的反戈一击。"]},
+  {g:1,n:"烟消云散",d:"同烟雾、云朵一般彻底散开，不留一点。",f:"抽象感受完全消散。",s:"中偏褒",ex:["看到患者重获健康、展露笑容，所有疲惫都会烟消云散。4"]},
+  {g:1,n:"沉渣泛起",d:"水底沉淀的污秽渣滓重新漂浮上来。",f:"陈旧落后的负面事物复苏。",s:"贬",ex:["全球军费开支急剧扩大，军国主义沉渣泛起，核扩散、“核共享”敲响警钟，国际安全处于脆弱时刻。"]},
+  {g:1,n:"死灰复燃",d:"已经熄灭的灰烬再度燃烧。",f:"原本彻底覆灭的危险坏事重新作乱，危害性更强。",s:"贬",ex:["强化宣传劝导，引导居民主动清理整改，对逾期未改的违建将协同相关部门集中强制拆除，并健全长效督查机制，严防私搭乱建死灰复燃。"]},
+  {g:1,n:"卷土重来",d:"战败的队伍卷起尘土，再度折返进攻。",f:"遭遇挫败、失利的对手、势力、难题重新反扑。",s:"中偏贬",ex:["欧洲议会国际贸易委员会2日投票支持欧美贸易协议，以避免跨大西洋关税冲突卷土重来。"]},
+  {g:2,n:"居安思危",d:"身处安定顺遂的环境，心中仍思虑潜藏的危险。",f:"仅停留在思想层面，强调保有危机意识，不涉及落地的防备行动。",s:"褒",ex:["经济平稳增长时，政府仍研究外部环境变化、储备政策工具，这种居安思危的意识让发展更有韧性。"]},
+  {g:2,n:"未雨绸缪",d:"还没下雨，就提前修补好房屋门窗。",f:"事前主动落实具体筹备工作。",s:"褒",ex:["城市防洪部门在雨季前检修排水管网、储备防汛物资、划定避险区域，这种未雨绸缪的准备让汛期应对更从容"]},
+  {g:2,n:"防患未然",d:"灾祸、事故尚未发生时，提前加以防范消除。",f:"针对各类安全、重大祸患，主动清除潜在危险，阻止灾难成型。",s:"褒",ex:["市场监管部门对食品企业开展风险排查，对原料溯源漏洞提前整改，防患未然的监管避免了食品安全问题。"]},
+  {g:2,n:"有备无患",d:"事先做好充足准备，就能避免灾祸发生。",f:"“提前准备”带来“免除祸患”的最终结果。",s:"褒",ex:["牧区在冬季前储备足量饲草、检修保暖棚圈，这种有备无患的安排让牲畜安全过冬。"]},
+  {g:2,n:"曲突徙薪",d:"把笔直烟囱改弯、搬走灶台旁柴火。",f:"极具远见的根源式预防，主动改造隐患源头，从根本上规避重大灾难。",s:"褒",ex:["见兔顾犬、亡羊补牢，是为下策；积谷防饥、曲突徙薪，方为上策。"]},
+  {g:2,n:"常备不懈",d:"长期时刻保持戒备准备，丝毫不敢松懈。",f:"常态化、持续性戒备。",s:"褒",ex:["按实战标准严格组织后备力量训练，配优装备、锤炼意志、精练技能，保持常备不懈的临战状态，确保一声令下，迅即出动，成为战时补充力量的坚强后盾。7"]},
+  {g:2,n:"防微杜渐",d:"坏事刚露出细微苗头时，就及时制止、彻底阻断。",f:"微小错误、不良苗头，防止小事演变成大问题。",s:"褒",ex:["纪检监察部门对“节日收礼”等苗头性问题及时提醒、通报典型案例，防微杜渐的监督遏制了不正之风扩散。"]},
+  {g:2,n:"亡羊补牢",d:"羊丢失之后，立刻修补破损的羊圈。",f:"事后补救，问题已经发生，及时采取措施止损。",s:"中",ex:["①在户外活动期间，无论是出游还是工作，保护眼睛的安全都至关重要，而受伤后的救治只是亡羊补牢，关键还是在于提高防范保护意识。","②等到侵害发生，那就亡羊补牢为时已晚了。"]},
+  {g:3,n:"缘木求鱼",d:"爬到树上去找鱼。",f:"方向、方法完全错误，不可能达到目的，徒劳无功。",s:"贬",ex:["发展经济不能对资源和生态环境竭泽而渔，生态环境保护也不是舍弃经济发展而缘木求鱼。"]},
+  {g:3,n:"水中捞月",d:"到水里去打捞月亮的倒影。",f:"追求虚幻、根本不存在的事物，付出全部努力也只会一无所获。",s:"贬",ex:["国民政府曾把青霉素的工业化生产寄望于美国的“援助计划”，终似水中捞月，落得一场空。"]},
+  {g:3,n:"扬汤止沸",d:"把锅里沸腾的水舀起来再倒回去，想制止水翻滚。",f:"只能暂时缓解表面问题，无法根除根源，问题很快会再次出现。",s:"贬",ex:["党性不纯，纵有千般道理、万般规矩，也不过是扬汤止沸，会被各种借口和变通方式消解。"]},
+  {g:3,n:"隔靴搔痒",d:"隔着靴子挠发痒的地方。",f:"比喻说话、做事、批评没有抓住关键，不能彻底解决问题，无法触及实质，起不到根本作用。",s:"贬",ex:["仅靠几句口头批评，不落实整改追责，治理乱象不过隔靴搔痒。"]},
+  {g:3,n:"杯水车薪",d:"用一杯水去扑灭一车燃烧的柴草。",f:"比喻力量太小，解决不了根本问题。",s:"贬",ex:["中央下拨580亿元公租房补助资金，与动辄几千亿元的资金需求而言，更显杯水车薪。"]},
+  {g:3,n:"抱薪救火",d:"抱着柴草去救火。",f:"采用错误方式处理灾祸，不但无法平息祸患，反而助长事态，让灾难变得更加严重。",s:"贬",ex:["个别国家大搞关税壁垒、脱钩断链，无异于抱薪救火，最终将反噬其身。9"]},
+  {g:3,n:"饮鸩止渴",d:"喝毒酒来解渴。",f:"用有害的方式暂时化解眼前难题，看似短期见效，却会埋下毁灭性的长久隐患。",s:"贬",ex:["双方协同造假“忽悠消费者”，从长远来看无异于饮鸩止渴、自毁长城。一旦消费者对跨境电商的信任流失，行业发展根基将彻底动摇。"]},
+  {g:3,n:"剜肉补疮",d:"挖下身上好肉来填补伤口。",f:"比喻只顾救眼前之急，牺牲一处利益去弥补另一处漏洞，只顾眼前、损害根本，后患深重。",s:"贬",ex:["部分地方为短期完成财政收入指标，违规变卖国有资产、透支未来税源，这种做法无异于剜肉补疮，短期账面数据好看，长期会掏空产业根基、损害公共资产，制约地方可持续发展。"]},
+  {g:3,n:"竭泽而渔",d:"排干池塘里的水捕鱼。",f:"比喻只顾眼前利益，不留余地、过度索取，不顾长远可持续发展。",s:"贬",ex:["为了从根本上解决经济的长远发展问题，必须坚定推动结构改革，宁可将增长速度降下来一些。任何一项事业，都需要远近兼顾、深谋远虑，杀鸡取卵、竭泽而渔式的发展是不会长久的。"]},
+  {g:3,n:"杀鸡取卵",d:"为了取出鸡蛋，把鸡杀掉。",f:"比喻贪图眼前微小利益，毁掉长远根本利益，断绝后续收益。",s:"贬",ex:["“重获客、轻退出”的服务模式，看似是企业为留住用户的短期策略，实则暴露出数字服务生态建设的结构性短板。从生态建设的长远视角看，这种失衡的服务模式无异于“杀鸡取卵”。"]},
+  {g:3,n:"螳臂当车",d:"螳螂举起前肢想要阻挡车子前进。",f:"比喻不自量力，妄图阻挡强大的势力，必然自取失败。",s:"贬",ex:["妄图逆历史潮流而行，不过是螳臂当车，终会失败。10"]},
+  {g:3,n:"蚍蜉撼树",d:"蚍蜉是蚂蚁，小小的蚂蚁想摇动大树。",f:"比喻力量极小，却妄想动摇强大的事物，不自量力。",s:"贬",ex:["仅凭一己之力对抗庞大行业规则，无异于蚍蜉撼树。"]},
+  {g:3,n:"以卵击石",d:"拿鸡蛋去碰石头。",f:"比喻弱小一方主动去冲击强大对手，注定自取灭亡。",s:"贬",ex:["头部是人体最脆弱也是最容易受到致命伤害的部位，电动自行车驾驶人未佩戴安全头盔，一旦发生事故，头部直接与坚硬的路面碰撞，无异于以卵击石。"]},
+  {g:4,n:"釜底抽薪",d:"抽掉锅底燃烧的柴火，使水不再沸腾。",f:"从根源上铲除事物赖以存续的基础，彻底根除隐患、杜绝问题复发。 11",s:"中，本义含贬义",ex:[]},
+  {g:4,n:"药到病除",d:"对症的药物一经服用，病痛立刻消除。",f:"对策精准，解决问题速度快、效果立竿见影。",s:"褒",ex:["老师发现学生“作文跑题”，不是批评而是教“先列提纲再动笔”的方法，学生下次作文就扣题了，药到病除的指导比反复说教有效。"]},
+  {g:4,n:"标本兼治",d:"既治理显露在外的表层症状，又根除内在深层病根。",f:"既处理表面问题，又解决根本问题，兼顾两者。",s:"中偏褒",ex:["治理城市内涝，既要紧急抽排积水（治标），也要规划海绵城市建设，完善排水系统（治本），标本兼治才能应对雨季。"]},
+  {g:4,n:"纲举目张",d:"提起渔网总绳，所有网眼自然张开。",f:"抓住核心主线、关键纲领，次要、细碎问题便能条理清晰、顺势理顺。",s:"褒",ex:["推进校园管理改革先明确育人核心目标与顶层制度，做到纲举目张，班级管理、后勤保障、师德建设、学生德育等各项细碎工作便能条理清晰、有序落地。"]},
+  {g:5,n:"抽丝剥茧",d:"抽出蚕丝、剥开蚕茧。",f:"逐层拆解梳理，重在拆解分析的过程。",s:"褒",ex:["林枫没有轻言放弃，而是沉下心来，从繁杂的证据中抽丝剥茧、细致梳理。"]},
+  {g:5,n:"由表及里",d:"从外在表象，推进到内在本质。",f:"认知由浅入深的思考层次。",s:"褒",ex:["提升分析问题的深刻性，坚持透过现象看本质，由表及里、由此及彼，找准问题的根源、症结和关键，避免浅尝辄止、就事论事。"]},
+  {g:5,n:"条分缕析",d:"一条一条、一丝一缕细致地拆分剖析。",f:"逻辑规整、分层罗列。",s:"褒",ex:["通过将模式识别与基于规则的推理相结合，这套新系统既能找出风险，又能条分缕析地讲明风险何在。"]},
+  {g:5,n:"深入浅出",d:"内容立意深刻，表述浅显直白。",f:"本身理论深奥，却能用通俗简单的语言讲明白。",s:"褒",ex:["法律顾问结合本土真实乡村案例，以案释法、以例明理，深入浅出解读法条细则，直观清晰地向群众普及婚姻生活中的必备法律常识，学会运用法律武器维护自身家庭合法权益。"]},
+  {g:6,n:"有的放矢",d:"对准靶子再射箭，射箭有明确目标。",f:"目标明确，行动围绕目标展开，侧重针对性的方向性。",s:"褒",ex:["企业推广新产品时，瞄准年轻消费群体偏好设计包装，有的放矢地制定社交平台宣传方案，提升了销量。"]},
+  {g:6,n:"量体裁衣",d:"先测量身材尺寸，再裁剪合身的衣物。",f:"贴合个体特色、定制适配。",s:"褒",ex:["针对因病致贫家庭落实医疗救助，针对缺技术家庭开展技能培训，这样量体裁衣的帮扶更有实效。"]},
+  {g:6,n:"对症下药",d:"针对病症根源，开出对应的药方。",f:"找准病根、解决弊病，核心目的是根治问题。",s:"褒",ex:["学生数学成绩差，老师对症下药——不盲目补课，而是针对其几何思维薄弱问题，加强空间想象训练，成绩显著提高。"]},
+  {g:7,n:"因地制宜",d:"依据不同地方的地理环境，采取合适的对策。",f:"针对地区差异制定方案。",s:"褒",ex:["城市绿化时在干旱区域种耐旱灌木，在湿润地带栽亲水植物，这种因地制宜的设计让绿植成活率大幅提升。"]},
+  {g:7,n:"因势利导",d:"顺着事物原本发展的趋势，顺势加以引导疏通。",f:"重在顺势疏导，不强行逆势扭转。",s:"褒",ex:["孩子沉迷短视频时，家长不简单禁止，而是筛选“科普、手工”类内容，引导他从娱乐转向学习，因势利导的教育比批评更有效。"]},
+  {g:7,n:"因时制宜",d:"根据当下时机，调整适配的举措。",f:"依托时间、时机变化调整策略。",s:"褒",ex:["相比老版3小时演出时长，陈国礼导演的《玉簪记》时长2小时。“这是因时制宜的成果。以前人们没有丰富的娱乐方式，看3个小时的川剧乐此不疲。放到现在，观众特别是年轻人恐怕坐不住，我们要做好该做的加减法。”"]},
+  {g:8,n:"行之有效",d:"实行起来很有成效。",f:"某种方法、措施、方案或经验在实践后效果显著，是经过检验的好办法。",s:"褒",ex:["九江市总工会找到了一条行之有效的路径——国企民企结对帮扶。"]},
+  {g:8,n:"立竿见影",d:"在阳光下竖起竹竿立即显现影子。",f:"见效非常快。",s:"中偏褒",ex:["智慧工厂的成效立竿见影，项目推动综合生产率提高30%，协同效率提升25%，节省人工成本超百万元。"]},
+  {g:8,n:"一劳永逸",d:"一次劳作，永远休息。",f:"多用于否定。",s:"中",ex:["建立“月—季—年”评估调整机制，推动优化措施持续迭代、随势而动，杜绝一劳永逸。"]},
+  {g:8,n:"一蹴而就",d:"一步就成功。",f:"多用于否定。",s:"中",ex:["强军事业不是一朝一夕之功，战斗力建设绝非一蹴而就之事。"]},
+  {g:9,n:"事与愿违",d:"事情的发展偏离了主观意愿。",f:"并未达到预期。",s:"贬",ex:["有的年轻干部驻村帮扶，刚到村就想“一口吃成胖子”，忽视了基层工作的复杂性，结果事与愿违。"]},
+  {g:9,n:"适得其反",d:"结果与预期完全相反。",f:"结果与预期完全相反。",s:"贬",ex:["专家表示：频繁做医美可能会适得其反。"]},
+  {g:9,n:"得不偿失",d:"得到的不如失去的多。",f:"得失",s:"贬",ex:["运动本是为了健康，但若选错了方式，反而伤膝、伤腰，得不偿失。"]},
+  {g:9,n:"徒劳无功",d:"白白付出了努力没有收获。",f:"没结果",s:"中偏贬",ex:["健康的皮肤首要的任务就是要保证皮肤的湿度，干燥的肌肤如何使用护肤品也是徒劳无功。"]},
+  {g:9,n:"功亏一篑",d:"一件事只差最后一步而不能成功。",f:"事情快结束的时候出现意外，导致结果不好。",s:"中偏贬",ex:["尤其是在最后收膏阶段，需要连续搅锅几个小时，否则就会糊锅，功亏一篑。"]},
+  {g:9,n:"弄巧成拙",d:"耍聪明结果把事情弄糟了。",f:"要聪明不成，反而结果不好。",s:"贬",ex:["国家虽然支持劳动者多渠道灵活就业，鼓励个体经营，但用人单位不得“巧用”国家政策“移花接木”冲击固定用工，否则只会弄“巧”成“拙”，给自身带来更大用工隐患，导致承担更多法律责任。17"]},
+  {g:9,n:"过犹不及",d:"事情做过了头就和做的不够是一样的。",f:"干某件事太过了反而不好。",s:"贬",ex:["在借鉴“零近视”经验时，需避免出现过犹不及现象。比如，为追求“零近视率”而强制学生过度运动，甚至忽视其他健康问题。"]},
+  {g:9,n:"大打折扣",d:"效果大幅下降。",f:"效果与预期相差很多。",s:"中偏贬",ex:["以前这片沙滩上，村民因争抢客源时常发生矛盾，游客体验自然大打折扣。"]},
+  {g:10,n:"捉襟见肘",d:"拉一下衣襟，胳膊肘就露出来。原形容衣服破烂、生活穷困。",f:"资金、物资、人力短缺，整体处境窘迫，供给跟不上需求。",s:"贬",ex:["基层编制紧缺，人手捉襟见肘，多项重点工作推进压力巨大。"]},
+  {g:10,n:"左支右绌",d:"应付左边，右边又出缺口，顾此失彼，穷于应付。",f:"财力、人力短缺，多方事务同时压身，处处出现缺口，难以平衡。 18",s:"贬",ex:[]},
+  {g:10,n:"顾此失彼",d:"顾了这头，丢了那头。",f:"头绪多、条件有限，无法同时兼顾所有方面。",s:"贬",ex:["治理城市乱象不能顾此失彼，既要管控市容，也要保障商贩生存需求。"]},
+  {g:10,n:"寅吃卯粮",d:"寅年就预支吃掉卯年的粮食。",f:"提前透支未来收入、储备资源，透支当下填补缺口，缺乏长远规划。",s:"贬",ex:["地方发展不可寅吃卯粮，盲目举债透支未来财政，会埋下长期风险。"]},
+  {g:10,n:"力有不逮",d:"客观能力不足以完成某事。",f:"自身能力、客观条件存在上限，达不到完成任务的标准。",s:"中偏贬",ex:["复杂专业领域的难题仅凭单一部门处理，难免力有不逮，需要多部门协同。"]},
+  {g:10,n:"独木难支",d:"一根木头撑不住大厦。",f:"一个人的力量单薄，难以挽救衰败局面、支撑全局。",s:"贬",ex:["行业整体下行大环境下，仅靠一家企业转型自救，终究独木难支。"]},
+  {g:11,n:"人云亦云",d:"别人怎么说，自己就跟着怎么说。",f:"形容没有主见，只会随声附和、盲从他人。",s:"贬",ex:["在高考志愿填报过程中，最忌讳的就是“谈起高校，头头是道”“提及专业，人云亦云”，但实际上却没仔细看过专业介绍，而是“想当然”地提交了志愿。"]},
+  {g:11,n:"拾人牙慧",d:"拾取别人说过的只言片语当作自己的见解。",f:"抄袭、套用他人言论，没有自己独到思考与原创观点。",s:"贬",ex:["有的同志习惯于“闷”在办公室当“文抄公”“剪刀手”，写文章、写材料东拼西凑、拾人牙慧，这样怎能写出言之有物、文风鲜活的文章呢？"]},
+  {g:11,n:"亦步亦趋",d:"别人慢走自己就慢走，别人快走自己就快走。",f:"刻意追随、全盘模仿某个人，行动思路完全依附他人。",s:"贬",ex:["作为小剧种，如果跟在别人身后亦步亦趋，永远没有出路。20"]},
+  {g:11,n:"随波逐流",d:"顺着波浪漂流。",f:"比喻没有坚定立场、主见，盲目跟着潮流、别人走。",s:"中偏贬",ex:["文旅需要流量，营销可以借势而为，发展却不能随波逐流。","他不愿与人争名夺利，行事随波逐流，安于平淡生活。"]},
+  {g:11,n:"照猫画虎",d:"照着猫的样子画老虎。",f:"比喻只是机械模仿外表，抓不住本质、精髓，学得并不到位。",s:"贬",ex:["中医传承，不是让学生盲目模仿老师、照猫画虎，而是不断超越、守正创新。"]},
+  {g:11,n:"邯郸学步",d:"相传燕国人到邯郸模仿当地人优美走路姿势，非但没学会，还忘掉自己原本走路的方法，最后只能爬着回去。",f:"一味模仿他人长处，最后丢失自身原有本事，两头落空。",s:"贬",ex:["AI如巨大海啸，我们可能要调整工作方式、生活方式，调整我们的泳姿，甚至可能要重新学会游泳，但绝不是像邯郸学步那样，忘记我们原来的走路方式。"]},
+  {g:11,n:"东施效颦",d:"西施心口疼皱眉很美，丑女东施模仿皱眉，反而更丑。",f:"自身条件不足，强行模仿美好的人或事物，结果滑稽难看、弄巧成拙。",s:"贬",ex:["如果不顾中西方音乐的巨大差异而生搬硬套，或仅仅按照西方交响乐队的规模与建制来组建民族乐队，结果可能是东施效颦。"]},
+  {g:11,n:"南橘北枳",d:"枳：酸苦的枳树。橘子生长在南方甘甜，移植到北方就变成酸涩枳果。",f:"同一事物因环境、条件不同，本质、结果发生改变；也指环境对人、事物影响巨大。",s:"中",ex:["在西方知识范式下，使用西方概念和理论范式诠释中国的革命、建设和改革历程，容易造成“南橘北枳”的结果。"]},
+  {g:11,n:"照本宣科",d:"照着书本、稿子一字不差宣读。",f:"形容做事死板照搬现成内容，毫无变通、没有独立发挥。 21",s:"贬",ex:[]},
+  {g:11,n:"述而不作",d:"传统治学理念，忠实传述先贤经典，不主观杜撰新观点。；做研究、写文章只堆砌前人成果，无自身原创理论。",f:"",s:"中",ex:["古人治学讲求述而不作，主张解读经典时立足文本本义，克制主观发挥，最大限度还原圣贤本意，这套阐释范式保障了历代经典释义的客观公允。","不少当代社科研究落入述而不作的窠臼，通篇堆砌前人研究结论，缺少立足本土实践的原创理论建构，文章看似旁征博引，实则无一己之见。"]},
+  {g:11,n:"生搬硬套",d:"不顾自身实际情况，强行照搬别人的经验、方法、理论，机械套用，不懂变通。",f:"",s:"贬",ex:["“创作并不是生搬硬套非遗符号。”动画电影《浪浪山小妖怪》导演於水说。影片呈现的连环画风格、水墨背景、陕北说书音乐，都来自日积月累。"]},
+  {g:11,n:"削足适履",d:"把脚削小，去凑合狭小的鞋子。",f:"为迎合外部现成规则、标准，强行改变自身客观条件，本末倒置。",s:"贬",ex:["强行用西方概念套解中国实践、用西方理论阐释中国问题，本质上是削足适履，不仅会造成理论的先验化和绝对化，导致理论与实践脱节，更会抽离中国的事情本身，消解学术的主体性与原创性，陷入“跟跑式”“鹦鹉学舌式”研究的泥潭。"]},
+  {g:11,n:"陈词滥调",d:"陈旧、空洞、不新鲜的话语、论调。",f:"话语老旧且毫无价值，让人厌烦。",s:"贬",ex:["“写”：不空话连篇，要求真务实；不文过饰非，要直面问题；不长篇大论，要简短精炼；不陈词滥调，要鲜活生动。"]},
+  {g:11,n:"老生常谈",d:"老书生经常说的话。",f:"人们听惯了、没有新意的老话。",s:"中偏贬",ex:["县域产业转型虽然是一个老生常谈的话题，“创新+改革”却是始终不变的基本盘。22"]},
+  {g:12,n:"纸上谈兵",d:"在纸面上谈论打仗。",f:"空谈理论，缺少实践实操经验，无法解决现实问题。",s:"贬",ex:["这个“五位一体”的法治乡村建设体系，并非纸上谈兵，而是已经在金山乡村落地生根的生动实践和经验总结。"]},
+  {g:12,n:"坐而论道：古义",d:"指大臣相伴君主静坐商议治国方略；；空谈宏大道理、理论，不肯躬身实践。",f:"现多指空谈理论、大道理，不付诸实际行动。",s:"中",ex:["“真学问”绝非闭门造车、坐而论道的空谈虚论，它要求研究者走出书斋、敞开大门、深入实践、贴近大地。23"]},
+  {g:12,n:"画饼充饥",d:"画个饼来解除饥饿。",f:"用无法兑现的虚假许诺哄骗他人。",s:"贬",ex:["有观点认为落实其政策会加重财政负担，对本已靠举债度日的联邦政府来说无异于“画饼充饥”。"]},
+  {g:12,n:"望梅止渴",d:"望见梅子生津暂时止渴。",f:"依靠空想短暂自我宽慰，无欺骗他人之意，暂时解决需求。",s:"中",ex:["只画就业蓝图却不提供岗位扶持，对求职青年而言只是望梅止渴。"]},
+  {g:12,n:"空中楼阁",d:"悬在半空、没有根基的楼阁。",f:"方案、理论、规划脱离现实，缺少现实支撑，根本无法落地实现。",s:"贬",ex:["这些紧扣时代脉搏、回应民生关切的宣讲内容，让理论不再是空中楼阁，而是解决实际问题的“金钥匙”。"]},
+  {g:12,n:"镜花水月",d:"镜子里的花、水中的月亮。",f:"事物虚幻缥缈，可观而不可得；也可褒义形容诗文意境空灵雅致。",s:"中",ex:["再宏伟的蓝图，不落地就是空中楼阁；再响亮的口号，不行动就是镜花水月。"]},
+  {g:12,n:"海市蜃楼",d:"沙漠海面虚幻光影。",f:"虚假短暂的繁荣、幻象，依托泡沫而生，终将破灭，完全没有现实根基。",s:"贬",ex:["脱离实体产业、一味炒作资本泡沫的繁荣，终究只是海市蜃楼，泡沫破裂后一切都会化为泡影。"]},
+  {g:13,n:"南辕北辙",d:"心想往南，马车却往北行驶。",f:"单一主体内部，行动和想要达成的目标完全相反，努力只会离初衷越来越远。",s:"贬",ex:["有些干部有做好工作的真诚愿望，也有干劲，但缺乏新形势下做好工作的本领，结果是虽然做了工作，有时做得还很辛苦，但不是不对路子，就是事与愿违，甚至搞出一些南辕北辙的事情来。"]},
+  {g:13,n:"背道而驰",d:"朝着相反的道路奔驰。",f:"两方事物、两种路线目标完全对立；多用于形容行为背离客观规律、时代大势、正向价值。",s:"贬",ex:["厚葬薄养、奢靡攀比，与孝老爱亲、勤俭节约的传统美德背道而驰，成为乡村振兴路上的“拦路石”。"]},
+  {g:13,n:"分道扬镳",d:"分开道路，驱马各自行走。",f:"原本同行、合作、同源的双方，因理念、发展路径分歧，主动拆分、各自发展。",s:"中偏贬",ex:["在西亚地区，谷物种植与家畜饲养很早就分道扬镳，各自独立发展，两个群体间通过贸易交换形成共生关系。25"]},
+  {g:14,n:"本末倒置",d:"把主次、根本和末梢颠倒过来。",f:"混淆事物核心与细枝末节，把次要事物当成核心，核心反而被忽视。",s:"贬",ex:["数字仅仅是反映客观工作的一面镜子，决不能本末倒置。"]},
+  {g:14,n:"舍本逐末",d:"舍弃根本、核心，一味追逐细枝末节、次要的东西。",f:"主动放弃根基本源，刻意去追逐表面、次要的事物，行动上主动抛弃根本。",s:"贬",ex:["如果舞段脱离人物与冲突，只留下热闹的场面；动作不由人物的欲望、处境与抉择所触发，而只是服务于编排的顺畅与视觉奇观，那么即便编排再精致，也难免舍本逐末。26"]},
+  {g:14,n:"因小失大",d:"为了微小的利益，反而损失更大的利益。",f:"贪图微小好处，最终招致重大损失，侧重利益得失失衡。",s:"贬",ex:["生态环境保护事关中华民族永续发展，是功在当代、利在千秋的事业，谋划推进工作更要算好大账，严守生态底线，坚决摒弃因小失大、顾此失彼、寅吃卯粮、急功近利的短视行为，杜绝以牺牲生态环境换取短期经济增速的片面做法，以绿色发展实效检验政绩成色。"]},
+  {g:14,n:"买椟还珠",d:"买下装珍珠的木匣，却把珍珠还给卖家。",f:"取舍完全错位，只看重外表、包装、形式，舍弃内在真正有价值的核心。",s:"贬",ex:["读书，如果没有这种深度的文本阅读，不超越“人物纠葛”而去进入语言细节，无异于买椟还珠。"]},
+  {g:14,n:"反客为主",d:"客人反过来占据主人的位置。",f:"1.消极：次要一方抢占主导地位，主次颠倒；",s:"贬，少数语境中",ex:[]},
+  {g:14,n:"中",d:"主动扭转被动局面，掌握主动权。",f:"",s:"",ex:["在知识生产及传播进程中，人始终应占据主导地位，生成式人工智能应成为人类的好助手、好伙伴，但绝不能“反客为主”。"]},
+  {g:14,n:"喧宾夺主",d:"客人喧闹吵闹，盖过主人。",f:"次要事物、修饰、配角声势太大，抢占了主体的风头，掩盖核心。",s:"贬",ex:["调味辅料只是烘托口感，既要保留食材本身的地域味道，还不能喧宾夺主盖过牛排的本味。"]},
+  {g:14,n:"鸠占鹊巢",d:"斑鸠不会筑巢，抢占喜鹊的巢穴居住。",f:"强行侵占本该属于他人的居所、资源、岗位、成果，带有强占、掠夺意味。",s:"贬",ex:["作为“二创”短视频作者，无视原创作者的基础性贡献，甚至“鸠占鹊巢”，损害原创作者的合法权益，也就不能再得到法律的支持。"]},
+  {g:14,n:"越俎代庖",d:"掌管祭祀的人跨过礼器，代替厨师做菜。",f:"超出自身权责边界，插手、包办他人分内本职工作，侧重越权代办。",s:"贬",ex:["任何外部势力都不应越俎代庖，更不能动辄诉诸武力、干涉他国内政、践踏他国主27"]},
+  {g:15,n:"推陈出新",d:"剔除旧事物中的糟粕，汲取精华，创造出新的事物。",f:"传承原有精华再创新。",s:"褒",ex:["老字号糕点铺保留传统工艺，新增低糖配方和文创包装，推陈出新的产品既留老顾客，又吸引年轻人。"]},
+  {g:15,n:"革故鼎新",d:"革除陈旧、腐朽的制度弊端，建立全新的秩序与格局。",f:"彻底破除落后旧体系，重构全新框架，根本性革新。",s:"褒",ex:["该国通过废除世袭制度、建立民主选举体系，完成政治层面的革故鼎新，开启现代化进程。"]},
+  {g:15,n:"历久弥新",d:"历经漫长岁月，反而愈发鲜活、富有价值。",f:"时间不但没有损耗它，反而沉淀出更深的韵味与价值，越久越出彩。",s:"褒",ex:["传统剪纸技艺在年轻人手中，从“窗花”变成“文创装饰”“服装纹样”，融入现代审美，这种历久弥新的传承让老手艺重新流行。"]},
+  {g:15,n:"历久弥坚",d:"经过长久考验，变得更加牢固、坚定。",f:"内心、关系在岁月打磨后更加稳固不动摇。",s:"褒",ex:["中孟政治互信持续巩固，传统友谊历久弥坚，务实合作成果丰硕，双边关系发展前景广阔。"]},
+  {g:15,n:"经久不衰",d:"历经长久时间，始终不会衰败、降温。",f:"热度、人气、受众喜爱度，持续受欢迎，热度不消退。",s:"褒",ex:["春节贴春联的习俗从古代延续到今天，即使在城市，人们仍会在门上贴春联、挂福字，经久不衰的传承成了中国人的情感符号。"]},
+  {g:15,n:"长盛不衰",d:"长久维持兴盛、繁荣的状态。",f:"宏大事物，强调长期兴旺发达。",s:"褒",ex:["远大理想和崇高使命的驱动，使得党在接受人民监督、进行自我革命过程中锤炼得更加纯洁、更加先进，这是党长盛不衰的重要原因所在。"]},
+  {g:15,n:"与时俱进",d:"跟随时代发展一同前进。",f:"跟随时代发展一同前进、革新。",s:"褒",ex:["教育政策从“应试导向”到“素质教育”，从“课堂讲授”到“线上线下融合”，与时俱进的调整更贴合当代学生成长需求。"]},
+  {g:15,n:"日新月异",d:"每日每月都出现全新的面貌。",f:"发展变化速度极快、更新迭代频繁。",s:"褒",ex:["数字经济领域每月有新功能上线，每季有新模式涌现，这种日新月异的发展让生活更便捷。"]},
+  {g:15,n:"一日千里",d:"骏马一日能奔跑千里。",f:"发展增速迅猛、进步幅度大，呈现飞跃式提升。",s:"褒",ex:["当游客们购买一条条精美的丝巾、一件件科技感十足的智能产品、一款款玲珑剔透的瓷器，相信他们感受到的，既有中华优秀传统文化的博大精深，也有现代科技的一日千里，进而在中国开放大门越开越大的自信与从容中留下美好记忆。"]},
+  {g:16,n:"一成不变",d:"一经形成，再也不改动。",f:"政策、模式、思维僵化守旧，始终没有更新调整。",s:"贬",ex:["市场需求持续迭代，经营思路不能一成不变，要主动创新适配群众需求。"]},
+  {g:16,n:"亘古不变",d:"从古至今，长久以来从未改变。",f:"形容真理、道义、客观规律时间跨度极长，永久恒定。",s:"中",ex:["人民至上是我们干事创业亘古不变的价值追求。"]},
+  {g:16,n:"矢志不渝",d:"立下志向，自始至终绝不改变。",f:"志向、初心、信念坚定，一辈子不动摇。",s:"褒",ex:["一代代科研工作者矢志不渝深耕基础学科，筑牢国家科技发展根基。31"]},
+  {g:16,n:"持之以恒",d:"长久坚持，不间断付出。",f:"做事有恒心，长期持续投入，不半途而废。",s:"褒",ex:["学风建设非一日之功，唯有持之以恒抓日常教育，才能涵养优良校风。"]},
+  {g:16,n:"久久为功",d:"持之以恒，日积月累踏实付出努力。",f:"过程漫长，需要循序渐进、持续发力，不急于求成。",s:"褒",ex:["沙漠治理需数十年如一日种树固沙，不能急于求成，唯有久久为功，才能让荒漠变绿洲。"]},
+  {g:16,n:"一以贯之",d:"用同一种思想、方针贯穿始终。",f:"始终坚持同一套理念、政策、标准，贯彻到底不中断。",s:"褒",ex:["我们要一以贯之推进绿色发展，把生态保护要求落实到发展各环节。"]},
+  {g:17,n:"刻舟求剑",d:"船动了却在落水处刻记号找剑。",f:"不以发展眼光看待客观环境的变化，不懂与时俱进。",s:"贬",ex:["学校建立起敏捷响应机制，让人才培养标准不再是刻舟求剑的“旧黄历”，而是与产业脉搏同频跳动的“晴雨表”。"]},
+  {g:17,n:"郑人买履",d:"郑国人买鞋只信量好的尺码，不信自己的脚。",f:"迷信书面教条、死板标准，脱离现实实际，不会灵活变通。",s:"贬",ex:["作为史学出身的学人，我总觉得这样的研究与中国法律传统有些脱节，是拿西方的标尺来衡量中国的历史，颇有“郑人买履”的嫌疑。"]},
+  {g:17,n:"胶柱鼓瑟",d:"把调音柱粘死，无法调节琴弦音调。",f:"做事死板僵化，不会根据现实调整策略。",s:"贬",ex:["这一观念进入教科书后，知识系统逐渐固化，以至于在处理变化多端的新文化现象时胶柱鼓瑟，难以因应时代变局而渐失活力。"]},
+  {g:17,n:"墨守成规",d:"战国墨子善于守城，后人称固执固守旧规矩为墨守。",f:"死守现成的规章制度、老办法，不愿革新变通；适用范围广，思维、管理、办事均可使用。",s:"贬",ex:["行业迭代速度持续加快，企业若一味墨守成规，不主动拥抱新技术，终将被市场淘汰。"]},
+  {g:17,n:"因循守旧",d:"沿袭旧例、固守老一套，不愿革新变革。",f:"长期沿袭老旧体制、风气、传统，主动拒绝突破固有框架。侧重思想观念的守旧。",s:"贬",ex:["改革最忌因循守旧，面对发展新难题，必须敢于打破固化体制束缚。"]},
+  {g:17,n:"抱残守缺",d:"抱着残缺陈旧的东西不肯舍弃。",f:"1.固守老旧、残缺的思想、制度、技艺，不愿舍弃旧事物、接纳新事物；2.治学上固守残缺古籍，不求完善革新。",s:"贬",ex:["传统文化传承不能抱残守缺，既要守住文化根脉，也要结合当代审美创新表达。33"]},
+  {g:17,n:"陈陈相因",d:"原指粮仓陈年粮食层层堆积；现比喻套路代代重复。",f:"长年沿袭老旧行文、工作、制度套路，年年照搬套用，毫无创新。",s:"贬",ex:["部分基层材料年年复用模板、观点重复，陈陈相因，缺少贴合本地实情的思考。"]},
+  {g:17,n:"相沿成习",d:"某种做法一代代沿袭下来，慢慢形成固定习惯、惯例。",f:"客观描述风俗、做法长期传承，仅陈述事实，无褒贬。",s:"中",ex:["古时逢年祭祖的礼仪相沿成习，流传千年，成为民俗文化重要组成部分。"]},
+  {g:17,n:"按部就班",d:"原指写文章按照结构、层次安排词句。",f:"做事依照既定次序、固定步骤稳步推进；消极语境下可指死板不知变通。",s:"中",ex:["园区扩建工程按部就班推进，各施工环节有序落地，保障整体工期平稳。"]},
+  {g:17,n:"循序渐进",d:"按照一定次序、步骤逐步推进，稳扎稳打，不急于求成。",f:"尊重客观发展规律，由浅入深、稳步沉淀提升。",s:"褒",ex:["语文综合素养的提升需要循序渐进，依靠日积月累的阅读与练习，无法一蹴而就。"]},
+  {g:17,n:"有条不紊",d:"形容做事条理清晰、秩序井然，一点不乱。",f:"仅形容现场、流程、安排规整有序，和思想守旧无关。",s:"褒",ex:["大型文体活动分工清晰，物资调配、人员引导、安保值守有条不紊。"]},
+  {g:17,n:"泥古不化",d:"拘泥、死守古代的规矩、古法，不知根据现实变通革新。",f:"盲目推崇古代制度、传统，全盘照搬古制，不结合当下现实改良变化。",s:"贬",ex:["尊重和包容差异性，并不等于泥古不化、不加鉴别地全盘承袭旧传统。"]},
+  {g:17,n:"食古不化",d:"学习古人典籍、理论却无法消化吸收。",f:"照搬古代知识理论，只会生搬硬套，不能内化为自身见解灵活运用。",s:"贬",ex:["研读传统经典贵在融会贯通，倘若死记条文、生搬道理便是食古不化，难以形成独立思考。34"]},
+  {g:17,n:"循规蹈矩",d:"原指遵守本分、恪守礼法；现多为贬义。",f:"严格死守各类规矩，不敢有丝毫偏离，为人做事死板保守，缺少创新魄力。",s:"贬，本义中",ex:["文艺创作若一味循规蹈矩、照搬前人成熟范式，很难诞生独具特色的优秀作品。"]},
+  {g:18,n:"故（固）步自封",d:"自己把自己局限在旧的原地，安于现状、不求进步，主观上不愿向外突破、提升自我。",f:"内心自我满足、封闭，主观上拒绝学习新事物、提升自我。",s:"贬",ex:["取得一点成绩便沾沾自喜、故步自封，个人成长之路只会越走越窄。"]},
+  {g:18,n:"闭门造车",d:"古代造车有统一尺度，关起门造出的车，出门也能合路上的车辙。",f:"做事脱离客观实际、不调研不结合外部情况，单凭主观空想办事。",s:"贬",ex:["政策制定不能闭门造车，要下沉基层倾听群众真实诉求。"]},
+  {g:18,n:"裹足不前",d:"双脚如同被缠住，不敢迈步前行。",f:"因畏惧风险、顾虑重重、思想保守，不敢开拓、尝试新路径。",s:"贬",ex:["面对产业转型阵痛不能裹足不前，唯有主动调整经营模式，才能平稳渡过难关。"]},
+  {g:18,n:"画地为牢",d:"在地上画圈当作监狱困住自己。",f:"人为给自己划定局限、设下条条框框，主动束缚自身发展空间。",s:"贬",ex:["发展不能固步自封、画地为牢，要主动对接外部资源拓宽发展路径。"]},
+  {g:18,n:"作茧自缚",d:"蚕吐丝结茧，把自己裹在里面。",f:"自己做出的错误选择、制定的严苛规则，最终困住、损害自身。",s:"贬",ex:["企业靠虚假宣传博取流量，透支行业信誉，无异于作茧自缚。"]},
+  {g:18,n:"自缚手脚",d:"自己捆住自己的手脚。",f:"被自身顾虑、死板规矩束缚，不敢放开干事，束手束脚。",s:"贬",ex:["改革创新不必被陈旧条条框框自缚手脚，要大胆探索可行路径。"]},
+  {g:18,n:"向壁虚构",d:"对着墙壁凭空编造。",f:"毫无事实依据，凭空杜撰故事、观点、论据，多用于文字、言论创作。",s:"贬",ex:["历史评论必须依托史料，不可向壁虚构、随意解读过往史实。"]},
+  {g:18,n:"凭空臆造",d:"凭主观想象凭空编造。",f:"完全没有现实依据，主观猜想捏造事实、理由，程度直白。",s:"贬",ex:["调查报告要基于真实走访，不能凭空臆造数据与案例。"]},
+  {g:18,n:"守株待兔",d:"农夫守树桩等着撞死的兔子，妄想不劳而获。",f:"死守偶然的侥幸经验，不愿主动实干，坐等意外好运再次发生。",s:"贬",ex:["产业发展不能守株待兔坐等红利，必须主动培育新业态新赛道。"]},
+  {g:18,n:"坐享其成",d:"自己不出力，坐享别人劳动得来的成果。",f:"完全依赖他人付出，自身不劳作、不付出，凭空享受收益。",s:"贬",ex:["青年奋斗切忌贪图安逸、坐享其成，唯有实干才能实现长远成长。"]},
+  {g:19,n:"坐井观天",d:"坐在井底看天空，以为天只有井口大小。",f:"身处狭小环境，见识浅薄，格局眼界极度狭窄。",s:"贬",ex:["长期固守单一行业不学习新知识，无异于坐井观天，难以看清行业发展大势。"]},
+  {g:19,n:"管中窥豹",d:"透过细竹管看豹子，只能看见一小块花纹。",f:"",s:"",ex:[]},
+  {g:19,n:"一叶障目",d:"一片树叶挡住眼睛，看不见全貌。",f:"被眼前局部、次要表象遮蔽，忽略核心全局与真相。",s:"贬",ex:["不能因短期阶段性难题否定改革成效，切莫一叶障目，看不到长期发展红利。"]},
+  {g:19,n:"盲人摸象",d:"几位盲人分别摸到大象耳朵、腿、尾巴，便各自认定大象的全貌。",f:"每个人只掌握碎片化局部信息，就主观臆断事物整体样貌，判断十分片面。",s:"贬",ex:["仅凭个别负面案例否定整个行业发展，如同盲人摸象，无法客观还原行业真实面貌。"]},
+  {g:19,n:"以偏概全",d:"用局部、个别的情况概括全部。",f:"逻辑层面的片面推断，拿个别事例武断总结整体规律。",s:"贬",ex:["个别企业经营乱象不能代表整个产业，切忌以偏概全，否定产业整体价值。38"]},
+  {g:19,n:"鼠目寸光",d:"老鼠视线只能看清一寸之内的事物。",f:"做人做事只盯着眼前微小利益，缺乏长远规划与大局意识。",s:"贬",ex:["只追求短期经济增速而忽视生态保护，是鼠目寸光的发展思路，不利于可持续发展。"]},
+  {g:19,n:"一叶障目的意思是",d:"一片叶子挡在眼前，会让人看不到外面的广阔世界，比喻被局部或暂时的现象所迷惑。我在想，我头脑中的那片叶子就是偏执，我心急地想证明一些事情，却忘了谦虚和谨慎。在微信群里有很多是因为表达不够充分而造成的误解，也有的是只有文字没有语音而造成的误解，我希望人与人之间能做到：观点不同不必激动，君子和而不同。",f:"",s:"",ex:[]},
+  {g:20,n:"望而却步",d:"远远看见就往后退缩。",f:"看到困难、险境后，直接退缩不敢上前。",s:"贬",ex:["复杂繁琐的审批流程让不少创业者望而却步。"]},
+  {g:20,n:"望而生畏",d:"一看见就心生害怕。",f:"事物本身难度、压迫感极强，第一眼就让人恐惧。",s:"贬",ex:["动辄上万字的专业理论文稿，令不少初学者望而生畏。39"]},
+  {g:20,n:"畏首畏尾",d:"前也怕、后也怕，处处顾虑。",f:"做事顾虑太多、胆小拘谨，放不开手脚。",s:"贬",ex:["干事创业切忌畏首畏尾，过度谨慎只会错失发展机遇。"]},
+  {g:20,n:"望洋兴叹",d:"面对浩大事物感慨自身渺小，无可奈何。",f:"因条件、能力差距过大，只能感慨，毫无办法。",s:"中",ex:["缺乏专业设备与技术人才，面对大规模数字化改造项目，企业只能望洋兴叹。"]},
+  {g:20,n:"无能为力",d:"没有任何力量、办法去解决。",f:"自身不具备解决问题的能力，完全使不上劲。",s:"中偏贬",ex:["历史遗留的深层体制矛盾，单靠一个部门调整政策无能为力。"]},
+  {g:20,n:"鞭长莫及",d:"鞭子虽长，也打不到马肚子。",f:"距离、管辖范围达不到，管不到、帮扶不到。",s:"中偏贬",ex:["偏远山区网点稀缺，总部监管力量鞭长莫及，容易出现管理漏洞。"]},
+  {g:20,n:"望其项背",d:"能看见别人的脖颈后背，能追上。",f:"差距较小，能够赶得上；多用于否定句式“难以/无法望其项背”，表追赶不上。",s:"中，多用于否定",ex:["经过多年技术积累，这家企业的行业地位，同行短期内难以望其项背。"]},
+  {g:20,n:"望尘莫及",d:"只看得见前方人马扬起的尘土，追赶不上。",f:"双方实力差距极大，远远落后，完全追不上。",s:"贬",ex:["头部企业的研发投入与创新速度，中小型同行望尘莫及。"]},
+  {g:21,n:"置之不理",d:"把人或话语放在一旁，完全不去理睬。",f:"不回应、不搭理。",s:"贬",ex:["日常生活中，被小刀、铁钉、木刺等尖锐物品划伤、扎伤手指是比较常见的意外，多数人仅简单贴上创可贴便置之不理。"]},
+  {g:21,n:"束之高阁",d:"将书卷、文书捆好，放置在高高的阁楼上。",f:"明明有用却长期封存、搁置不用。",s:"贬",ex:["马克思主义不是束之高阁的理论，而是扎根中国大地、回应人民期盼的科学真理。"]},
+  {g:21,n:"弃如敝履",d:"如同扔掉破旧鞋子一般彻底舍弃。",f:"带有强烈嫌弃、不屑的主观情绪，主动彻底抛弃，断绝不再使用。",s:"贬",ex:["关于折耳根的好恶和评价，南北褒贬不一，呈极端两极化，爱的大快朵颐，生熟皆可，恨的弃如敝履，绝不沾边！"]},
+  {g:21,n:"不以为意",d:"不把某事放在心上。",f:"内心毫不在意、无所谓。",s:"中偏贬",ex:["他对别人的批评听后毫不在意，依旧我行我素，真是不以为意。"]},
+  {g:21,n:"不以为然",d:"不认为（某种说法、做法）是对的。",f:"内心不认同、持否定态度。",s:"中偏贬义",ex:["我张先生一直笃信通过食疗来降压，即使医生向他推荐降压药仍不以为然…41"]},
+  {g:22,n:"作壁上观",d:"交战双方厮杀时，第三方在壁垒上旁观，谁也不帮。",f:"对别人的冲突不参与、不表态、不援助、不介入。",s:"中偏贬",ex:["欧洲对美伊动武几乎集体“作壁上观”，背后有深刻且现实的考量。"]},
+  {g:22,n:"隔岸观火",d:"隔着河看对岸着火，希望火越烧越大。",f:"看热闹不嫌事大，幸灾乐祸，盼着对方倒霉（有恶意）。",s:"贬",ex:["乌克兰危机爆发以来，中国没有隔岸观火，而是坚持劝和促谈，一直为实现和平发挥积极作用。"]},
+  {g:22,n:"袖手旁观",d:"抄着手在旁边看。",f:"冷漠，担心会麻烦自己，缺乏责任感。",s:"贬",ex:["我也是3个孩子的父亲，遇到小孩落水这种事不可能袖手旁观。以后我会继续传递正能量，给孩子们做个好榜样。42"]},
+  {g:22,n:"置身事外",d:"把自己放在这件事之外。",f:"对某件事不参与、不关心、不介入。",s:"中偏贬",ex:["管党治党责任重大，没有哪个党组织和领导干部可以置身事外，必须牢固树立“抓好党建是本职、不抓党建是失职、抓不好党建是不称职”的观念。"]},
+  {g:22,n:"独善其身",d:"管好自己的道德修养。",f:"只在意个人利益，对他人漠不关心，在国际领域用法较多。 例：当今世界是命运共同体，没有任何国家能够独善其身。",s:"中偏贬",ex:[]},
+  {g:22,n:"明哲保身",d:"明智的人擅于保全自身。",f:"党员干部不作为，怕担责，错误的政绩观。",s:"贬",ex:["现实中，有的党员干部把求稳当保险，以合规来避责，信奉明哲保身、但求无过，遇事推诿、遇难绕行，这样如何能作出成绩、打开局面？"]},
+  {g:23,n:"浅尝辄止",d:"略微尝试一下就停下。",f:"学习、分析问题不肯深入钻研，刚接触就放弃。",s:"贬",ex:["调研工作不能浅尝辄止，要下沉一线深挖群众真实诉求。"]},
+  {g:23,n:"不求甚解",d:"读书不深究核心要义。",f:"读书、学习只了解大概轮廓，不肯钻研深层道理，治学态度粗疏。",s:"贬",ex:["研读政策文件切忌不求甚解，要逐条吃透背后的出台逻辑。"]},
+  {g:23,n:"走马观花",d:"骑在奔跑的马上看花",f:"实地走访、参观考察赶路式浏览，看得匆忙，观察极不细致。常用于旅游语境。",s:"贬",ex:["下基层调研若是走马观花，很难发现基层真实存在的难题。"]},
+  {g:23,n:"浮光掠影",d:"水面反光、一闪而过的影子。",f:"对外界事物的观感短暂浅薄，仅留下模糊表层印象，无法形成完整深刻认知。",s:"贬",ex:["只靠短视频了解地方文化，所得感受不过浮光掠影。"]},
+  {g:23,n:"蜻蜓点水",d:"蜻蜓飞行时，尾部轻触水面产卵，只轻轻一碰就离开。",f:"做事触碰表层便作罢，不触及问题核心；也指人与人短暂、轻微接触。常用于调研语境。",s:"贬",ex:["整改督查不能蜻蜓点水，必须深挖问题根源推动彻底整改。"]},
+  {g:23,n:"大而化之",d:"处理事务只抓大体框架，忽视细分细节。",f:"工作安排粗疏笼统，缺乏精细化落实，标准模糊、漏洞较多。",s:"贬",ex:["落实民生政策不能大而化之，要针对不同群体细化配套举措。44"]},
+  {g:23,n:"敷衍塞责",d:"应付差事，逃避本职责任。",f:"刻意推脱自身应承担的工作职责，心存懈怠、不愿担责。",s:"贬",ex:["面对群众投诉，公职人员不可敷衍塞责，要主动化解矛盾。"]},
+  {g:23,n:"敷衍了事",d:"草草应付，随便交差。",f:"只求快速收尾完成流程，不肯投入精力把事情做实做好。",s:"贬",ex:["材料撰写不可敷衍了事，要结合实际案例增强内容说服力。"]},
+  {g:23,n:"因陋就简",d:"顺着原本简陋的条件，将就着办事，不刻意铺张、不追求完备。",f:"依托现有简陋基础开展工作，就地节约、务实办事，不含应付了事的消极意味。",s:"中",ex:["乡村新时代文明实践站因陋就简，利用闲置老屋改造，满足群众文化需求。"]},
+  {g:24,n:"文过饰非",d:"用漂亮话来掩饰自己的缺点。",f:"用各种理由来掩盖错误",s:"",ex:["领导干部自身的问题，要即查即改，不文过饰非"]},
+  {g:24,n:"掩耳盗铃",d:"捂住耳朵去偷铃铛。",f:"自己骗自己",s:"",ex:["日方妄想通过不再提及，淡化、搪塞、掩盖高市首相的严重错误言论，是掩耳盗铃、自说自话，中方绝不接受。"]},
+  {g:24,n:"讳疾忌医",d:"隐瞒疾病，不愿看病。",f:"不愿意接受别人对自己的批评和帮助，不愿改错",s:"",ex:["党的伟大不在于不犯错误，而在于从不讳疾忌医，积极开展批评和自我批评，敢于直面问题，勇于自我革命"]},
+  {g:24,n:"矫枉过正",d:"纠正偏差做过了头。",f:"改错但改的太过了。",s:"",ex:["人在户外时间较长，可能出现轻度中暑症状，喝常温电解质饮料，可极大地缓解症状，但要注意避免矫枉过正，直吹空调或喝冰水。"]},
+  {g:25,n:"装腔作势",d:"故意拿捏腔调、摆出做作虚假的姿态。",f:"刻意伪装出某种姿态博取关注。",s:"贬",ex:["雪糕毕竟只是雪糕，既没有“系出名门”的源远流长，也没有足够有说服力的品牌故事，强行自抬身价、搞社群营销，未免给人以装腔作势之观感。"]},
+  {g:25,n:"无病呻吟",d:"没有生病，却故作难受、痛苦地哀叹。",f:"文学创作或个人抒发情绪时，本身没有真实苦楚与切身经历，却刻意堆砌伤感哀怨的内容，空洞矫情。",s:"贬",ex:["一篇文章下来，表面繁花似锦，实则内容空洞，多为无病呻吟之作，严重脱离社会现实与民众生活。"]},
+  {g:25,n:"虚张声势",d:"虚假地扩张、烘托自身声势，制造强大的假象。",f:"目的是威慑、震慑对手，重在伪装气势掩盖内里虚弱。",s:"贬",ex:["最令人惊讶的是，‘深度纳什’学会了在游戏中使用较弱的棋子虚张声势，而且会为了胜利牺牲重要棋子。"]},
+  {g:26,n:"瞻前顾后",d:"看看前面、看看后面，顾虑太多。",f:"时间上的前后。",s:"贬",ex:["挫折和失误本是人生常态，不必苛责自己，不必瞻前顾后，要勇敢迈出第一步。"]},
+  {g:26,n:"左顾右盼",d:"左边看看右边看看。",f:"空间上具体的神态。",s:"贬",ex:["有的孩子嗫嚅着不动，有的孩子左顾右盼向家长求助，也有孩子毫不羞涩“抢”话筒。"]},
+  {g:26,n:"举棋不定",d:"拿着棋不知道下在哪里。",f:"下决策时犹豫不决，拿不定主意。",s:"贬",ex:["20多年前，就是在这里，人们对古街民居是拆是留举棋不定：是拆“古”建“新”，还是“原汁原味”地保护？"]},
+  {g:27,n:"刚愎自用",d:"性格倔强固执，不接受别人的意见。",f:"极度自大，完全不听别人意见（最重）。",s:"贬",ex:["出错是难免的，有错不可怕，可怕的是刚愎自用、一错再错。"]},
+  {g:27,n:"自以为是",d:"认为自己就是对的。",f:"主观自负自大。",s:"贬",ex:["有的干部自以为是，不愿听、听不得不同意见；有的干部自我封闭，习惯坐在办公室拍板而不是通过基层调研决策。"]},
+  {g:27,n:"目空一切",d:"什么都不放在眼里。",f:"傲慢狂妄，藐视、看不起别人。",s:"贬",ex:["郭沫若也曾坦言：“我自己是特别喜欢诗词的人，而且是有点目空一切的，但是毛泽东同志所发表了的诗词却使我五体投地。"]},
+  {g:27,n:"妄自尊大",d:"毫无根据地狂妄自大。",f:"不切实际，自以为了不起。",s:"贬",ex:["我们既不能妄自菲薄，也不能妄自尊大，必须大力推进自主创新、原始创新。"]},
+  {g:27,n:"一意孤行",d:"完全按照自己的意愿做事。",f:"不听别人的劝告，甚至可能明知是不好的结果还要照做。（明知山有虎，偏向虎山行）",s:"贬",ex:["有的为了树“个人权威”、显“魄力胆识”，在重大事项上一意孤行、强行推进，导致项目烂尾、债务堆积、生态破坏等严重后果。"]},
+  {g:27,n:"固执己见",d:"坚持自己的看法，不愿改变。",f:"侧重观念上坚持自己观点不改。（倔的像牛） 49",s:"贬",ex:[]},
+  {g:27,n:"自作主张",d:"自己已经做了决定。",f:"不请示、不商量，自己直接决定，越权行事。",s:"贬",ex:["家长进孩子的房间后，也不要自作主张给孩子收拾东西，更不能随意翻看孩子的日记。"]},
+  {g:27,n:"妄自菲薄",d:"过分的看轻自己。",f:"过于自卑，觉得自己太差。",s:"贬",ex:["这种“知己”的务实，恰恰是长期在好高骛远与妄自菲薄间摇摆的中国足球，所亟需的清醒剂。"]},
+  {g:27,n:"自怨自艾",d:"悔恨自己犯下错误，并想要尝试改正（本意）。",f:"一味自我责备，陷入消极情绪无法自拔（现在主要用法）。",s:"贬",ex:["豁达的人不会揪着过去的挫折不放，也不会因为摔了一跤就一直自怨自艾。"]},
+  {g:27,n:"自轻自贱",d:"自己认为自己很下贱。",f:"在人格上贬低自己。",s:"贬",ex:["相声绝不高高在上、好为人师，也不能自轻自贱、自降为奴，而是倾心交谈，与观众为友，达到幽默的境界。"]},
+  {g:27,n:"甘居人后",d:"心甘情愿的居于别人之后。",f:"淡泊名利/缺乏上进心。",s:"中",ex:["树立和践行正确的政绩观，坚决摒弃甘居人后的守成思维、安于现状的“躺平”心态、亦步亦趋的路径依赖，砥砺担当精神、斗争精神。"]},
+  {g:27,n:"虚怀若谷",d:"胸怀像山谷一样深广。",f:"非常谦虚，能够容纳别人的意见。",s:"褒",ex:["领导干部要永葆“思齐”之心，以虚怀若谷的姿态，主动向群众学习，才能使决策50"]},
+  {g:27,n:"博采众长",d:"广泛的采纳大家的长处和优点。",f:"擅于学习别人优点。",s:"褒",ex:["中华文明在数千年发展历程中，秉持兼容并蓄、博采众长的立场，在交流互鉴中吸收借鉴其他文明的优秀成果，不断丰富和发展自身。"]},
+  {g:27,n:"从善如流",d:"接受善意的劝告像流水一样自然。",f:"接受好建议。",s:"褒",ex:["昆明市领导在网络上看到市民“希望在看夕阳的草坪旁设置座椅”的愿望后，当即让有关单位落实到位，这正是昆明从善如流、倾听群众声音的真实写照。"]},
+  {g:27,n:"闻过则喜",d:"听到别人的批评反而很开心。",f:"愿意接受别人批评。",s:"褒",ex:["既要听，还要听得进，特别是要习惯于“被批评”，以闻过则喜的胸怀容人言。"]},
+  {g:27,n:"广开言路",d:"广泛的打开言论的渠道。",f:"领导者或政府广泛听取各方群众意见，不堵塞言论。",s:"褒",ex:["观海卫镇相关负责人表示，基层立法联系点将继续广开言路、聚焦民意，以更接地气、更贴民生的活动形式收集各类立法意见建议，打造好省基层立法联系点特色品牌。"]},
+  {g:27,n:"海纳百川",d:"大海能够接纳千百条江河的流水。",f:"聚焦胸襟、格局、包容力，核心是“包容接纳多元事物/不同观点、各类人才”。",s:"褒",ex:["无论是从古至今的时代流转，还是从南到北的地域迁移，抑或是从明代“四大声腔”到清代花部勃兴直到如今全国的348个剧种，戏曲艺术的生生不息是由其海纳百川的综合性特征决定的。"]},
+  {g:28,n:"全神贯注",d:"全部精神汇聚一处，注意力高度凝聚，不分心走神。",f:"做事的时候极度专注。",s:"褒",ex:["实验人员全神贯注盯着仪器屏幕，精准捕捉每一组数据变化。"]},
+  {g:28,n:"心无旁骛",d:"内心摒除各类杂念与外界诱惑，只专注于当下一件事。",f:"心思集中，没有其他杂念干扰，专心致志做一件事。",s:"褒",ex:["做基础理论研究要心无旁骛，摒弃浮躁功利的外界诱惑。"]},
+  {g:28,n:"专心致志",d:"一心一意投入，长久沉下心钻研，不受外界打扰。",f:"一心一意，集中精神投入，丝毫不分心。",s:"褒",ex:["青年学子应当专心致志深耕专业，夯实自身知识与能力根基。"]},
+  {g:28,n:"一丝不苟",d:"连一丝一毫都不马虎。",f:"做事十分严谨细致，连细微之处都不马虎敷衍。",s:"褒",ex:["公文校对工作必须一丝不苟，逐字逐句核查避免疏漏差错。"]},
+  {g:28,n:"精益求精",d:"已经达到不错水准，仍持续打磨，追求更高、更完美的效果。",f:"已经做得很好，仍追求更好，力求极致完善。",s:"褒",ex:["大国工匠对待手中产品精益求精，反复打磨优化工艺细节。"]},
+  {g:28,n:"如履薄冰",d:"像走在薄薄的冰面上一样。",f:"行事极度谨慎，时刻心怀畏惧，生怕出现差错、招致祸患。",s:"中偏褒",ex:["手握公权力，党员干部干事创业要常怀如履薄冰的自觉，严守纪律底线。"]},
+  {g:28,n:"战战兢兢",d:"形容内心恐惧不安，做事极度小心，害怕出事。",f:"心惊胆战的做事，生怕出现问题。",s:"中偏消极",ex:["新人初次牵头重大项目，战战兢兢核对每一项流程与方案。"]},
+  {g:28,n:"谨小慎微",d:"对鸡毛蒜皮的小事都过度拘谨，顾虑太多。",f:"处事过度拘束，小事也畏缩，缺少开拓魄力。",s:"贬",ex:["改革攻坚切忌谨小慎微、畏手畏脚，一味保守只会错失发展机遇。"]},
+  {g:28,n:"行稳致远",d:"走得稳当，才能抵达远方、成就长远目标。",f:"行事稳扎稳打、脚踏实地，才能走得长久长远。",s:"褒",ex:["企业发展不可追逐短期暴利，坚守合规经营方能行稳致远。"]},
+  {g:28,n:"步步为营",d:"军队每向前推进一步就设下一道营垒。",f:"做事稳妥谨慎，每一步都做好规划、打好基础，稳步推进。",s:"中偏褒",ex:["乡村产业振兴要依托本土资源，步步为营培育特色产业链条。"]},
+  {g:29,n:"集思广益",d:"集中众人的智慧，广泛采纳有益的意见。",f:"收集智慧、听取意见。",s:"褒",ex:["发扬民主、集思广益，广泛听取各方面意见，是中共中央研究重大问题、制定重要文件的一贯做法和优良传统。"]},
+  {g:29,n:"群策群力",d:"大家一起出谋出力，发挥集体的力量。",f:"大家一起想办法出谋划策。",s:"褒",ex:["政府官员、专家学者群策群力，重新修改设计，不惜多绕半圈路，让引桥从红树林保护区外围蜿蜒而过。"]},
+  {g:29,n:"和衷共济",d:"比喻同心协力，克服困难。",f:"一起面对困难。",s:"褒",ex:["面对世界经济复苏乏力，我们要坚持和衷共济，现在全球经济深度融合，没有一个国家能够独善其身。"]},
+  {g:29,n:"众志成城",d:"大家齐心协力，就像城墙一样地牢固。",f:"大家情感上团结一心。",s:"褒",ex:["从北斗导航到探月工程，在重大科技攻关中，党中央一声号令，各地各部门攥指成拳、众志成城，新型举国体制优势充分激发。"]},
+  {g:29,n:"同仇敌忾",d:"全体一致地抱着对敌人的仇恨和愤怒。",f:"一起面对敌人。",s:"褒",ex:["日本发动全面侵华战争，把战火扩大到华北、华东、华中和华南，中国军民同仇敌忾、奋起抗击。"]},
+  {g:30,n:"互为表里",d:"甲为乙的外表，乙为甲的内里。",f:"官僚与腐败。",s:"中",ex:["不正之风与腐败问题在表现形式、危害程度等方面虽有不同，但同根同源、互为表里。"]},
+  {g:30,n:"息息相关",d:"彼此关系极其密切。",f:"有人们的日常生活有关系。",s:"中",ex:["这张“小卡片”的功能正拓展至就医、出行、文旅等领域，成为与群众日常生活息息相关的“民生一卡通”。"]},
+  {g:30,n:"休戚与共",d:"忧喜、福祸彼此共同承担。",f:"二者有共同的利害关系（命运共同体）。",s:"褒",ex:["这充分表明，两岸同胞同根同源、同文同种，是血脉相连、休戚与共的命运共同体。"]},
+  {g:30,n:"唇齿相依",d:"嘴唇和牙齿互相依靠。比喻互相依存。",f:"距离近、侧重相互依赖性。",s:"中",ex:["重庆科技大学副校长戚志林表示，中国同中亚国家山水相连、唇齿相依。"]},
+  {g:30,n:"千丝万缕",d:"千条丝、万条缕。",f:"侧重事物之间的联系复杂又紧密。",s:"中",ex:["作战全局包含的要素众多，各要素地位作用不同，相互之间又有着千丝万缕的联系。56"]},
+  {g:30,n:"盘根错节",d:"事物的关系错综复杂。",f:"侧重复杂性。",s:"中",ex:["他们的家，是房龄超过七十年的老式里弄，房屋结构、公共空间和管道线路如同盘根错节的“历史难题”。"]},
+  {g:30,n:"如影随形",d:"影子始终跟随形体。",f:"你到哪我就跟你到哪。",s:"中",ex:["当列车穿越群山时，5G信号如影随形。"]},
+  {g:30,n:"相辅相成",d:"相互配合，相互补充。",f:"相互配合、缺一不可。",s:"褒",ex:["自然恢复和人工修复相互联系，相互促进，相辅相成，缺一不可。"]},
+  {g:30,n:"相得益彰",d:"相互配合得好，各方的长处就更能显现。",f:"相互配合更能够凸显出对方的优势。",s:"褒",ex:["借此机会，全民健身运动更深入地融入各大商圈、各大商业综合体，消费与体育相得益彰，让商业更繁荣，让生活更美好。"]},
+  {g:30,n:"珠联璧合",d:"珍珠串在一起，美玉合在一块儿。",f:"杰出的人才或美好的事物聚集在一起。",s:"褒",ex:["香港基础研究实力深厚，深圳、广州等城市产业体系健全、产业链条完整，大湾区兄弟城市珠联璧合、协同发展，“深圳—香港—广州”创新集群创新指数跃居全球第一。"]},
+  {g:30,n:"相映成趣",d:"互相衬托，显得更有趣。",f:"彼此映衬，不仅不冲突，反而增添了趣味和美感。",s:"褒",ex:["走进宣化店镇河西村，只见青石板路蜿蜒整洁，民居古色古香，红色景点与田园风光相映成趣。"]},
+  {g:30,n:"交相辉映",d:"各种光彩相互照耀、映射。",f:"美好的事物聚集在一起，互相衬托，显得彼此更加美好",s:"褒",ex:["漫天流霞晕染天际，与澄澈湖面交相辉映，宛如铺开绚丽画卷，吸引不少市民驻足观赏。57"]},
+  {g:30,n:"互通有无",d:"互相交换各自缺少的东西。",f:"不同地域、国家间相互帮衬、相互交换货物。",s:"中",ex:["在欧洲，中国与包括西班牙在内的诸多欧洲国家深化文化交流、农业合作，取长补短、互通有无。"]},
+  {g:30,n:"并行不悖",d:"可同时进行，互不冲突。",f:"看似矛盾的事物其实并不矛盾",s:"中",ex:["在这里，人与自然和谐相处，本土文化和特色产业吸引八方游客，文化传承与经济发展并行不悖，为乡村发展提供了有益借鉴"]},
+  {g:31,n:"责无旁贷",d:"尽自己的责任，不推卸给别人。",f:"责任性",s:"褒",ex:["共建风清气正的网络空间，网络平台守土有责、责无旁贷。"]},
+  {g:31,n:"义不容辞",d:"道义上不允许推辞。",f:"道义上",s:"褒",ex:["陶阳里历史文化街区的退休老党员郭银苟，义不容辞当起了“里弄管家”，既是老城保护员、文化传播员，又是游客讲解员。"]},
+  {g:31,n:"当仁不让",d:"遇到该做的事情，主动承担，不退让。",f:"如果这事该我来，我不麻烦别人。",s:"褒",ex:["延边大米是吉林大米的优秀代表，素有‘东北粳米之王’的美誉，是当仁不让的‘米中极品’。"]},
+  {g:31,n:"理所当然",d:"道理上应该这样。",f:"按照道理进行某事。",s:"中",ex:["中华人民共和国政府理所当然完全享有和行使中国的主权，包括对台湾的主权。"]},
+  {g:31,n:"顺理成章",d:"文章遵循条理便能自然成章。",f:"说话、办事合乎情理或自然产生结果，按照规律来",s:"中",ex:["因熟悉当地山水风貌与人文习俗，景区后勤管理的担子顺理成章落在了尹彬肩上。"]},
+  {g:32,n:"坚如磐石",d:"像巨大的石头一样坚硬。",f:"意志/友谊/联盟/地位坚定、不可动摇。",s:"褒",ex:["面对社会主义现代化建设的艰巨任务，兵团人以坚如磐石的理想信念为引领，将崇高信仰切实转化为攻坚克难的实际行动，让兵团精神在新时代绽放出璀璨光芒。"]},
+  {g:32,n:"安之若素",d:"像平常没事一样对待。",f:"侧重面对变故与困境时有强大的心态与承受力。",s:"中偏褒",ex:["习近平总书记嘱托内蒙古，只要还有一家一户乃至一个人没有解决基本生活问题，我们都不能安之若素。"]},
+  {g:32,n:"不动声色",d:"内心活动不表现出来。",f:"刻意隐藏内心活动，不流露情绪。",s:"中",ex:["他一边拨打报警电话通报情况，一边装成过路行人，不动声色地绕行至男子身后，在旁暗中观察，等待最佳救援时机。"]},
+  {g:32,n:"泰然自若",d:"紧急、危险或重大的情况下镇定从容。",f:"面对危机、压力，心态仍然冷静从容，不慌不乱。",s:"褒",ex:["中国特色社会主义制度优势的诸多具体表现是我国在世界百年未有之大变局，无论顺境还是逆境中能够沉稳以对、泰然自若的根本底气和信心所在。"]},
+  {g:32,n:"无动于衷",d:"心里没有受到丝毫触动。",f:"对事情漠不关心或置之不理。",s:"贬",ex:["成为“青橙计划”回访帮教对象后，第一次参加课程时，小刘心里满是抵触，对法官说的话无动于衷，和养父的关系更是剑拔弩张。"]},
+  {g:33,n:"面面俱到",d:"每一个方面、各个细节全都照顾、顾及到。",f:"覆盖范围全，所有层面、环节、人群均不落下。 60",s:"中",ex:[]},
+  {g:33,n:"滴水不漏",d:"严实得连一滴水都漏不出去。",f:"逻辑、言辞、谋划无任何破绽疏漏，严谨度极高。",s:"褒",ex:["面对该公司似乎滴水不漏的解释，检查人员从“平台交易源头”入手，依法调取了该公司的平台经营数据。"]},
+  {g:34,n:"一马当先",d:"作战时一匹战马冲在队伍最前方。",f:"行动带头、冲锋在前。",s:"褒",ex:["运动会接力赛中，第一棒选手起跑就冲在前面，为团队奠定优势，这种一马当先的表现点燃了全场气氛。"]},
+  {g:34,n:"一鸣惊人",d:"平日里从不啼叫，一旦发声就能震惊所有人。",f:"前后反差极大。",s:"褒",ex:["先秦时期的楚文化是整个长江流域先秦文化的集大成者，它既具有浪漫、瑰丽、神秘的地域特色，又具有大象无形的开放气度、一鸣惊人的创新意识、九死未悔的理想信念等文化特征。"]},
+  {g:34,n:"拔得头筹",d:"古时竞赛最先拔取记功的筹码，代指夺得第一。",f:"单纯指竞争中拿到第一名。",s:"褒",ex:["精工科技，凭借“双轮驱动”精益管理体系提升的实践经验，在质量管理体系升级类目评选中拔得头筹。"]},
+  {g:34,n:"独占鳌头",d:"古代科举状元觐见皇帝时，独自站在刻有鳌鱼的石阶前。",f:"高规格、权威性考试/大赛拿下榜首。 61",s:"褒",ex:[]},
+  {g:35,n:"脱胎换骨",d:"修道者脱去凡胎、改换仙骨。",f:"彻底改造自身，根本性、颠覆性转变。",s:"褒",ex:["他在戒毒所不仅戒除了毒瘾，更通过心理疏导重塑价值观，出狱后投身公益，整个人的精神面貌与过去判若两人，完成了脱胎换骨的改变。"]},
+  {g:35,n:"脱颖而出",d:"锥子放在布袋中，尖端会穿透布袋显露出来。",f:"从隐藏到展露才华。",s:"褒",ex:["她在职场新人考核中，用数据化方案解决了部门遗留问题，从20名实习生中脱颖而出，被破格录用。"]},
+  {g:35,n:"出类拔萃",d:"超出同类人群，高于普通众人。",f:"群体内优秀。",s:"褒",ex:["这位舞者，独创的肢体语言兼具力量与柔美，在国际舞蹈大赛中凭借出类拔萃的表现斩获金奖。"]},
+  {g:35,n:"一枝独秀",d:"百花之中只有一枝独自盛放。",f:"同类对比下独一份亮眼。",s:"褒",ex:["这位运动员在体操项目中连续3届夺冠，难度和完成度远超对手，在同代选手中一枝独秀，成为传奇。"]},
+  {g:35,n:"无出其右",d:"古人以右为尊，没有人能排在他右边，即无人能超越。",f:"没有任何人可以匹敌。 62",s:"褒",ex:[]},
+  {g:35,n:"锋芒毕露",d:"刀剑的锐利尖端全部暴露在外。",f:"才华、锐气毫无保留外露；褒义：可指展露实力；贬义：多指为人张扬、咄咄逼人。",s:"中",ex:["这既确保了这项严厉制度在震慑违法行为时“锋芒毕露”，又通过规范的程序为其套上“剑鞘”，体现了“过罚相当”的法治原则，实现了惩罚力度与执法规范之间的平衡。"]},
+  {g:35,n:"鹤立鸡群",d:"仙鹤站在鸡群之中，一眼就能区分。",f:"直观差距极大，一眼凸显出众。",s:"褒",ex:["国家一级保护野生植物南方红豆杉群傲然挺立，树干通直如柱，树冠繁茂如盖，在林海中尽显“鹤立鸡群”的伟岸身姿。"]},
+  {g:36,n:"精打细算",d:"精心细致的打算。",f:"人力、财力、物力等资源的使用非常精细，一点也不浪费。",s:"褒",ex:["厉行节约要从细节入手，精打细算。各地党政机关应严格遵循这一要求，将节约精神融入办公家事等环节。"]},
+  {g:36,n:"物尽其用",d:"但凡有用，就要用到极致。",f:"对于资源的利用要用尽榨干，不做到一点浪费。",s:"褒",ex:["企业通过精深加工让鱼产品物尽其用——鱼头、鱼尾直接入市，鱼鳞提取胶原蛋白，鱼骨加工成鱼骨粉，一条10斤重的鲢鱼附加值可提升33%。"]},
+  {g:36,n:"量入为出",d:"根据收入决定支出。",f:"能挣多少就该花多少，不超额消费。",s:"褒",ex:["针对零花钱管理、压岁钱规划等实际问题，进行合理消费计划制定和规划，引导学生树立量入为出的消费观念。"]},
+  {g:36,n:"开源节流",d:"开发水源、节约水流。",f:"即挣又省，两端发力。",s:"褒",ex:["要坚持开源节流，抓好财政增收节支。"]},
+  {g:37,n:"正本清源",d:"从根源上、本质上整顿清理。",f:"从源头上进行清理不好的东西。",s:"褒",ex:["习近平法治思想破除了“西方法治中心主义”，从政治上抓住了党和法、党的领导和依法治国关系的本质要害，有力澄清了实践中各种模糊、片面和错误认识，起到了正本清源的作用。"]},
+  {g:37,n:"固本强基",d:"巩固本来、强化基础。",f:"巩固自己现有的东西。",s:"褒",ex:["同时，推动乡村医疗卫生固本强基，基层设备条件和服务环境持续改善。"]},
+  {g:37,n:"返璞归真",d:"除去外表的修饰，恢复原来质朴的状态。",f:"大道至简、恢复到最简单、最朴素的状态。",s:"褒",ex:["她感叹，“人少、不扎堆，没有过度商业化，有种返璞归真的治愈感。"]},
+  {g:37,n:"拨乱反正",d:"消除混乱局面，恢复正常秩序。",f:"党的一些错误。",s:"褒",ex:["胡耀邦同志注重一切从实际出发，为推进马克思主义中国化和实现组织路线拨乱反正作出了重要贡献。"]},
+  {g:38,n:"洞若观火",d:"看得清楚明白，像看火一样。",f:"观察透彻、洞悉事物深层本质。",s:"褒",ex:["要善于“洞若观火”发现问题，敢于“入木三分”检视问题，严于“抓铁有痕”整改问题。"]},
+  {g:38,n:"明察秋毫",d:"能看清秋天鸟兽新生细毛。",f:"人观察极度细致，微小细微的隐患、细节都能察觉。",s:"褒",ex:["无论经验再怎么丰富、工作再怎么熟练，都要保持“锱铢必较”的劲头、明察秋毫的细心，不越雷池一步、不踩安全红线。"]},
+  {g:38,n:"火眼金睛",d:"孙悟空能识别妖魔鬼怪的眼睛。",f:"眼光锐利，看穿虚假伪装、分辨真假骗局。",s:"褒",ex:["市场监管干部练就火眼金睛，精准查处虚假宣传、假冒伪劣商品。"]},
+  {g:38,n:"独具慧眼",d:"看人、看事眼光高明。",f:"拥有别人没有的独到眼光，能精准看清事物本质、发现常人察觉不到的优点或问题。",s:"褒",ex:["优秀投资人独具慧眼，提前布局新兴产业赛道。"]},
+  {g:38,n:"慧眼识珠",d:"敏锐独到的眼光，能识别人才、珠宝。",f:"指眼光高明，能识别出众的人才、珍贵事物，看出别人发现不了的价值。",s:"褒",ex:["这位收藏家慧眼识珠，淘到一件失传的瓷器。"]},
+  {g:38,n:"见微知著",d:"见到细微的苗头，就能推知事物整体的发展趋势与本质。",f:"从微小细节、早期征兆，推演全局发展走向。",s:"褒",ex:[]},
+  {g:38,n:"一叶知秋",d:"看见一片落叶，就知道秋天来临。",f:"从细微迹象推知事物整体发展趋势。",s:"褒",ex:["消费市场小幅波动不必过度焦虑，一叶知秋，从细分领域数据便能预判整体经济走势。"]},
+  {g:38,n:"一目了然",d:"一眼就能看得清楚明白。",f:"直观感受，看一眼就知道了。",s:"中",ex:["以前办烟草专卖零售许可证，得反复跑窗口咨询；现在打开微信小程序，流程、材料一目了然。"]},
+  {g:38,n:"显而易见",d:"很明显、很容易看出。",f:"事情或者道理比较清晰明了、不深奥。",s:"中",ex:["对于沿线村民来说，绩谭公路通车后的好处显而易见。四通八达的公路网如脉络般舒展延伸，串起风景，更带动经济"]},
+  {g:38,n:"有目共睹",d:"人人都可以看到。",f:"事实十分突出，所有人都能亲眼见。",s:"中",ex:["他表示，阿萨尔盐湖盐资源开发项目推进的速度有目共睹，该项目为当地创造了就业，有力推动吉布提经济发展。"]},
+  {g:38,n:"视而不见",d:"看见了当看不见。",f:"不主观刻意不理睬、不重视眼前问题。",s:"贬",ex:["当地相关部门有责任恪尽职守，而不是放任圣泉生态公司盗采矿石，有责任依法查处，而不是视而不见。68"]},
+  {g:38,n:"熟视无睹",d:"经常看见某类事物，早已看习惯，却依旧如同没看见一般。",f:"核心有“频繁、长期看见”的前提，因见得多而习以为常、不予理会。",s:"贬",ex:["小区“宠物随地大小便”的问题存在半年，部分居民每天路过却从不反映，像没看见一样，这种熟视无睹的态度让环境越来越差。"]},
+  {g:38,n:"闭目塞听",d:"闭上眼睛、堵住耳朵，隔绝视觉与听觉。",f:"人主动封闭自我，脱离现实、拒绝了解任何外界情况。",s:"贬",ex:["企业家拒绝关注行业新政策，不看市场报告，只按老经验决策，这种闭目塞听的固执让企业逐渐落后。"]},
+  {g:38,n:"一视同仁",d:"对人同样看待，不分厚薄，平等对待。",f:"多用于对待不同人群、市场主体，多用于肯定语境。",s:"中偏褒",ex:["我们始终以总书记关于民营经济发展的重要论述为指引，坚持和落实“两个毫不动摇”，一视同仁欢迎和支持广大民营企业来滇发展。"]},
+  {g:38,n:"等量齐观",d:"对不同事物用同一标准衡量，同等看待。",f:"不同事物间虽有差异，但同等看待，多用于否定句。",s:"中，多用于否定句",ex:["在传统文明中，确实存在着许多与现代文明相近的话语、箴言、观念等，但在其具体内容和精神实质上又不能等量齐观。"]},
+  {g:39,n:"置若罔闻",d:"听见了像没听见。",f:"收到通知、要求、警示后搁置一旁，不予落实理睬。",s:"贬",ex:["最根本的原因就在于这些人在政治上极不清醒，法纪观念、责任意识极其淡薄，对中央八项规定精神置若罔闻。"]},
+  {g:39,n:"充耳不闻",d:"塞住耳朵不听。",f:"主观主动拒绝听取批评、群众呼声、合理意见。",s:"贬",ex:["缺电危机浮现，岛内舆论呼吁重新评估能源结构，民进党当局不但充耳不闻，反而把能源问题当作党同伐异、打压对手的工具，罔顾台湾民生福祉和产业发展。"]},
+  {g:39,n:"不绝于耳",d:"声音在耳边鸣响不断。",f:"声音的不间断性。 70",s:"中",ex:[]},
+  {g:39,n:"喜闻乐见",d:"喜欢听，乐意看。",f:"某样事物受到大众的喜爱和欢迎。",s:"褒",ex:["广纳镇宣传委员、副镇长秦玲说，“文艺+理论”宣讲模式，将群众喜闻乐见的艺术形式与理论政策解读有机结合，让宣讲接地气、贴民心。"]},
+  {g:39,n:"如雷贯耳",d:"像雷声传入耳朵般响亮。",f:"人名、品牌、企业名气极大，众人熟知。",s:"中",ex:["站北社区，一个你可能感到陌生的名字，但提到辖区内的企业，却个个如雷贯耳。"]},
+  {g:39,n:"骇人听闻",d:"使人听了非常震惊、害怕。",f:"事件真实发生，本身恶劣残酷，客观令人恐惧。",s:"贬",ex:["检察官接连列举了一系列骇人听闻的事实。听到这些，人们脸色苍白，双手颤抖地走出法庭，有些人感到恶心，有些人服用了止痛药，有些人甚至失去了知觉。"]},
+  {g:39,n:"耸人听闻",d:"故意夸大或捏造事实，使听的人感到震惊。",f:"刻意编造、放大虚假消息，制造恐慌。",s:"贬",ex:["他用自己的亲眼所见，直接驳斥了那些耸人听闻的传言。"]},
+  {g:40,n:"轻而易举",d:"很轻可以轻易举起。",f:"事情本身难度低，不用耗费力气就能完成。",s:"中",ex:["他凭借多年的谈判经验，三言两语就化解了双方的分歧，这场沟通堪称轻而易举。"]},
+  {g:40,n:"易如反掌",d:"简单得就像翻转自己的手掌一样。",f:"凸显某事难度极低、毫无阻碍，常用来对比凸显能力与任务的悬殊差距。",s:"中",ex:["现在通过手机可以随时监控庄稼地降雨量、地温、土壤含水量等等，再配合上干农活的丰富经验，处理问题简直易如反掌。"]},
+  {g:40,n:"手到擒来",d:"一伸手就能捕获到手。",f:"突出做事把握十足，出手就能取得成功。",s:"褒",ex:["凭着多年的静脉穿刺经验，采血工作对她而言也是手到擒来。"]},
+  {g:40,n:"游刃有余",d:"刀刃在牛的骨缝间自由游走，毫无阻滞。",f:"功底深厚、经验充足，处理过程从容。",s:"褒",ex:["客服主管面对“多位客户同时投诉”的场景，一边安抚情绪，一边快速分拨问题给对应专员，全程条理清晰，毫无慌乱，这种游刃有余的处理让投诉解决率提升60%."]},
+  {g:40,n:"信手拈来",d:"随手就能取来，不用刻意寻找。",f:"素材积累充足，随手就能引用调取。 72",s:"褒",ex:[]},
+  {g:41,n:"言不由衷",d:"口中说出的话语，并非发自内心真实想法。",f:"内心想法和口头表达不一致。",s:"中",ex:["党性修养强自然敢讲真话、敢建诤言，党性观念弱才会遮遮掩掩、言不由衷。"]},
+  {g:41,n:"阳奉阴违",d:"表面顺从遵从，背地里违背抵触。",f:"当面假意服从，私下消极对抗、拒不落实。",s:"贬",ex:["紧紧抓住正风肃纪反腐这个推进自我革命的重要抓手，一体推进“三不腐”，坚决把对党不忠诚不老实、阳奉阴违的两面人和腐败分子坚决清除出去。"]},
+  {g:41,n:"虚与委蛇",d:"假意客套周旋，敷衍应付对方。",f:"假意周旋、刻意疏远防备。",s:"贬",ex:["真诚与尊重不能流于形式，不是虚与委蛇的假意应酬，而是发自内心的情感表达。"]},
+  {g:42,n:"按图索骥",d:"按照画像去寻找千里马。",f:"褒义：依托图纸、线索、资料去搜寻目标；贬义：死守固有模板、教条，不懂灵活变通，机械办事。",s:"中",ex:["侦探按图索骥，根据目击者提供的嫌疑人特征和逃跑路线，最终在长途汽车站将其抓获。"]},
+  {g:42,n:"追根溯源",d:"追究事物根本，追溯起源源头。",f:"针对问题成因，向上探寻本源脉络，偏向宏观事理。",s:"中偏褒",ex:["历史学家追根溯源，通过比对不同朝代的文献，终于厘清了这一民俗的起源与演变。"]},
+  {g:42,n:"顺藤摸瓜",d:"顺着藤蔓，一步步找到藏在根部的瓜果。",f:"实务侦查、案情突破。",s:"中",ex:["顺藤摸瓜的调查让警方意识到，这起街头盗窃案背后竟隐藏着一个跨区域的犯罪团伙。"]},
+  {g:42,n:"刨根问底",d:"挖开树根，追问所有内情底细。",f:"口头反复追问行为。",s:"中",ex:["他刨根问底的态度让采访更深入，不仅问清事件经过，还追问了当事人的成长背景和心理动机。"]},
+  {g:43,n:"标新立异",d:"提出新奇独特的主张，刻意显示自己与众不同。",f:"刻意求新奇，不一定有优质成果。贬义：刻意追求另类、出格，只为博眼球，脱离实际；褒义：提出全新独到的观点见解。",s:"中",ex:["①设计师在传统服饰中加入科技面料，既保留文化元素又显未来感，这种标新立异的创新获得时尚界认可（褒义）。","②个别网红为博关注，故意穿奇装异服出席活动，内容却毫无内涵，这种标新立异的炒作被网友批评“哗众取宠”（贬义）"]},
+  {g:43,n:"别出心裁",d:"心中构思出与众不同的巧妙点子。",f:"突出想法新奇巧妙。",s:"褒",ex:["孩子们展开想象的翅膀，制作出一张张别出心裁的精美书签。"]},
+  {g:43,n:"独具匠心",d:"拥有独特精巧的艺术心思与工艺构思。",f:"创作者精巧、细腻、独到的艺术设计功底。",s:"褒",ex:["广西现代科技馆体系开启了一场跨越八桂大地的科普联动，将传统民俗与前沿科技深度融合，共赴一场独具匠心的科学之约。"]},
+  {g:43,n:"独辟蹊径",d:"独自开辟一条全新小路。",f:"做事的途径、思路创新。",s:"褒",ex:["老师不用“题海战术”，通过“游戏化教学”让学生主动学习，独辟蹊径的方法让班级成绩提升30%."]},
+  {g:43,n:"独树一帜",d:"单独树立起一面属于自己的旗帜。",f:"形成独特体系，有专属辨识度与行业地位。 75",s:"褒",ex:[]},
+  {g:44,n:"鱼龙混杂",d:"鱼和龙混在一起。",f:"比喻好坏混杂在一起，难以分辨。",s:"贬",ex:["家庭教育培训市场鱼龙混杂，家长何处寻“良方”。"]},
+  {g:44,n:"泥沙俱下",d:"泥土、砂石跟着河水一同冲下来。",f:"局势、行业快速发展时，好坏一同涌现。",s:"贬",ex:["面对五光十色的网络世界、泥沙俱下的信息涌流，广大网民要“置身事内”。"]},
+  {g:44,n:"良莠不齐",d:"莠（差的）、良（好的）两类掺杂，品质没法统一。",f:"形容好坏混杂在一起，水平、品质高低不一。",s:"贬",ex:["语音问答和群聊等功能对敏感信息筛查不严格，信息良莠不齐，极可能对未成年人的三观带来不可忽视的误导。"]},
+  {g:44,n:"鱼目混珠",d:"鱼眼睛冒充珍珠。",f:"用假的冒充真品、劣质冒充精品。",s:"贬",ex:["更值得警惕的是，一些不法商贩用“消码神器”伪造假货，试图鱼目混珠。这类行为涉嫌生产销售假冒伪劣商品，必然会受到法律的严厉打击。"]},
+  {g:44,n:"滥竽充数",d:"不会吹竽的人混在吹竽的队伍里凑数。",f:"1.无真才实学，混在内行人群里充行家；2.以次充好，拿次品混在好东西里。",s:"贬",ex:["完善政绩考核评价体系，将考核的准星从“材料留痕”真正转向“实效至上”，通过差异化考评和穿透式评估，让滥竽充数者失去市场，让勇于破冰者站上舞台，真正实现凭实绩排座次、以实干论英雄。"]},
+  {g:44,n:"浑水摸鱼",d:"浑浊水里趁机捞鱼。",f:"比喻趁局面混乱，从中捞取好处、投机牟利。",s:"贬",ex:["一批符合国家标准的专业人员将陆续进入市场，更好满足考生的个性化需求；而那些仅靠几天培训速成、无真才实学的“假行家”，将越来越难浑水摸鱼。"]},
+  {g:45,n:"应有尽有",d:"凡是应该具备的东西，全部都有。",f:"聚焦具体实物、商品、物资，只强调物品数量、品类齐全。",s:"中偏褒",ex:["新春年货节展厅里年货琳琅满目，各区县的农特产品和各种特色美食应有尽有。"]},
+  {g:45,n:"一应俱全",d:"所有配套需要的事物，一样不缺、全部齐备。",f:"聚焦成套配套、配套设施、配套功能，核心是“配套完整”。",s:"褒",ex:["“便民集市”中丰富的蔬菜、肉类、大米、食用油、调味品、奶制品、零食等一应俱全。"]},
+  {g:45,n:"包罗万象",d:"囊括、容纳了世间成千上万种事物。",f:"聚焦抽象内容、知识、题材、体系，强调涵盖范围极广、门类繁杂。",s:"中偏褒",ex:["从体现文化传承的匠心之作，到充满现代设计的创意潮品，再到展现异域风情的外国艺术品，包罗万象的展品吸引了大批参观者。78"]},
+  {g:46,n:"不胜枚举",d:"形容数量极多，无法逐一列举。",f:"东西多到举例子都举不过来。",s:"中",ex:["放眼江西，绿富同兴的例句不胜枚举。"]},
+  {g:46,n:"比比皆是",d:"形容到处都是，极其常见。",f:"到处都是，常见。",s:"中",ex:["在这片充满生机的热土上，垂直耕耘、追求卓越的民营企业比比皆是。"]},
+  {g:46,n:"车载斗量",d:"用车装载，以斗来量。",f:"侧重普通事物数量多。",s:"中",ex:["历代文人墨客吟咏春天的诗歌车载斗量。"]},
+  {g:46,n:"琳琅满目",d:"满眼都是珍贵、美好的东西。",f:"商品、文物、书籍等品质好、数量多。",s:"褒",ex:["本届图博会上，中外出版商带来数千种以图书为主题的文创产品，种类繁多、琳琅满目，深受读者欢迎。79"]},
+  {g:46,n:"层出不穷",d:"一层接一层地不断出现。",f:"动态持续更新、不断冒出新的。",s:"中",ex:["非物质文化遗产、文博IP等“爆款”频现，城市漫步、中式茶饮等成为时尚潮流，新模式、新业态层出不穷，服务消费亮点纷呈。"]},
+  {g:46,n:"俯拾皆是",d:"弯腰低头就能拾取，随手就能碰到。",f:"数量多+极易获取、随手可得。",s:"中",ex:["如今漫步古巷深处，木雕、石雕、砖雕俯拾皆是，刀法细腻，层次分明；纵横交错的小道，引人探幽。"]},
+  {g:46,n:"林林总总",d:"事物成群成堆，繁多簇拥的样子。",f:"数量庞大、成堆成片。",s:"中",ex:["清洁设备内壁的软膏、舱壁磁吸挂钩、标识管线贴纸⋯⋯虽说每一件没多少钱，但林林总总加起来也有几百元。"]},
+  {g:46,n:"形形色色",d:"形态、品类各式各样，每种样貌都不相同。",f:"种类、样貌、身份差异极大。",s:"中",ex:["少一些迷信和盲从，多一些理性和求证，就能远离形形色色的招生骗局。"]},
+  {g:46,n:"五花八门",d:"原指古代两种阵法，后引申为花样繁多、名目繁杂。",f:"花样、名目、形式、手段繁杂多变。",s:"中",ex:["关于减肥的视频、教程、图书等五花八门，减肥理念和方法也一直在推陈出新。"]},
+  {g:46,n:"汗牛充栋",d:"运输时牛累得出汗，存放时可堆至屋顶。",f:"藏书非常多。",s:"中",ex:["苏轼文集、全集、选本、传记汗牛充栋，解读文章更是蔚为大观。"]},
+  {g:46,n:"浩如烟海",d:"浩大繁多，犹如烟波浩渺的大海。",f:"典籍、图书、文献资料等极为丰富。",s:"中偏褒",ex:["我们在澳大利亚战争纪念馆和国家档案馆浩如烟海的资料中，找到李维恂的证词。"]},
+  {g:46,n:"卷帙浩繁",d:"书籍或篇章浩大繁多。",f:"书籍数量庞大或单部著作篇幅宏大。 80",s:"中",ex:[]},
+  {g:47,n:"凤毛麟角",d:"凤凰的羽毛、麒麟的犄角。",f:"人或事物品质出众、难得珍贵。",s:"褒",ex:["能在国际数学竞赛中连续夺冠的学生实属凤毛麟角，他们的逻辑思维和创新能力远超同龄人。"]},
+  {g:47,n:"屈指可数",d:"弯起几根手指就能全部数完。",f:"客观描述数量非常少。",s:"中",ex:["南极内陆被称为“白色沙漠”，目前有能力进入南极内陆科考的国家。屈指可数。"]},
+  {g:47,n:"吉光片羽",d:"吉光是上古神兽，神兽身上散落的一小块皮毛。",f:"古代残存的珍贵文物、残缺古籍。",s:"褒",ex:["古墓虽遭盗掘，考古人员仍发现几件反映当时工艺水平的残件，这些吉光片羽为研究提供了重要线索。81"]},
+  {g:48,n:"生生不息",d:"万物不断繁衍滋生，循环往复，永不停歇。",f:"生命力持续旺盛、不断繁衍存续，动态的生长、循环。",s:"中偏褒",ex:["科研团队的创新精神生生不息，老研究员带教新人，新成果又启发新课题，让实验室始终充满探索的热情。"]},
+  {g:48,n:"薪火相传",d:"前一根柴即将燃尽，后一根柴接续点燃，火种不会断绝。",f:"依靠一代代人主动接力、交接传递，人的传承能力。",s:"褒",ex:["老木匠收了5个徒弟，手把手教榫卯技艺，让这项非遗手艺在年轻人中薪火相传，避免了失传风险。"]},
+  {g:48,n:"一脉相承",d:"从同一条血脉、脉络延续发展而来。",f:"思想、理论、文化、制度拥有相同本源，内在内核、逻辑高度一致，事物同源。",s:"中偏褒",ex:["这家企业从“小作坊”到“上市公司”，“诚信经营”的核心理念始终没变，与创立时的初心一脉相承。"]},
+  {g:48,n:"源远流长",d:"江河源头幽深，河道绵延万里。",f:"历史积淀深厚、存续时间十分漫长。",s:"褒",ex:["这条河流发源于青藏高原，流经十多个省份，滋养了沿岸文明，源远流长的水系不仅是地理符号，更是文化纽带。82"]},
+  {g:49,n:"高屋建瓴",d:"在很高的屋顶上，把水往下倾倒，比如势不可挡。",f:"多指对事物把握全面，了解透彻，或言论见解高明，有高度、有广度。",s:"褒",ex:["总书记的重要讲话，高屋建瓴、总揽全局、思想深邃，全面总结了2025年经济工作。"]},
+  {g:49,n:"深入人心",d:"深深的进入人们的内心。",f:"某言论接地气，能被人民群众广泛接受。",s:"褒",ex:["同时，以积分制、道德评议会等机制强化引导，选树文明典型，推动孝老爱亲、邻里和睦的理念深入人心。"]},
+  {g:49,n:"根深蒂固",d:"根基牢固，难以动摇。",f:"某种思想、观念、习惯或社会现象等非常稳固，难以改变。",s:"中",ex:["此类只许自己科技领先、不许别国发展进步的强盗逻辑，是不加掩饰的“双标”做法，暴露了根深蒂固的霸权思维，本身就是对国际公平规则的践踏。"]},
+  {g:49,n:"颠扑不破",d:"无论怎样震动摔打都不会破损。",f:"理论的牢固性。",s:"中",ex:["回望新时代波澜壮阔的征程，一条颠扑不破的真理愈发熠熠生辉。83"]},
+  {g:49,n:"振聋发聩",d:"比喻用语言文字唤醒麻木的人。",f:"警醒作用。",s:"褒",ex:["这句诞生于毛泽东《反对本本主义》一文的重要论断，跨越95年依然振聋发聩。"]},
+  {g:49,n:"高深莫测",d:"人或事非常深沉，难以测量。",f:"学问等非常有高度、难以理解。",s:"中",ex:["以前觉得中医药知识高深莫测，离我们生活很远，没想到今天能在夜市里这么近距离地感受它。"]},
+  {g:49,n:"甚嚣尘上",d:"某种言论十分嚣张。",f:"不好的言论很流行。",s:"贬",ex:["当前，世界经济再次面临巨大挑战，单边主义、保护主义甚嚣尘上。"]},
+  {g:50,n:"春风化雨",d:"宜于万物生长的和风与时雨。",f:"教育的良好影响。",s:"褒",ex:["好的教育，春风化雨、润物无声。鲜活的思政教育，往往扎根脚下的土地，饱含生活的智慧，经得起时光的摩挲。84"]},
+  {g:50,n:"潜移默化",d:"人的思想、性格或习惯在不知不觉中受到外界的感染或影响而发生变化。",f:"潜意识的，无形的，自己都未察觉的内部变化。",s:"中",ex:["“日间忙农事、傍晚跳广场舞、闲时看大戏”已成为大义镇农民的新风尚，文明乡风在潜移默化中扎根生长。"]},
+  {g:50,n:"润物无声",d:"滋润万物却不发出声音。",f:"不张扬，不求回报的默默付出。",s:"褒",ex:["他没有端着茶杯闲谈，而是以茶为媒，用乡音乡语，将党的创新理论化作一个个生动的故事，润物无声地传入百姓心间。"]},
+  {g:50,n:"如沐春风",d:"感觉像沐浴在春风中一样舒适、温暖。",f:"主观的感受。",s:"褒",ex:["未必衣着华贵，却自有一股清朗之气；未必能言善辩，却一开口便让人如沐春风。以书为妆的人，能在喧嚣中保持清醒，在浮躁中守住笃定，年岁愈长，愈见风华。"]},
+  {g:50,n:"和风细雨",d:"温和的风和细小的雨。",f:"用缓和的态度来处理问题或者进行批评劝说。",s:"褒",ex:["作为党建引领基层治理的重要载体，“邻里守望”调解工作站始终锚定“就近便民”原则，因地制宜在社区党群服务中心、小区党群服务阵地或周边场所布设站点，让居民抬脚即至、遇事能说，在和风细雨中化解邻里矛盾，筑牢和谐根基。"]},
+  {g:51,n:"惟妙惟肖",d:"模仿得极其逼真、传神，简直与真的一模一样。",f:"神似，强调既像又活，有灵气。",s:"中偏褒",ex:["各种造型的熊猫剪纸惟妙惟肖，特制节日甜品、手工珠串均由孩子们完成。"]},
+  {g:51,n:"栩栩如生",d:"事物生动逼真，就像活的一样。",f:"生动，强调像活的一样（多用于静态艺术）。",s:"褒",ex:["穿紫河边，非遗桃源木雕龙舟刻绘得栩栩如生，千年民俗韵味与粼粼水波相映成趣。"]},
+  {g:51,n:"活灵活现",d:"描述或模仿的人或事物生动逼真，使人好像亲眼看到一样。",f:"活泼，强调描述绘声绘色，带动态感。",s:"褒",ex:["南狮灵动俏皮，闪转腾挪、探身采青，将狮子的喜、怒、哀、乐演绎得活灵活现。"]},
+  {g:51,n:"跃然纸上",d:"文学作品或绘画中的形象活泼生动，简直要“跳”出纸面。",f:"动态的，有生命力的灵动。（向外的生命力）。",s:"褒",ex:["在老师的悉心指导下，孩子们巧手翻飞，一张张精巧的龙舟剪纸作品跃然纸上。"]},
+  {g:51,n:"入木三分",d:"书法笔力刚劲有力，墨迹仿佛渗透进木头三分之深。",f:"在分析问题、描写人物或议论观点极其深刻、透彻、一针见血。（向内的穿透力）。",s:"褒",ex:["没有激昂的口号，却将一位女性的革命信仰刻画得入木三分。"]},
+  {g:51,n:"绘声绘色",d:"叙述、描写或表演得极其生动、逼真。",f:"讲故事、表演时丰富的感官的表现。",s:"褒",ex:["平均年龄10多岁的孩子们，用清澈而自信的声音，绘声绘色讲述一段段红色历史。86"]},
+  {g:52,n:"白驹过隙",d:"白色骏马飞快掠过缝隙，一晃而过。",f:"年月飞逝。",s:"中",ex:["时光似白驹过隙，战争的硝烟已经散去，但诞生于烽火中的《晋察冀画报》仍以特殊的方式拨动着人们的心弦。"]},
+  {g:52,n:"转瞬即逝",d:"仅仅转动眼珠的片刻，事物就消失不见。",f:"客观描述存续时间极短。",s:"中",ex:["文本是活态史诗的故事和表演在某一媒介上的定型物，它将转瞬即逝的表演转化为可跨越时间的物质存在，使史诗的信息得以积累、叠加和深化。"]},
+  {g:52,n:"稍纵即逝",d:"稍微一放松、一错过，就立刻消失。",f:"暗含必须及时抓住，一旦错失便无法重来。",s:"中",ex:["面对改革发展稳定的繁重任务，要增强紧迫感和主动性，机遇稍纵即逝，看准了就抓紧干，能多干就多干一些。"]},
+  {g:53,n:"时不我待",d:"时间不会等候我们。",f:"时光有限，人要主动把握、抓紧行动。",s:"褒",ex:["针对改革发展中的难点堵点，要有时不我待的紧迫感和功成必定有我的使命感，但不能急功近利、投机取巧，不能留下隐患，不能“空前绝后”、竭泽而渔。"]},
+  {g:53,n:"迫在眉睫",d:"事情已经逼近眉毛和睫毛，近在眼前。",f:"外部事态的危急程度。",s:"中",ex:["一段时间以来，行业跟风热门品类，导致陶瓷产品同质化竞争严重，企业寻找新的发展逻辑迫在眉睫。"]},
+  {g:53,n:"刻不容缓",d:"片刻也不能拖延，一刻都不容耽搁。",f:"事态极度紧急，必须立刻采取行动，强调马上落实举措。",s:"中",ex:["受强降雨影响，衡水市前进街大庆路东侧一处道路发生塌陷，导致供电线杆倾倒、地下供水管道爆管，抢修刻不容缓。"]},
+  {g:54,n:"一针见血",d:"针刺进身体立刻扎破血管，直接见血。",f:"评论、分析、话语精准戳中问题本质与核心痛点，直击要害。",s:"褒",ex:["书评中，作者不堆砌术语，直接点出“这本书的问题是情感表达悬浮，脱离现实生活”，这种一针见血的评价被读者称为“说出了心声”。"]},
+  {g:54,n:"言简意赅",d:"言辞简练，所含意思完整完备。",f:"文字、话语篇幅简短，同时完整涵盖全部核心信息。核心是“简洁且完整”。",s:"褒",ex:["领导在会议开场用三句话说明“会议主题、讨论重点、预期成果”，这种言简意赅的开场让会议效率提升不少。"]},
+  {g:54,n:"简明扼要",d:"简单易懂，抓住核心要点。",f:"多用于汇报、发言、方案提炼，简单明了，抓住要点。",s:"褒",ex:["在参与机构设立的咨询区域，一条条醒目的红色横幅悬挂在展台周围，简明扼要地传递着防非知识。"]},
+  {g:54,n:"通俗易懂",d:"浅显直白，普通大众都能够理解明白。",f:"语言浅显不晦涩，避开专业生僻术语，降低理解门槛，适配普通受众。",s:"中偏褒",ex:["政策解读会上，工作人员没念文件原文，而是用“举例+类比”讲清“医保报销新规则”，通俗易懂的方式让大爷大妈都听明白了。"]},
+  {g:55,n:"各自为政",d:"各自行使自己的政令。",f:"权责割裂、缺乏全局统筹。",s:"贬",ex:["基层政务服务中，民政、社保、医保部门若各自为政，群众办事就得在三个窗口重复排队，填报相同信息却无法共享，既耗时又耗力。"]},
+  {g:55,n:"各行其是",d:"每个人都按照自己认定正确的方式做事。",f:"个体行动、思想不统一。",s:"贬",ex:["景区节假日管理中，售票、安检、引导岗位因标准不统一而各行其是，游客抱怨“规则一天一变”，体验感骤降。"]},
+  {g:55,n:"群龙无首",d:"一群龙却没有领头的首领。",f:"集体完全缺失核心负责人。",s:"中偏贬",ex:["每一军区，每一分区，必须承认一个比较优秀一点的同志为领导核心”，解决群龙无首问题。"]},
+  {g:55,n:"尾大不掉",d:"尾巴过于粗大，身体难以摆动。",f:"上下级权力失衡，管控失效。",s:"贬",ex:["党的规模大了，一些人容易出现搞小山头、小圈子、小团伙现象，容易出现尾大不掉、自行其是问题，破坏党的团结统一，影响党的凝聚力战斗力。"]},
+  {g:55,n:"党同伐异",d:"偏袒与自己观点相同的人，排挤持不同意见者。",f:"派系偏见、排斥不同声音。",s:"贬",ex:["进党当局不但充耳不闻，反而把能源问题当作党同伐异、打压对手的工具，罔顾台湾民生福祉和产业发展。"]},
+  {g:56,n:"毫无二致",d:"完全一致，没有丝毫两样、半点差别。",f:"两件事物百分百完全相同，不存在任何差异。",s:"中",ex:["正是这样精益求精的追求，本次修缮的景陵最大程度还原了其历史风貌，每个部位的砖瓦陵墙都与其历史原貌毫无二致。"]},
+  {g:56,n:"异曲同工",d:"曲调各不相同，演奏出来却同样精妙动听。",f:"突出方式不同、成效俱佳。",s:"褒",ex:["两位画家一位用“工笔”画花鸟，一位用“写意”画花鸟，都展现了生命的灵动，异曲同工的艺术让观众赞叹“各有千秋”。"]},
+  {g:56,n:"千篇一律",d:"上千篇文章都套用同一个模板，毫无变化。",f:"缺少个性与新意，带有呆板、单调、缺乏创新的批判意味。",s:"贬",ex:["不少名镇名村、历史文化街区在开发旅游后，原住居民大量外迁，本地生活气息消失，小吃、纪念品、民宿千篇一律，最终沦为“有街无人的布景板”。"]},
+  {g:56,n:"大同小异",d:"主体大体上是相同的，只存在细微、无关紧要的差别。",f:"：整体核心一致，仅局部细节略有出入，差距极小。",s:"中",ex:["如今梨膏糖、梨膏棒棒糖、梨膏软糖等由梨膏衍生的产品遍地开花，内核大同小异。"]},
+  {g:57,n:"截然不同",d:"完全割裂分开，没有一点相同之处。",f:"强调两件事物完全相反、没有丝毫重合点。",s:"中",ex:["与传统工业用地模式截然不同，该项目采用标准化厂房集中建设模式，彻底改变了传统工业用地零散布局、低效利用的短板。"]},
+  {g:57,n:"大相径庭",d:"小路与庭院相距甚远。",f:"差异程度大，且存在明显偏离。",s:"中",ex:["新旧教材对同一知识点的解读一个侧重理论，一个侧重案例，表述逻辑完全不同，内容呈现大相径庭。"]},
+  {g:57,n:"相去甚远",d:"两者之间的距离、差距拉得非常远。",f:"程度、水平、预期与现实的落差大。",s:"中",ex:["有的地方拿到蓝图便匆匆铺摊子、上项目，看似热火朝天，实则与本地资源禀赋、群众所期所盼相去甚远。"]},
+  {g:57,n:"天壤之别",d:"一个在天上、一个在地下，差距极大。",f:"只突出差距巨大。 92",s:"中",ex:[]},
+  {g:57,n:"云泥之别",d:"天上的云彩、地上的泥土，一高一低。",f:"必然带有高低、优劣、尊卑、实力层级的对比。",s:"中",ex:["“平安”与“平庸”一字之差，其内涵则有云泥之别。"]},
+  {g:58,n:"相形见绌",d:"两件事物互相对比，就能显现出一方的不足与短处。",f:"侧重对比后凸显实力、水平、条件、品质存在客观差距。",s:"中",ex:["小区的旧健身器材锈迹斑斑、功能单一，与新建社区“智能健身仓”相比，就显得相形见绌了。"]},
+  {g:58,n:"黯然失色",d:"在对比之下，原本的光彩、亮色黯淡消退。",f:"原本具备光彩、亮点的人或事物，被另一方压制，自身风采、光辉、价值被掩盖。",s:"中",ex:["这片本该富饶的土地，因灌溉困难而黯然失色。"]},
+  {g:59,n:"厚此薄彼",d:"优待、看重这一方，轻视、冷淡另一方。",f:"主观偏心、双重标准，刻意区别对待，处事不公。",s:"贬",ex:["分片区召开会议，并不意味着割裂区域之间的协同，或是厚此薄彼、搞差异化对待。相反，会议正是尊重东、西片区在产业结构、市场需求、对外开放水平等方面的差异，通过精准捕捉各自“痛点”，因地制宜推动区域协同发展，避免“一刀切”带来的水土不服。"]},
+  {g:59,n:"不分彼此",d:"分不清你和我，没有界限、差别。",f:"人与人交情极深，心意相通、不计得失；处事一视同仁。",s:"褒",ex:["村里汉族、朝鲜族邻里总在一起过节，互相分享拿手吃食，从来不分彼此，和一家人一样，每天过得舒心又热闹。"]},
+  {g:59,n:"此起彼伏",d:"这边兴起，那边落下。",f:"连续交替出现。",s:"中",ex:["集市上叫卖声、讨价声此起彼伏，喧闹不止，真是沸反盈天。"]},
+  {g:59,n:"此消彼长",d:"这一方消减衰退，那一方增长壮大。",f:"突出双方相互制衡、增减互换。 94",s:"中",ex:[]},
+  {g:60,n:"寡见鲜闻",d:"见闻稀少，见识浅薄。",f:"评价人的眼界与认知水平。",s:"中偏贬",ex:["长期局限在单一圈子，不主动拓展视野，便容易寡见鲜闻。"]},
+  {g:60,n:"鲜为人知",d:"很少有别人知道。",f:"知晓范围小，少有人了解。",s:"中",ex:["他一生低调，虽在航天领域有重大贡献，却很少出现在媒体上，他的故事鲜为人知，直到退休才被报道。"]},
+  {g:61,n:"家喻户晓",d:"每家每户都清楚知晓。",f:"传播覆盖面极广。",s:"褒",ex:["民间故事通过口耳相传、戏曲演绎，历经千年仍被老人给孩子讲起，情节家喻户晓，成文化符号。"]},
+  {g:61,n:"众所周知",d:"所有人都知道。",f:"客观常识、公认事实、通用道理被所有人知道。",s:"中",ex:["春天是播种的季节，这是农耕社会流传下来的规律，众所周知的自然常识指导着农民的生产节奏。"]},
+  {g:61,n:"脍炙人口",d:"美味烤肉人人爱吃。",f:"形容文艺作品，内容精妙、广受称赞、广为传诵。",s:"褒",ex:["《乡愁》语言质朴却情感浓厚，入选课本后被几代人背诵，成为脍炙人口的经典，每次朗诵都引发共鸣。"]},
+  {g:61,n:"妇孺皆知",d:"妇女、孩童全都明白。",f:"事情浅显直白、门槛极低，不用深入理解就能了解。",s:"褒",ex:["“吐鲁番的葡萄哈密的瓜，库尔勒的香梨顶呱呱”，这首在新疆妇孺皆知的民谚，道尽了哈密瓜在新疆瓜果中的独特地位。"]},
+  {g:61,n:"耳熟能详",d:"耳朵反复听，熟悉到能完整复述。",f:"听觉上反复接触，张口就能复述。",s:"褒",ex:["演出曲目既有耳熟能详的经典旋律，唤起几代人的共同记忆；也有充满黑土地风情的原创佳作，尽显冰城独有的艺术魅力。"]},
+  {g:62,n:"落井下石",d:"他人跌入井中，非但不施救，反而往井里投掷石头加害。",f:"突出主观恶意。",s:"贬",ex:["善良的人总是会在你难堪时，给予适时的鼓励和赞美，而不是落井下石。"]},
+  {g:62,n:"雪上加霜",d:"天降大雪之际，又叠加一层寒霜。",f:"客观境遇持续恶化，原本已有不幸，又接踵而来新的打击。",s:"贬",ex:["农场刚遭遇旱灾导致减产，紧接着又遇上病虫害，收成几乎归零，雪上加霜的处境让农户一筹莫展。"]},
+  {g:63,n:"雪中送炭",d:"大雪严寒时，给人送去炭火取暖。",f:"时提供关键援助，解决燃眉之急。",s:"褒",ex:["创企业资金链断裂之际，天使投资人的及时注资让项目得以继续，这笔支持堪称雪中送炭。"]},
+  {g:63,n:"锦上添花",d:"在精美的锦缎上面，再绣上好看的花朵。",f:"好上加好。 97",s:"褒",ex:[]},
+  {g:64,n:"厚积薄发",d:"深厚的积蓄，慢慢放出。",f:"长期的积累后在某一次重要的时候全部爆发。",s:"褒",ex:["科学探索从来都是一个苦尽甘来、厚积薄发的漫长过程。"]},
+  {g:64,n:"积微成著",d:"积累微小的，逐渐发展成显著的。",f:"细微事物的积累能够产生显著的效果，不要忽视细微。",s:"褒",ex:["从AI教育到赋能成长、赋能未来，中小学正用“积微成著”的扎实行动，为学子“筑基未来”。"]},
+  {g:64,n:"积重难返",d:"长期积累下来的问题、陋习或弊病，已经根深蒂固，很难再改变或挽回了。",f:"问题积累难以解决。",s:"贬",ex:["考察期间，习近平总书记多次谈及党中央决定开展这次学习教育的深远考量：“这些年，八项规定确实是推动了根本性的变化，风气为之一新，过去积重难返的现象大部分没有了。"]},
+  {g:64,n:"积羽沉舟",d:"羽毛虽然极其轻盈，但积攒得多了，也能把船压沉。",f:"微不足道的小问题或小坏事，如果任其积累，最终会产生颠覆性的、致命的后果。",s:"贬",ex:["如果对诸如此类“无关痛痒”的小事、“微不足道”的细节视而不见，日积月累便可能酿成隐患，最终“积羽沉舟，群轻折轴”，影响部队作战效能。"]},
+  {g:65,n:"绵延不绝",d:"长久延续、连贯不中断。",f:"常搭配：山川/文明。带有世代纵向延续的意味，时间跨度大。",s:"褒",ex:["家族的木工手艺从清朝传至今天，爷爷教父亲，父亲教儿子，每代都有传人，绵延不绝的传承让这项技艺从未失传。"]},
+  {g:65,n:"连绵不断",d:"事物一层接一层，持续接续无间断。",f:"空间堆叠、一波接一波持续涌现。",s:"中",ex:["内蒙古、甘肃联手建设锁边林草带，把两省交界处的治沙“断档区”缝合成一条连绵不断的绿色防线，有效阻止了巴丹吉林、腾格里两大沙漠蔓延合龙。"]},
+];
+
+
+
+// Idiom state
+let idiomState = { statusFilter: 'all', search: '', freqFilter: 'all', groupFilter: 'all', chapterFilter: 'all', page: 1, perPage: 15, mode: 'browse' };
+let idiomUserState = {}; // user mastery tracking
+
+function loadIdiomState() {
+  try {
+    const d = localStorage.getItem('kaogong_idioms');
+    if (d) idiomUserState = JSON.parse(d);
+  } catch(e) {}
+}
+function saveIdiomState() {
+  localStorage.setItem('kaogong_idioms', JSON.stringify(idiomUserState));
+}
+
+function setIdiomStatusFilter(status) {
+  idiomState.statusFilter = status;
+  idiomState.page = 1;
+  document.querySelectorAll('#idiom-status-filters .filter-chip').forEach(c => c.classList.remove('active'));
+  event.target.classList.add('active');
+  renderIdioms();
+}
+
+function toggleIdiomStatus(idx, status) {
+  idiomUserState[idx] = status;
+  saveIdiomState();
+  renderIdioms();
+}
+
+function filterIdioms() {
+  idiomState.search = document.getElementById('idiom-search').value.toLowerCase();
+  idiomState.page = 1;
+  renderIdioms();
+}
+
+function onChapterFilterChange() {
+  const chapter = document.getElementById('idiom-chapter-filter').value;
+  idiomState.chapterFilter = chapter;
+  idiomState.groupFilter = 'all';
+  // Update group dropdown
+  const groupSelect = document.getElementById('idiom-group-filter');
+  const groups = chapter === 'all' ? IDIOM_GROUPS : IDIOM_GROUPS.filter(g => g.chapter === chapter);
+  groupSelect.innerHTML = '<option value="all">全部分组</option>' + groups.map(g => `<option value="${g.id}">第${g.id}组：${g.name}</option>`).join('');
+  idiomState.page = 1;
+  renderIdioms();
+}
+
+function onGroupFilterChange() {
+  idiomState.groupFilter = document.getElementById('idiom-group-filter').value;
+  idiomState.page = 1;
+  renderIdioms();
+}
+
+function renderIdioms() {
+  if (idiomState.mode === 'quiz') { renderQuizArea(); return; }
+  let filtered = IDIOMS_DATA.map((item, idx) => ({...item, idx}));
+
+  // Search filter
+  if (idiomState.search) {
+    const q = idiomState.search;
+    filtered = filtered.filter(i => i.n.includes(q) || i.d.includes(q) || i.f.includes(q));
+  }
+  // Group filter
+  if (idiomState.groupFilter !== 'all') {
+    filtered = filtered.filter(i => i.g === parseInt(idiomState.groupFilter));
+  }
+  // Chapter filter
+  if (idiomState.chapterFilter !== 'all') {
+    const groupIds = IDIOM_GROUPS.filter(g => g.chapter === idiomState.chapterFilter).map(g => g.id);
+    filtered = filtered.filter(i => groupIds.includes(i.g));
+  }
+  // Status filter
+  if (idiomState.statusFilter === 'known') filtered = filtered.filter(i => idiomUserState[i.idx] === 'known');
+  else if (idiomState.statusFilter === 'fuzzy') filtered = filtered.filter(i => idiomUserState[i.idx] === 'fuzzy');
+  else if (idiomState.statusFilter === 'unknown') filtered = filtered.filter(i => idiomUserState[i.idx] === 'unknown');
+  else if (idiomState.statusFilter === 'unmarked') filtered = filtered.filter(i => !idiomUserState[i.idx]);
+
+  // Stats
+  const known = Object.values(idiomUserState).filter(v => v === 'known').length;
+  const fuzzy = Object.values(idiomUserState).filter(v => v === 'fuzzy').length;
+  const unknown = Object.values(idiomUserState).filter(v => v === 'unknown').length;
+  const total = IDIOMS_DATA.length;
+  document.getElementById('idiom-stats').textContent = `共 ${total} 词 · 已掌握 ${known} · 模糊 ${fuzzy} · 未掌握 ${unknown} · 筛选 ${filtered.length} 词`;
+
+  // Pagination
+  const totalPages = Math.ceil(filtered.length / idiomState.perPage);
+  if (idiomState.page > totalPages) idiomState.page = totalPages || 1;
+  const start = (idiomState.page - 1) * idiomState.perPage;
+  const pageItems = filtered.slice(start, start + idiomState.perPage);
+
+  const container = document.getElementById('idiom-list');
+  if (!pageItems.length) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">📖</div><div class="empty-text">没有匹配的成语</div></div>';
+  } else {
+    container.innerHTML = pageItems.map(item => {
+      const group = IDIOM_GROUPS.find(g => g.id === item.g);
+      const groupName = group ? group.name : '';
+      const userStatus = idiomUserState[item.idx] || '';
+      const statusColor = userStatus === 'known' ? 'var(--success)' : userStatus === 'fuzzy' ? 'var(--warning)' : userStatus === 'unknown' ? 'var(--danger)' : 'var(--text-light)';
+      const statusText = userStatus === 'known' ? '已掌握' : userStatus === 'fuzzy' ? '模糊' : userStatus === 'unknown' ? '未掌握' : '';
+      const sentimentColor = item.s.includes('褒') ? 'var(--success)' : item.s.includes('贬') ? 'var(--danger)' : 'var(--text-sec)';
+      
+      return `<div class="card" style="padding:14px;margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
+              <span style="font-size:16px;font-weight:700;">${esc(item.n)}</span>
+              ${item.s ? `<span style="font-size:11px;padding:1px 6px;border-radius:8px;background:${sentimentColor}15;color:${sentimentColor};">${esc(item.s)}</span>` : ''}
+              ${statusText ? `<span style="font-size:11px;color:${statusColor};font-weight:500;">${statusText}</span>` : ''}
+            </div>
+            <div style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:6px;">${esc(item.d)}</div>
+            ${item.f ? `<div style="font-size:12px;color:var(--primary);margin-bottom:6px;"><b>侧重：</b>${esc(item.f)}</div>` : ''}
+            ${item.ex.length ? item.ex.map(e => `<div style="font-size:12px;color:var(--text-sec);padding-left:10px;border-left:2px solid var(--primary-light);margin-top:4px;line-height:1.5;">"${esc(e)}"</div>`).join('') : ''}
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:8px;border-top:1px solid var(--border);">
+          <span style="font-size:11px;color:var(--text-light);">第${item.g}组 · ${esc(groupName)}</span>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-sm" style="padding:6px 12px;font-size:12px;background:${userStatus==='known'?'var(--success-light)':'var(--bg)'};color:${userStatus==='known'?'#059669':'var(--text-sec)'};border:1px solid ${userStatus==='known'?'var(--success)':'var(--border)'};" onclick="toggleIdiomStatus(${item.idx},'known')">✓ 掌握</button>
+            <button class="btn btn-sm" style="padding:6px 12px;font-size:12px;background:${userStatus==='fuzzy'?'var(--warning-light)':'var(--bg)'};color:${userStatus==='fuzzy'?'var(--warning)':'var(--text-sec)'};border:1px solid ${userStatus==='fuzzy'?'var(--warning)':'var(--border)'};" onclick="toggleIdiomStatus(${item.idx},'fuzzy')">？ 模糊</button>
+            <button class="btn btn-sm" style="padding:6px 12px;font-size:12px;background:${userStatus==='unknown'?'var(--danger-light)':'var(--bg)'};color:${userStatus==='unknown'?'var(--danger)':'var(--text-sec)'};border:1px solid ${userStatus==='unknown'?'var(--danger)':'var(--border)'};" onclick="toggleIdiomStatus(${item.idx},'unknown')">✗ 不会</button>
+            <button class="btn btn-sm" style="padding:6px 12px;font-size:12px;background:var(--bg);color:var(--text-sec);border:1px solid var(--border);" onclick="toggleIdiomStatus(${item.idx},'')">重置</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  const pagination = document.getElementById('idiom-pagination');
+  if (totalPages <= 1) { pagination.innerHTML = ''; }
+  else {
+    let btns = '';
+    if (idiomState.page > 1) btns += `<button class="btn btn-sm btn-outline" onclick="idiomState.page--;renderIdioms()" style="margin:2px;">上一页</button>`;
+    btns += `<span style="font-size:13px;color:var(--text-sec);margin:0 8px;">${idiomState.page} / ${totalPages}</span>`;
+    if (idiomState.page < totalPages) btns += `<button class="btn btn-sm btn-outline" onclick="idiomState.page++;renderIdioms()" style="margin:2px;">下一页</button>`;
+    pagination.innerHTML = btns;
+  }
+}
+function setIdiomMode(mode) {
+  idiomState.mode = mode;
+  document.getElementById('mode-browse-btn').className = 'btn btn-sm ' + (mode === 'browse' ? 'btn-primary' : 'btn-outline');
+  document.getElementById('mode-quiz-btn').className = 'btn btn-sm ' + (mode === 'quiz' ? 'btn-primary' : 'btn-outline');
+  document.getElementById('browse-controls').style.display = mode === 'browse' ? 'block' : 'none';
+  document.getElementById('quiz-controls').style.display = mode === 'quiz' ? 'block' : 'none';
+  document.getElementById('idiom-list').style.display = mode === 'browse' ? 'block' : 'none';
+  document.getElementById('idiom-quiz-area').style.display = mode === 'quiz' ? 'block' : 'none';
+  document.getElementById('idiom-pagination').style.display = mode === 'browse' ? 'block' : 'none';
+  if (mode === 'quiz') renderQuizArea();
+  else renderIdioms();
+}
+
+let quizState = { cards: [], current: 0, known: 0, fuzzy: 0, unknown: 0, total: 0, flipped: false };
+
+function startQuiz() {
+  const scope = document.getElementById('quiz-scope').value;
+  const countSel = parseInt(document.getElementById('quiz-count').value);
+  const groupSel = document.getElementById('quiz-group').value;
+  let pool = IDIOMS_DATA.map((item, idx) => ({...item, idx}));
+  if (scope === 'unknown') {
+    pool = pool.filter(i => idiomUserState[i.idx] !== 'known');
+  }
+  if (groupSel !== 'all') {
+    pool = pool.filter(i => i.g === parseInt(groupSel));
+  }
+  if (!pool.length) { showToast('没有符合条件的成语', 'error'); return; }
+  const shuffled = pool.sort(() => Math.random() - 0.5);
+  const selected = countSel > 0 ? shuffled.slice(0, countSel) : shuffled;
+  quizState = { cards: selected, current: 0, known: 0, fuzzy: 0, unknown: 0, total: selected.length, flipped: false };
+  renderQuizArea();
+}
+
+function flipCard() {
+  quizState.flipped = true;
+  renderQuizArea();
+}
+
+function markCard(status) {
+  const card = quizState.cards[quizState.current];
+  if (!card) return;
+  if (status === 'known') {
+    quizState.known++;
+    idiomUserState[card.idx] = 'known';
+  } else if (status === 'fuzzy') {
+    quizState.fuzzy++;
+    idiomUserState[card.idx] = 'fuzzy';
+  } else {
+    quizState.unknown++;
+    idiomUserState[card.idx] = 'unknown';
+  }
+  saveIdiomState();
+  quizState.current++;
+  quizState.flipped = false;
+  renderQuizArea();
+}
+
+function renderQuizArea() {
+  const area = document.getElementById('idiom-quiz-area');
+
+  // No cards loaded yet
+  if (!quizState.cards.length) {
+    area.innerHTML = `<div class="card"><div class="empty-state">
+      <div class="empty-icon">🃏</div>
+      <div class="empty-text">选择范围后点击"开始翻卡"</div>
+      <div style="font-size:12px;color:var(--text-sec);">看到成语 → 默念释义 → 点卡片翻转</div>
+    </div></div>`;
+    return;
+  }
+
+  // Finished all cards
+  if (quizState.current >= quizState.total) {
+    const pct = quizState.total > 0 ? Math.round((quizState.known / quizState.total) * 100) : 0;
+    const grade = pct >= 90 ? '掌握得很扎实！' : pct >= 70 ? '不错，继续保持！' : pct >= 50 ? '还需要多练几轮' : '建议回浏览模式重点复习';
+    area.innerHTML = `<div class="card" style="text-align:center;">
+      <div style="font-size:48px;margin-bottom:12px;">${pct >= 70 ? '🎉' : '💪'}</div>
+      <div style="font-size:20px;font-weight:700;color:var(--primary);margin-bottom:4px;">本轮完成</div>
+      <div style="display:flex;justify-content:center;gap:16px;margin:16px 0;">
+        <div><div style="font-size:28px;font-weight:700;color:var(--success);">${quizState.known}</div><div style="font-size:12px;color:var(--text-sec);">记住了</div></div>
+        <div><div style="font-size:28px;font-weight:700;color:var(--warning);">${quizState.fuzzy}</div><div style="font-size:12px;color:var(--text-sec);">模糊</div></div>
+        <div><div style="font-size:28px;font-weight:700;color:var(--danger);">${quizState.unknown}</div><div style="font-size:12px;color:var(--text-sec);">没记住</div></div>
+      </div>
+      <div style="font-size:14px;color:var(--text-sec);margin-bottom:16px;">正确率 ${pct}% · ${grade}</div>
+      <div style="display:flex;gap:8px;justify-content:center;">
+        <button class="btn btn-primary" onclick="startQuiz()">再来一轮</button>
+        <button class="btn btn-outline" onclick="setIdiomMode('browse')">回浏览模式</button>
+      </div>
+    </div>`;
+    return;
+  }
+
+  const card = quizState.cards[quizState.current];
+  const group = IDIOM_GROUPS.find(g => g.id === card.g);
+  const flipped = quizState.flipped;
+
+  area.innerHTML = `<div class="card" style="padding:0;overflow:hidden;cursor:pointer;user-select:none;min-height:260px;" onclick="if(!quizState.flipped)flipCard()">
+    <!-- Progress bar -->
+    <div style="height:3px;background:var(--bg);">
+      <div style="height:100%;background:linear-gradient(90deg,var(--primary),var(--success));width:${(quizState.current / quizState.total) * 100}%;transition:width 0.3s;"></div>
+    </div>
+    <div style="padding:20px;">
+      <!-- Header -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <span style="font-size:13px;font-weight:600;color:var(--primary);">第 ${quizState.current + 1} / ${quizState.total} 卡</span>
+        <span style="font-size:12px;color:var(--text-sec);">✓${quizState.known} ？${quizState.fuzzy} ✗${quizState.unknown}</span>
+      </div>
+
+      ${!flipped ? `
+        <!-- FRONT: Show idiom name, tap to flip -->
+        <div style="text-align:center;padding:30px 0;">
+          <div style="font-size:28px;font-weight:800;color:var(--text);margin-bottom:12px;">${esc(card.n)}</div>
+          ${card.s ? `<div style="font-size:12px;color:${card.s.includes('褒') ? 'var(--success)' : card.s.includes('贬') ? 'var(--danger)' : 'var(--text-sec)'};">${esc(card.s)}</div>` : ''}
+          <div style="margin-top:24px;font-size:13px;color:var(--text-light);">先想一想释义，然后点击翻转 ↓</div>
+        </div>
+      ` : `
+        <!-- BACK: Show full definition -->
+        <div style="text-align:center;margin-bottom:16px;">
+          <div style="font-size:22px;font-weight:800;color:var(--primary);margin-bottom:4px;">${esc(card.n)}</div>
+          ${card.s ? `<div style="font-size:11px;color:${card.s.includes('褒') ? 'var(--success)' : card.s.includes('贬') ? 'var(--danger)' : 'var(--text-sec)'};">${esc(card.s)}</div>` : ''}
+        </div>
+        <div style="background:var(--bg);border-radius:var(--radius-sm);padding:14px;margin-bottom:10px;">
+          <div style="font-size:14px;color:var(--text);line-height:1.7;font-weight:500;">${esc(card.d)}</div>
+        </div>
+        ${card.f ? `<div style="font-size:13px;color:var(--primary);margin-bottom:10px;"><b>侧重：</b>${esc(card.f)}</div>` : ''}
+        ${card.ex.length ? card.ex.slice(0,2).map(e => `<div style="font-size:12px;color:var(--text-sec);padding-left:10px;border-left:2px solid var(--primary-light);margin-top:6px;line-height:1.5;">"${esc(e)}"</div>`).join('') : ''}
+        <div style="font-size:11px;color:var(--text-light);margin-top:12px;">第${card.g}组 · ${group ? esc(group.name) : ''}</div>
+        <!-- Rating buttons -->
+        <div style="display:flex;gap:8px;margin-top:16px;" onclick="event.stopPropagation()">
+          <button class="btn btn-sm" style="flex:1;background:var(--success);color:white;font-size:13px;padding:14px;min-height:48px;" onclick="event.stopPropagation();markCard('known')">✓ 记住了</button>
+          <button class="btn btn-sm" style="flex:1;background:var(--warning);color:white;font-size:13px;padding:14px;min-height:48px;" onclick="event.stopPropagation();markCard('fuzzy')">？ 模糊</button>
+          <button class="btn btn-sm" style="flex:1;background:var(--danger);color:white;font-size:13px;padding:14px;min-height:48px;" onclick="event.stopPropagation();markCard('unknown')">✗ 没记住</button>
+        </div>
+      `}
+    </div>
+  </div>`;
+}
+
+// ============ Daily Plan ============
+var planData = {};
+var planCurrentDate = '';
+
+function togglePlanForm(btn) {
+  var area = document.getElementById('plan-form-area');
+  var icon = btn.querySelector('.plan-toggle-icon');
+  if (area.style.display === 'none') {
+    area.style.display = 'block';
+    icon.style.transform = 'rotate(180deg)';
+  } else {
+    area.style.display = 'none';
+    icon.style.transform = 'rotate(0deg)';
+  }
+}
+
+function toggleAddReview(btn) {
+  var area = document.getElementById('add-review-area');
+  var icon = btn.querySelector('.add-toggle-icon');
+  if (area.style.display === 'none') {
+    area.style.display = 'block';
+    icon.style.transform = 'rotate(180deg)';
+  } else {
+    area.style.display = 'none';
+    icon.style.transform = 'rotate(0deg)';
+  }
+}
+
+function loadPlanData() {
+  try {
+    var d = localStorage.getItem('kaogong_plans');
+    if (d) planData = JSON.parse(d);
+  } catch(e) {}
+}
+
+function savePlanData() {
+  localStorage.setItem('kaogong_plans', JSON.stringify(planData));
+}
+
+function setPlanDateToToday() {
+  var t = today();
+  document.getElementById('plan-date-input').value = t;
+  planCurrentDate = t;
+  renderPlan();
+}
+
+function addPlanTask() {
+  var input = document.getElementById('plan-task-input');
+  var startTime = document.getElementById('plan-start-time').value;
+  var endTime = document.getElementById('plan-end-time').value;
+  var text = input.value.trim();
+  if (!text) { showToast('请输入任务内容', 'error'); return; }
+  if (!startTime) { showToast('请设置开始时间', 'error'); return; }
+
+  var date = planCurrentDate || today();
+  if (!planData[date]) planData[date] = [];
+
+  planData[date].push({
+    id: genId(),
+    text: text,
+    startTime: startTime,
+    endTime: endTime || '',
+    done: false
+  });
+
+  // Sort by start time
+  planData[date].sort(function(a,b) { return a.startTime.localeCompare(b.startTime); });
+  savePlanData();
+
+  input.value = '';
+  document.getElementById('plan-start-time').value = '';
+  document.getElementById('plan-end-time').value = '';
+  showToast('任务已添加', 'success');
+  renderPlan();
+}
+
+function togglePlanTask(date, id) {
+  if (!planData[date]) return;
+  for (var i = 0; i < planData[date].length; i++) {
+    if (planData[date][i].id === id) {
+      planData[date][i].done = !planData[date][i].done;
+      break;
+    }
+  }
+  savePlanData();
+  renderPlan();
+}
+
+function deletePlanTask(date, id) {
+  if (!planData[date]) return;
+  planData[date] = planData[date].filter(function(t) { return t.id !== id; });
+  savePlanData();
+  showToast('已删除', 'success');
+  renderPlan();
+}
+
+function renderPlan() {
+  var dateInput = document.getElementById('plan-date-input');
+  if (dateInput && !planCurrentDate) {
+    planCurrentDate = today();
+    dateInput.value = today();
+    dateInput.onchange = function() {
+      planCurrentDate = this.value;
+      renderPlan();
+    };
+  }
+
+  var date = planCurrentDate || today();
+  var tasks = planData[date] || [];
+  var doneCount = tasks.filter(function(t) { return t.done; }).length;
+  var total = tasks.length;
+  var pct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
+
+  // Date display
+  var dateDisplay = document.getElementById('plan-date-display');
+  if (dateDisplay) {
+    var parts = date.split('-');
+    var isToday = date === today();
+    dateDisplay.textContent = (isToday ? '今天 · ' : '') + parts[0] + '年' + parseInt(parts[1]) + '月' + parseInt(parts[2]) + '日';
+  }
+
+  // Progress
+  var progressText = document.getElementById('plan-progress-text');
+  var progressBar = document.getElementById('plan-progress-bar');
+  if (progressText) progressText.textContent = doneCount + '/' + total + ' 已完成' + (total > 0 ? ' (' + pct + '%)' : '');
+  if (progressBar) progressBar.style.width = pct + '%';
+
+  // Empty state
+  var emptyState = document.getElementById('plan-empty-state');
+  if (emptyState) emptyState.style.display = tasks.length === 0 ? 'block' : 'none';
+
+  // Task list
+  var list = document.getElementById('plan-task-list');
+  if (!list) return;
+  if (!tasks.length) { list.innerHTML = ''; return; }
+
+  list.innerHTML = tasks.map(function(task) {
+    var timeStr = task.startTime + (task.endTime ? ' - ' + task.endTime : '');
+    var isDone = task.done;
+    return '<div style="display:flex;align-items:center;gap:12px;padding:14px;background:' + (isDone ? 'var(--success-light)' : 'white') + ';border-radius:10px;margin-bottom:8px;border:1px solid ' + (isDone ? 'var(--success)' : 'var(--border)') + ';transition:all 0.2s;">' +
+      '<button onclick="togglePlanTask(\'' + date + '\',\'' + task.id + '\')" style="width:32px;height:32px;border-radius:50%;border:2px solid ' + (isDone ? 'var(--success)' : 'var(--border)') + ';background:' + (isDone ? 'var(--success)' : 'white') + ';color:white;font-size:16px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;min-width:32px;">' + (isDone ? '✓' : '') + '</button>' +
+      '<div style="flex:1;min-width:0;cursor:pointer;" onclick="togglePlanTask(\'' + date + '\',\'' + task.id + '\')">' +
+        '<div style="font-size:14px;font-weight:' + (isDone ? '400' : '600') + ';color:' + (isDone ? 'var(--text-sec)' : 'var(--text)') + ';text-decoration:' + (isDone ? 'line-through' : 'none') + ';margin-bottom:4px;">' + esc(task.text) + '</div>' +
+        '<div style="font-size:12px;color:var(--text-sec);">⏰ ' + timeStr + '</div>' +
+      '</div>' +
+      '<button onclick="deletePlanTask(\'' + date + '\',\'' + task.id + '\')" style="width:32px;height:32px;border:none;background:var(--danger-light);color:var(--danger);border-radius:50%;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">✕</button>' +
+    '</div>';
+  }).join('');
+}
+
+// ============ Init ============
+function init() {
+  load();
+  loadIdiomState();
+  loadPlanData();
+  document.getElementById('f-date').value = today();
+
+  // Initialize group dropdown with all groups
+  const groupSelect = document.getElementById('idiom-group-filter');
+  const quizGroupSelect = document.getElementById('quiz-group');
+  if (groupSelect) {
+    groupSelect.innerHTML = '<option value="all">全部分组</option>' + IDIOM_GROUPS.map(g => `<option value="${g.id}">第${g.id}组：${g.name}</option>`).join('');
+  }
+  if (quizGroupSelect) {
+    quizGroupSelect.innerHTML = '<option value="all">全部分组</option>' + IDIOM_GROUPS.map(g => `<option value="${g.id}">第${g.id}组：${g.name}</option>`).join('');
+  }
+
+  // First visit: start clean with no data
+  if (!localStorage.getItem('kaogong_data')) {
+    // no sample data
+  }
+
+  renderAll();
+}
+
+init();
+</script>
+</body>
+</html>
