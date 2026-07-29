@@ -1445,16 +1445,23 @@ function renderOverviewBar() {
     chips += '<div class="overview-chip plan" onclick="switchTab(\'dailyplan\')">📅 暂无计划</div>';
   }
 
-  // Review chip
-  if (dueToday.length > 0) {
-    chips += '<div class="overview-chip review" onclick="switchTab(\'dailyplan\')">🔄 待复盘 ' + dueToday.length + '</div>';
+  // Review chip (count all today items including overdue)
+  var allReviewItems = getTodayItems();
+  if (allReviewItems.length > 0) {
+    var dueCount = allReviewItems.filter(function(i) { return i.round.date === t; }).length;
+    var overCount = allReviewItems.filter(function(i) { return i.round.date < t; }).length;
+    var reviewLabel = '🔄 待复盘 ' + allReviewItems.length;
+    if (overCount > 0 && dueCount > 0) {
+      reviewLabel = '🔄 待复盘 ' + dueCount + ' + 逾期' + overCount;
+    }
+    chips += '<div class="overview-chip review" onclick="switchTab(\'review\')">' + reviewLabel + '</div>';
   } else {
-    chips += '<div class="overview-chip" style="background:var(--success-light);color:var(--success);" onclick="switchTab(\'dailyplan\')">✅ 复盘已清</div>';
+    chips += '<div class="overview-chip" style="background:var(--success-light);color:var(--success);" onclick="switchTab(\'review\')">✅ 复盘已清</div>';
   }
 
   // Overdue chip
   if (overdueItems.length > 0) {
-    chips += '<div class="overview-chip overdue" onclick="switchTab(\'dailyplan\')">⚠️ 逾期 ' + overdueItems.length + '</div>';
+    chips += '<div class="overview-chip overdue" onclick="switchTab(\'review\')">⚠️ 逾期 ' + overdueItems.length + '</div>';
   }
 
   // Mastery chip
