@@ -731,25 +731,54 @@ body {
       </div>
       <!-- Quiz mode controls -->
       <div id="quiz-controls" style="display:none;">
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
-          <span style="font-size:13px;color:var(--text-sec);">范围：</span>
-          <select class="form-select" id="quiz-scope" style="flex:1;min-width:120px;font-size:13px;padding:8px;">
-            <option value="all">全部成语</option>
-            <option value="unknown">仅未掌握</option>
-          </select>
-          <span style="font-size:13px;color:var(--text-sec);">数量：</span>
-          <select class="form-select" id="quiz-count" style="width:auto;font-size:13px;padding:8px;">
-            <option value="10">10个</option>
-            <option value="20">20个</option>
-            <option value="50">50个</option>
-            <option value="0">全部</option>
-          </select>
+        <div style="margin-bottom:8px;">
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+            <span style="font-size:13px;color:var(--text-sec);">范围：</span>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <label style="display:flex;align-items:center;gap:4px;padding:4px 8px;background:var(--bg);border-radius:6px;cursor:pointer;font-size:12px;min-height:32px;">
+                <input type="checkbox" class="quiz-scope-cb" value="all" checked onchange="updateQuizScopeLabel('all')" style="width:14px;height:14px;accent-color:var(--primary);">
+                <span>全部</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:4px;padding:4px 8px;background:var(--bg);border-radius:6px;cursor:pointer;font-size:12px;min-height:32px;">
+                <input type="checkbox" class="quiz-scope-cb" value="known" onchange="updateQuizScopeLabel('known')" style="width:14px;height:14px;accent-color:var(--success);">
+                <span style="color:var(--success);">✓ 已掌握</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:4px;padding:4px 8px;background:var(--bg);border-radius:6px;cursor:pointer;font-size:12px;min-height:32px;">
+                <input type="checkbox" class="quiz-scope-cb" value="fuzzy" onchange="updateQuizScopeLabel('fuzzy')" style="width:14px;height:14px;accent-color:var(--warning);">
+                <span style="color:var(--warning);">？ 模糊</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:4px;padding:4px 8px;background:var(--bg);border-radius:6px;cursor:pointer;font-size:12px;min-height:32px;">
+                <input type="checkbox" class="quiz-scope-cb" value="unknown" onchange="updateQuizScopeLabel('unknown')" style="width:14px;height:14px;accent-color:var(--danger);">
+                <span style="color:var(--danger);">✗ 没记住</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:4px;padding:4px 8px;background:var(--bg);border-radius:6px;cursor:pointer;font-size:12px;min-height:32px;">
+                <input type="checkbox" class="quiz-scope-cb" value="unmarked" onchange="updateQuizScopeLabel('unmarked')" style="width:14px;height:14px;accent-color:var(--text-light);">
+                <span style="color:var(--text-sec);">○ 未标记</span>
+              </label>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span style="font-size:13px;color:var(--text-sec);">数量：</span>
+            <select class="form-select" id="quiz-count" style="width:auto;font-size:13px;padding:8px;">
+              <option value="10">10个</option>
+              <option value="20">20个</option>
+              <option value="50">50个</option>
+              <option value="0">全部</option>
+            </select>
+          </div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
-          <span style="font-size:13px;color:var(--text-sec);">分组：</span>
-          <select class="form-select" id="quiz-group" style="flex:1;min-width:120px;font-size:13px;padding:8px;">
-            <option value="all">全部分组</option>
-          </select>
+        <div style="margin-bottom:8px;">
+          <button class="btn btn-sm btn-outline" onclick="toggleQuizGroupPanel()" style="width:100%;justify-content:center;gap:8px;font-size:13px;padding:10px;min-height:40px;">
+            <span style="font-size:14px;">📂</span>
+            <span id="quiz-group-label">选择分组（全选）</span>
+            <span style="margin-left:auto;font-size:12px;transition:transform 0.2s;" class="quiz-group-toggle">▼</span>
+          </button>
+          <div id="quiz-group-panel" style="display:none;padding:12px;background:var(--bg);border-radius:0 0 10px 10px;margin-top:-1px;border:1.5px solid var(--border);border-top:none;">
+            <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
+              <button class="btn btn-sm btn-ghost" onclick="toggleQuizGroupAll()" id="quiz-group-all-btn" style="font-size:12px;padding:4px 8px;min-height:28px;">取消全选</button>
+            </div>
+            <div id="quiz-group-checkboxes" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;max-height:200px;overflow-y:auto;"></div>
+          </div>
         </div>
         <button class="btn btn-sm btn-primary btn-block" onclick="startQuiz()">开始翻卡</button>
         <div style="font-size:12px;color:var(--text-sec);margin-top:6px;text-align:center;">看到成语 → 心里默念释义 → 点击卡片翻转查看答案</div>
@@ -2700,16 +2729,84 @@ function setIdiomMode(mode) {
 
 let quizState = { cards: [], current: 0, known: 0, fuzzy: 0, unknown: 0, total: 0, flipped: false };
 
-function startQuiz() {
-  const scope = document.getElementById('quiz-scope').value;
-  const countSel = parseInt(document.getElementById('quiz-count').value);
-  const groupSel = document.getElementById('quiz-group').value;
-  let pool = IDIOMS_DATA.map((item, idx) => ({...item, idx}));
-  if (scope === 'unknown') {
-    pool = pool.filter(i => idiomUserState[i.idx] !== 'known');
+function getSelectedQuizGroups() {
+  const cbs = document.querySelectorAll('.quiz-group-cb:checked');
+  return Array.from(cbs).map(cb => parseInt(cb.value));
+}
+
+function toggleQuizGroupAll() {
+  const cbs = document.querySelectorAll('.quiz-group-cb');
+  const allChecked = Array.from(cbs).every(cb => cb.checked);
+  cbs.forEach(cb => cb.checked = !allChecked);
+  document.getElementById('quiz-group-all-btn').textContent = allChecked ? '全选' : '取消全选';
+  updateQuizGroupLabel();
+}
+
+function toggleQuizGroupPanel() {
+  const panel = document.getElementById('quiz-group-panel');
+  const toggle = document.querySelector('.quiz-group-toggle');
+  if (panel.style.display === 'none') {
+    panel.style.display = 'block';
+    toggle.style.transform = 'rotate(180deg)';
+  } else {
+    panel.style.display = 'none';
+    toggle.style.transform = 'rotate(0deg)';
   }
-  if (groupSel !== 'all') {
-    pool = pool.filter(i => i.g === parseInt(groupSel));
+}
+
+function updateQuizGroupLabel() {
+  const cbs = document.querySelectorAll('.quiz-group-cb:checked');
+  const label = document.getElementById('quiz-group-label');
+  if (label) {
+    const total = document.querySelectorAll('.quiz-group-cb').length;
+    const checked = cbs.length;
+    if (checked === total) {
+      label.textContent = '选择分组（全选）';
+    } else if (checked === 0) {
+      label.textContent = '选择分组（未选）';
+    } else {
+      label.textContent = '选择分组（已选' + checked + '组）';
+    }
+  }
+}
+
+function getSelectedQuizScopes() {
+  const cbs = document.querySelectorAll('.quiz-scope-cb:checked');
+  return Array.from(cbs).map(cb => cb.value);
+}
+
+function updateQuizScopeLabel(clickedValue) {
+  const allCb = document.querySelector('.quiz-scope-cb[value="all"]');
+  const otherCbs = document.querySelectorAll('.quiz-scope-cb:not([value="all"])');
+  // 如果点了"全部"且是勾选，取消其他
+  if (clickedValue === 'all' && allCb.checked) {
+    otherCbs.forEach(cb => cb.checked = false);
+  }
+  // 如果点了具体分类，取消"全部"
+  if (clickedValue && clickedValue !== 'all') {
+    allCb.checked = false;
+  }
+  // 如果全部取消导致没有选择，自动勾回"全部"
+  const anyOtherChecked = Array.from(otherCbs).some(cb => cb.checked);
+  if (!allCb.checked && !anyOtherChecked) {
+    allCb.checked = true;
+  }
+}
+
+function startQuiz() {
+  const scopes = getSelectedQuizScopes();
+  const countSel = parseInt(document.getElementById('quiz-count').value);
+  const selectedGroups = getSelectedQuizGroups();
+  let pool = IDIOMS_DATA.map((item, idx) => ({...item, idx}));
+  // 范围筛选
+  if (!scopes.includes('all')) {
+    pool = pool.filter(i => {
+      const status = idiomUserState[i.idx] || 'unmarked';
+      return scopes.includes(status);
+    });
+  }
+  if (selectedGroups.length > 0 && selectedGroups.length < IDIOM_GROUPS.length) {
+    pool = pool.filter(i => selectedGroups.includes(i.g));
   }
   if (!pool.length) { showToast('没有符合条件的成语', 'error'); return; }
   const shuffled = pool.sort(() => Math.random() - 0.5);
@@ -3173,12 +3270,18 @@ function init() {
 
   // Initialize group dropdown with all groups
   const groupSelect = document.getElementById('idiom-group-filter');
-  const quizGroupSelect = document.getElementById('quiz-group');
   if (groupSelect) {
     groupSelect.innerHTML = '<option value="all">全部分组</option>' + IDIOM_GROUPS.map(g => `<option value="${g.id}">第${g.id}组：${g.name}</option>`).join('');
   }
-  if (quizGroupSelect) {
-    quizGroupSelect.innerHTML = '<option value="all">全部分组</option>' + IDIOM_GROUPS.map(g => `<option value="${g.id}">第${g.id}组：${g.name}</option>`).join('');
+
+  // Initialize quiz group checkboxes
+  const quizGroupContainer = document.getElementById('quiz-group-checkboxes');
+  if (quizGroupContainer) {
+    quizGroupContainer.innerHTML = IDIOM_GROUPS.map(g =>
+      `<label style="display:flex;align-items:center;gap:6px;padding:6px 8px;background:white;border-radius:6px;cursor:pointer;font-size:12px;min-height:32px;">` +
+      `<input type="checkbox" class="quiz-group-cb" value="${g.id}" checked onchange="updateQuizGroupLabel()" style="width:16px;height:16px;accent-color:var(--primary);flex-shrink:0;">` +
+      `<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${g.id}. ${g.name}</span></label>`
+    ).join('');
   }
 
   // First visit: start clean with no data
