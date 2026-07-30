@@ -1708,7 +1708,8 @@ function renderManage() {
     return;
   }
 
-  document.getElementById('manage-count').textContent = filtered.length ? `共 ${filtered.length} 条记录` : '';
+  var manageCountEl = document.getElementById('manage-count');
+  if (manageCountEl) manageCountEl.textContent = filtered.length ? `共 ${filtered.length} 条记录` : '';
   
   // 更新管理按钮旁的徽章
   const badge = document.getElementById('manage-count-badge');
