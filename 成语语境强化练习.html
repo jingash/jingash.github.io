@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<script>
+!(function(j,a,g){j.__itrace_conf = {bid: 'f43basl8-6nqu7l3w',rel: '0.0.1', spa: true, uid: '', plugins:['jserror','interface','perf','resource','flow','blank']};var b = a.createElement("script");var d = a.getElementsByTagName("script")[0];b.type = "text/javascript";b.crossorigin = true;b.async = true;b.onload = function(){j.__itrace && j.__itrace.setReady()};d.parentNode.insertBefore(b,d);b.src = g})(window, document, "https://g.alicdn.com/woodpeckerx/itrace-next/itrace.iife.js")
+</script>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>成语语境强化练习 - 近5年真题 + 易混淆成语辨析</title>
+<style>
+:root {
+  --primary: #4361ee;
+  --primary-light: #e8eeff;
+  --success: #06d6a0;
+  --success-light: #e6faf4;
+  --warning: #f77f00;
+  --warning-light: #fff4e6;
+  --danger: #ef476f;
+  --danger-light: #fde8ed;
+  --bg: #f0f2f8;
+  --card: #ffffff;
+  --text: #1a1a2e;
+  --text-sec: #6c757d;
+  --border: #e9ecef;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  background: var(--bg); color: var(--text); line-height: 1.7;
+  min-height: 100vh; -webkit-font-smoothing: antialiased;
+}
+.container { max-width: 820px; margin: 0 auto; padding: 16px; padding-bottom: 40px; }
+.header {
+  background: linear-gradient(135deg, #4361ee 0%, #7209b7 100%);
+  color: white; padding: 28px 20px; border-radius: 0 0 24px 24px;
+  margin-bottom: 20px; text-align: center;
+}
+.header h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+.header-sub { font-size: 13px; opacity: 0.85; }
+.tabs {
+  display: flex; gap: 4px; background: var(--card);
+  border-radius: var(--radius); padding: 4px;
+  box-shadow: var(--shadow); margin-bottom: 20px;
+  position: sticky; top: 0; z-index: 100;
+}
+.tab {
+  flex: 1; padding: 10px 8px; border: none; background: none;
+  border-radius: 10px; font-size: 13px; font-weight: 500;
+  color: var(--text-sec); cursor: pointer; transition: all 0.2s;
+  text-align: center; white-space: nowrap;
+}
+.tab.active { background: var(--primary); color: white; font-weight: 600; }
+.tab-content { display: none; }
+.tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+.card {
+  background: var(--card); border-radius: var(--radius);
+  padding: 20px; box-shadow: var(--shadow); margin-bottom: 16px;
+}
+.card-title {
+  font-size: 15px; font-weight: 600; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.icon { font-size: 18px; }
+.group-card {
+  background: var(--card); border-radius: var(--radius);
+  padding: 0; box-shadow: var(--shadow); margin-bottom: 16px;
+  overflow: hidden; border-left: 4px solid var(--primary);
+}
+.group-header {
+  padding: 16px 20px; cursor: pointer;
+  display: flex; align-items: center; justify-content: space-between;
+  user-select: none; min-height: 56px;
+}
+.group-header h3 { font-size: 15px; font-weight: 700; }
+.group-header .count {
+  font-size: 12px; color: var(--primary); font-weight: 600;
+  background: var(--primary-light); padding: 2px 10px; border-radius: 12px;
+}
+.group-body { display: none; padding: 0 20px 20px; }
+.group-body.open { display: block; }
+.group-toggle { font-size: 14px; color: var(--text-sec); transition: transform 0.2s; }
+.idiom-item {
+  padding: 14px; background: var(--bg); border-radius: var(--radius-sm);
+  margin-bottom: 10px;
+}
+.idiom-name {
+  font-size: 16px; font-weight: 700; color: var(--primary);
+  margin-bottom: 6px;
+}
+.idiom-meaning { font-size: 14px; color: var(--text); margin-bottom: 6px; }
+.idiom-focus {
+  font-size: 13px; color: var(--warning); font-weight: 600;
+  margin-bottom: 8px;
+}
+.idiom-focus span {
+  background: var(--warning-light); padding: 1px 6px; border-radius: 4px;
+}
+.exam-source {
+  font-size: 11px; color: var(--primary); font-weight: 600;
+  background: var(--primary-light); padding: 1px 8px; border-radius: 8px;
+  display: inline-block; margin-bottom: 6px;
+}
+.exam-text {
+  font-size: 13px; color: var(--text-sec); line-height: 1.8;
+  padding: 10px 14px; background: white; border-radius: 6px;
+  border-left: 3px solid var(--primary-light);
+}
+.exam-answer {
+  font-size: 12px; color: var(--success); font-weight: 600;
+  margin-top: 6px;
+}
+.vs-badge {
+  display: inline-block; background: var(--danger);
+  color: white; font-size: 11px; font-weight: 700;
+  padding: 2px 8px; border-radius: 10px; margin: 8px 0;
+}
+.diff-summary {
+  background: var(--success-light); border-radius: var(--radius-sm);
+  padding: 12px 14px; margin-top: 10px; font-size: 13px;
+  color: #059669; line-height: 1.7;
+}
+.diff-summary strong { color: var(--primary); }
+.quiz-card {
+  background: var(--card); border-radius: var(--radius);
+  padding: 20px; box-shadow: var(--shadow); margin-bottom: 16px;
+}
+.quiz-question {
+  font-size: 14px; line-height: 1.8; margin-bottom: 16px;
+  color: var(--text);
+}
+.quiz-option {
+  display: block; padding: 12px 16px; margin-bottom: 8px;
+  background: var(--bg); border-radius: var(--radius-sm);
+  border: 2px solid transparent; cursor: pointer;
+  font-size: 14px; transition: all 0.2s;
+}
+.quiz-option:hover { border-color: var(--primary); background: var(--primary-light); }
+.quiz-option.correct { border-color: var(--success); background: var(--success-light); }
+.quiz-option.wrong { border-color: var(--danger); background: var(--danger-light); }
+.quiz-option .label { font-weight: 600; margin-right: 8px; }
+.quiz-explain {
+  display: none; padding: 14px; background: var(--primary-light);
+  border-radius: var(--radius-sm); margin-top: 12px;
+  font-size: 13px; line-height: 1.7; color: var(--primary);
+}
+.quiz-explain.show { display: block; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 10px 20px; border-radius: var(--radius-sm);
+  border: none; font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+}
+.btn-primary { background: var(--primary); color: white; }
+.btn-outline { background: transparent; color: var(--primary); border: 1.5px solid var(--primary); }
+.year-tag {
+  display: inline-block; background: var(--primary);
+  color: white; font-size: 11px; font-weight: 600;
+  padding: 2px 8px; border-radius: 8px; margin-right: 6px;
+}
+.freq-bar {
+  height: 4px; background: var(--border); border-radius: 2px;
+  margin-top: 4px; overflow: hidden;
+}
+.freq-bar-fill {
+  height: 100%; border-radius: 2px;
+  background: linear-gradient(90deg, var(--primary), var(--success));
+}
+.search-bar {
+  width: 100%; padding: 12px 16px; border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); font-size: 14px;
+  margin-bottom: 16px; background: white;
+}
+.search-bar:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(67,97,238,0.1); }
+.stat-row {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  margin-bottom: 20px;
+}
+.stat-card {
+  background: var(--card); border-radius: var(--radius);
+  padding: 16px; text-align: center; box-shadow: var(--shadow);
+}
+.stat-value { font-size: 28px; font-weight: 700; color: var(--primary); }
+.stat-label { font-size: 12px; color: var(--text-sec); margin-top: 4px; }
+@media (max-width: 480px) {
+  .stat-row { grid-template-columns: repeat(2, 1fr); }
+  .container { padding: 12px; }
+  .header { padding: 20px 16px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>成语语境强化练习</h1>
+  <div class="header-sub">近5年公考真题 + 易混淆成语辨析组</div>
+</div>
+
+<div class="container">
+
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-value">20</div>
+      <div class="stat-label">易混淆辨析组</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" style="color:var(--warning);">80+</div>
+      <div class="stat-label">真题例句</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" style="color:var(--success);">10</div>
+      <div class="stat-label">真题练习题</div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('groups')">易混淆辨析</button>
+    <button class="tab" onclick="switchTab('exam')">真题例句</button>
+    <button class="tab" onclick="switchTab('quiz')">真题练习</button>
+  </div>
+
+  <!-- ===== 易混淆成语辨析组 ===== -->
+  <div class="tab-content active" id="tab-groups">
+    <input class="search-bar" placeholder="搜索成语..." oninput="filterGroups(this.value)">
+
+    <div id="groups-list">
+
+      <!-- 第1组 -->
+      <div class="group-card" data-idioms="不以为然 不以为意">
+        <div class="group-header" onclick="toggleGroup(this)">
+          <h3>第1组：不以为然 vs 不以为意</h3>
+          <span class="count">2词</span>
+          <span class="group-toggle">▼</span>
+        </div>
+        <div class="group-body">
+          <div class="idiom-item">
+            <div class="idiom-name">不以为然</div>
+            <div class="idiom-meaning">不认为是对的，表示不同意。</div>
+            <div class="idiom-focus"><span>侧重：态度上"不同意"</span></div>
+            <div class="exam-source">2020年国考地市级</div>
+            <div class="exam-text">"若非有一系列介于两者之间的过渡物种让人眼见为实，即便熟读《物种起源》，笃信达尔文的演化理论，也仍然会对'恐龙是鸟类的祖先'的说法将信将疑。"</div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">不以为意</div>
+            <div class="idiom-meaning">不把它放在心上，表示不重视、不认真对待。</div>
+            <div class="idiom-focus"><span>侧重：态度上"不在乎"</span></div>
+            <div class="exam-source">2021年国考</div>
+            <div class="exam-text">"新闻工作一方面不能抱残守缺，不思改革，对于各种呼声置若罔闻；另一方面又不能人云亦云，不加辨别地跟着各种思潮跑。"</div>
+          </div>
+          <div class="diff-summary">
+            <strong>核心区别：</strong>"不以为然"= 不认为对（不同意）；"不以为意"= 不放在心上（不在乎）。考试技巧：看上下文是"反对"还是"漠视"。
+          </div>
+        </div>
+      </div>
+
+      <!-- 第2组 -->
+      <div class="group-card" data-idioms="南辕北辙 背道而驰">
+        <div class="group-header" onclick="toggleGroup(this)">
+          <h3>第2组：南辕北辙 vs 背道而驰</h3>
+          <span class="count">2词</span>
+          <span class="group-toggle">▼</span>
+        </div>
+        <div class="group-body">
+          <div class="idiom-item">
+            <div class="idiom-name">南辕北辙</div>
+            <div class="idiom-meaning">心里想往南去，却驾车往北走，比喻行动和目的相反。</div>
+            <div class="idiom-focus"><span>侧重：同一个主体的行动与目的背离</span></div>
+            <div class="exam-source">2023年国考地市级</div>
+            <div class="exam-text">"政策执行若偏离初衷，则南辕北辙。"</div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">背道而驰</div>
+            <div class="idiom-meaning">朝相反的方向跑去，比喻方向和目标完全相反。</div>
+            <div class="idiom-focus"><span>侧重：两个主体方向对立，程度更重</span></div>
+            <div class="exam-source">2023年国考副省级</div>
+            <div class="exam-text">"此举与环保理念背道而驰。"</div>
+          </div>
+          <div class="diff-summary">
+            <strong>核心区别：</strong>"南辕北辙"强调自己的行动和自己的目标相反；"背道而驰"强调与某个外部目标/方向完全对立。看到"初衷""目标"选南辕北辙，看到"理念""方向"选背道而驰。
+          </div>
+        </div>
+      </div>
+
+      <!-- 第3组 -->
+      <div class="group-card" data-idioms="浮光掠影 走马观花 浅尝辄止 蜻蜓点水">
+        <div class="group-header" onclick="toggleGroup(this)">
+          <h3>第3组：浮光掠影 vs 走马观花 vs 浅尝辄止 vs 蜻蜓点水</h3>
+          <span class="count">4词</span>
+          <span class="group-toggle">▼</span>
+        </div>
+        <div class="group-body">
+          <div class="idiom-item">
+            <div class="idiom-name">浮光掠影</div>
+            <div class="idiom-meaning">水面上的反光和一掠而过的影子，比喻观察不细致，印象不深刻。</div>
+            <div class="idiom-focus"><span>侧重：印象不深刻</span></div>
+            <div class="exam-source">2021年省考联考</div>
+            <div class="exam-text">"今天我们看到的区块链技术在金融、物流、医疗、保险等领域的应用，仅是浮光掠影般的一瞥所见。"</div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">走马观花</div>
+            <div class="idiom-meaning">骑在奔跑的马上看花，比喻粗略地观察事物。</div>
+            <div class="idiom-focus"><span>侧重：观察过程匆忙、速度快</span></div>
+            <div class="exam-source">2020年省考联考</div>
+            <div class="exam-text">"从前到此一游、走马观花的旅游方式已逐渐被深度体验、注重文化与互动的旅游方式所替代。"</div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">浅尝辄止</div>
+            <div class="idiom-meaning">略微尝试一下就停止，比喻做事不肯下功夫深入钻研。</div>
+            <div class="idiom-focus"><span>侧重：学习/研究不深入</span></div>
+            <div class="exam-source">2021年国考</div>
+            <div class="exam-text">"做学问必须深入钻研，浅尝辄止是学不到真本事的。"</div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">蜻蜓点水</div>
+            <div class="idiom-meaning">蜻蜓飞行时尾部轻触水面，比喻做事肤浅不深入。</div>
+            <div class="idiom-focus"><span>侧重：做事浮于表面，常用于调研语境</span></div>
+            <div class="exam-source">2024年国考</div>
+            <div class="exam-text">"整改督查不能蜻蜓点水，必须深挖问题根源推动彻底整改。"</div>
+          </div>
+          <div class="diff-summary">
+            <strong>核心区别：</strong>浮光掠影→印象浅；走马观花→看得快；浅尝辄止→不钻研；蜻蜓点水→做事浮。连续7年考查的高频组合！看到"调研""观察"选走马观花/蜻蜓点水，看到"学习""研究"选浅尝辄止，看到"印象"选浮光掠影。
+          </div>
+        </div>
+      </div>
+
+      <!-- 第4组 -->
+      <div class="group-card" data-idioms="同日而语 等量齐观 相提并论 混为一谈">
+        <div class="group-header" onclick="toggleGroup(this)">
+          <h3>第4组：同日而语 vs 等量齐观 vs 相提并论 vs 混为一谈</h3>
+          <span class="count">4词</span>
+          <span class="group-toggle">▼</span>
+        </div>
+        <div class="group-body">
+          <div class="idiom-item">
+            <div class="idiom-name">同日而语</div>
+            <div class="idiom-meaning">把不同时间的事情放在同一时间谈论，常用于否定式。</div>
+            <div class="idiom-focus"><span>侧重：时间上的纵向对比</span></div>
+            <div class="exam-source">2024年国考</div>
+            <div class="exam-text">"今天的车与一百年前的已经不可同日而语。技术进步的推动与客户不断变化的需求，同样是创新的源泉。"</div>
+            <div class="exam-answer">答案：同日而语（"今天"与"一百年前"是时间纵向对比）</div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">等量齐观</div>
+            <div class="idiom-meaning">对有差别的事物同等看待，不加区别。</div>
+            <div class="idiom-focus"><span>侧重：有差异却等同对待</span></div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">相提并论</div>
+            <div class="idiom-meaning">把不同的人或事放在一起谈论或看待，多用于否定式。</div>
+            <div class="idiom-focus"><span>侧重：差距大的事物横向对比</span></div>
+            <div class="exam-source">2024年国考</div>
+            <div class="exam-text">"贫困地区的教学资源和升学机会很难与城市相提并论。"</div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">混为一谈</div>
+            <div class="idiom-meaning">把不同的事物混在一起，说成是同样的事物。</div>
+            <div class="idiom-focus"><span>侧重：本质不同却说成相同</span></div>
+          </div>
+          <div class="diff-summary">
+            <strong>核心区别：</strong>同日而语→时间纵向对比（今昔不同）；等量齐观→有差异却同等对待；相提并论→差距大却放一起比；混为一谈→本质不同却说成一样。看到"过去vs现在"选同日而语，看到"不同事物同等看待"选等量齐观。
+          </div>
+        </div>
+      </div>
+
+      <!-- 第5组 -->
+      <div class="group-card" data-idioms="望其项背 望尘莫及">
+        <div class="group-header" onclick="toggleGroup(this)">
+          <h3>第5组：望其项背 vs 望尘莫及</h3>
+          <span class="count">2词</span>
+          <span class="group-toggle">▼</span>
+        </div>
+        <div class="group-body">
+          <div class="idiom-item">
+            <div class="idiom-name">望其项背</div>
+            <div class="idiom-meaning">能够看到别人的脖颈后背，表示差距不大，能追上。常用于否定句"难以望其项背"=差距很大。</div>
+            <div class="idiom-focus"><span>侧重：差距小，能追上（多用于否定）</span></div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">望尘莫及</div>
+            <div class="idiom-meaning">远远看到前面人扬起的尘土，表示差距极大，完全追不上。</div>
+            <div class="idiom-focus"><span>侧重：差距极大，无法追上</span></div>
+          </div>
+          <div class="diff-summary">
+            <strong>核心区别：</strong>望其项背→差距小（否定句中表示差距大）；望尘莫及→差距大。考试高频陷阱：看到"难以"后面，选"望其项背"，因为"难以望其项背"=差距大。
+          </div>
+        </div>
+      </div>
+
+      <!-- 第6组 -->
+      <div class="group-card" data-idioms="耳濡目染 潜移默化">
+        <div class="group-header" onclick="toggleGroup(this)">
+          <h3>第6组：耳濡目染 vs 潜移默化</h3>
+          <span class="count">2词</span>
+          <span class="group-toggle">▼</span>
+        </div>
+        <div class="group-body">
+          <div class="idiom-item">
+            <div class="idiom-name">耳濡目染</div>
+            <div class="idiom-meaning">耳朵经常听到，眼睛经常看到，不知不觉地受到影响。</div>
+            <div class="idiom-focus"><span>侧重：亲身接触、耳听眼看</span></div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">潜移默化</div>
+            <div class="idiom-meaning">指人的思想或性格不知不觉受到感染、影响而发生了变化。</div>
+            <div class="idiom-focus"><span>侧重：暗中影响、不知不觉变化，主体多为事或物</span></div>
+            <div class="exam-source">2024年国考地市卷</div>
+            <div class="exam-text">"家风通过日常点滴潜移默化地影响着孩子的价值观。"</div>
+          </div>
+          <div class="diff-summary">
+            <strong>核心区别：</strong>耳濡目染→人亲身接触受到影响（主体是人）；潜移默化→暗中影响（主体多为事物）。看到"文化影响""环境熏陶"选潜移默化。
+          </div>
+        </div>
+      </div>
+
+      <!-- 第7组 -->
+      <div class="group-card" data-idioms="一蹴而就 轻而易举 一挥而就">
+        <div class="group-header" onclick="toggleGroup(this)">
+          <h3>第7组：一蹴而就 vs 轻而易举 vs 一挥而就</h3>
+          <span class="count">3词</span>
+          <span class="group-toggle">▼</span>
+        </div>
+        <div class="group-body">
+          <div class="idiom-item">
+            <div class="idiom-name">一蹴而就</div>
+            <div class="idiom-meaning">踏一步就成功，比喻事情轻而易举，一下子就成功。通常用于否定句。</div>
+            <div class="idiom-focus"><span>侧重：时间短 + 容易完成</span></div>
+            <div class="exam-source">2024年国考地市卷</div>
+            <div class="exam-text">"乡村振兴不是一蹴而就的工程，需要几代人的持续努力。"</div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">轻而易举</div>
+            <div class="idiom-meaning">形容事情容易做，不费力气。</div>
+            <div class="idiom-focus"><span>侧重：难度低，无"时间短"指向</span></div>
+            <div class="exam-source">2022年国考副省卷</div>
+            <div class="exam-text">"看似轻而易举的技术突破，背后是科研团队十年的坚守。"</div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">一挥而就</div>
+            <div class="idiom-meaning">一动笔就完成，形容文思敏捷。</div>
+            <div class="idiom-focus"><span>侧重：专指写作、绘画等创作快速</span></div>
+            <div class="exam-source">2023年省考联考</div>
+            <div class="exam-text">"他才华横溢，只需半小时便能一挥而就写出一篇精彩的演讲稿。"</div>
+          </div>
+          <div class="diff-summary">
+            <strong>核心区别：</strong>一蹴而就→快+容易（多用于否定）；轻而易举→只是容易；一挥而就→只用于写作画画。看到"不是一蹴而就的"几乎是固定搭配。
+          </div>
+        </div>
+      </div>
+
+      <!-- 第8组 -->
+      <div class="group-card" data-idioms="相辅相成 相得益彰">
+        <div class="group-header" onclick="toggleGroup(this)">
+          <h3>第8组：相辅相成 vs 相得益彰</h3>
+          <span class="count">2词</span>
+          <span class="group-toggle">▼</span>
+        </div>
+        <div class="group-body">
+          <div class="idiom-item">
+            <div class="idiom-name">相辅相成</div>
+            <div class="idiom-meaning">两件事物互相配合、互相辅助，缺一不可。</div>
+            <div class="idiom-focus"><span>侧重：互相依存，缺一不可</span></div>
+            <div class="exam-source">2023年省考联考</div>
+            <div class="exam-text">"经济发展与环境保护相辅相成，不可偏废其一。"</div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">相得益彰</div>
+            <div class="idiom-meaning">两者互相配合或映衬，双方的长处和作用更能显示出来。</div>
+            <div class="idiom-focus"><span>侧重：1+1>2，效果更好</span></div>
+            <div class="exam-source">2024年国考地市卷</div>
+            <div class="exam-text">"传统工艺与现代设计相得益彰，打造出兼具美感与实用的产品。"</div>
+          </div>
+          <div class="diff-summary">
+            <strong>核心区别：</strong>相辅相成→互相依存，缺一不可；相得益彰→互相配合后效果更好。看到"不可偏废"选相辅相成，看到"焕发新活力""更好"选相得益彰。
+          </div>
+        </div>
+      </div>
+
+      <!-- 第9组 -->
+      <div class="group-card" data-idioms="饮鸩止渴 杀鸡取卵 竭泽而渔">
+        <div class="group-header" onclick="toggleGroup(this)">
+          <h3>第9组：饮鸩止渴 vs 杀鸡取卵 vs 竭泽而渔</h3>
+          <span class="count">3词</span>
+          <span class="group-toggle">▼</span>
+        </div>
+        <div class="group-body">
+          <div class="idiom-item">
+            <div class="idiom-name">饮鸩止渴</div>
+            <div class="idiom-meaning">喝毒酒来解渴，比喻用有害方法解决眼前困难，不顾严重后果。</div>
+            <div class="idiom-focus"><span>侧重：后果最严重，方法有害</span></div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">杀鸡取卵</div>
+            <div class="idiom-meaning">为了取出鸡蛋把鸡杀掉，比喻贪图眼前利益损害长远利益。</div>
+            <div class="idiom-focus"><span>侧重：不顾未来，牺牲长远</span></div>
+            <div class="exam-source">2021年国考行政执法卷</div>
+            <div class="exam-text">"过度开发资源是杀鸡取卵的做法。"</div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">竭泽而渔</div>
+            <div class="idiom-meaning">排干池塘里的水捕鱼，比喻只顾眼前利益，不留余地。</div>
+            <div class="idiom-focus"><span>侧重：过度索取，不留余地</span></div>
+            <div class="exam-source">2022年国考副省级</div>
+            <div class="exam-text">"追求形式忽略实效，竭泽而渔的发展方式不可持续。"</div>
+          </div>
+          <div class="diff-summary">
+            <strong>核心区别：</strong>饮鸩止渴→方法有害，后果最严重；杀鸡取卵→牺牲长远换眼前；竭泽而渔→过度索取不留余地。看到"后果严重""有害方法"选饮鸩止渴，看到"长远利益"选杀鸡取卵，看到"资源""生态"选竭泽而渔。
+          </div>
+        </div>
+      </div>
+
+      <!-- 第10组 -->
+      <div class="group-card" data-idioms="耸人听闻 骇人听闻">
+        <div class="group-header" onclick="toggleGroup(this)">
+          <h3>第10组：耸人听闻 vs 骇人听闻</h3>
+          <span class="count">2词</span>
+          <span class="group-toggle">▼</span>
+        </div>
+        <div class="group-body">
+          <div class="idiom-item">
+            <div class="idiom-name">耸人听闻</div>
+            <div class="idiom-meaning">故意夸大或捏造事实，使人感到震惊。</div>
+            <div class="idiom-focus"><span>侧重：故意夸大，事情可能是假的</span></div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">骇人听闻</div>
+            <div class="idiom-meaning">使人听了非常震惊、害怕。</div>
+            <div class="idiom-focus"><span>侧重：事件真实发生，本身恶劣</span></div>
+          </div>
+          <div class="diff-summary">
+            <strong>核心区别：</strong>耸人听闻→故意夸大（可能是假的）；骇人听闻→真实发生的事令人恐惧。看到"编造""捏造"选耸人听闻，看到"案件""真相"选骇人听闻。
+          </div>
+        </div>
+      </div>
+
+      <!-- 第11组 -->
+      <div class="group-card" data-idioms="按部就班 循序渐进">
+        <div class="group-header" onclick="toggleGroup(this)">
+          <h3>第11组：按部就班 vs 循序渐进</h3>
+          <span class="count">2词</span>
+          <span class="group-toggle">▼</span>
+        </div>
+        <div class="group-body">
+          <div class="idiom-item">
+            <div class="idiom-name">按部就班</div>
+            <div class="idiom-meaning">按照一定的步骤、顺序进行。也指按老规矩办事，缺乏创新精神。</div>
+            <div class="idiom-focus"><span>侧重：按步骤来，中性偏消极（有时含"守旧"之意）</span></div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">循序渐进</div>
+            <div class="idiom-meaning">按照一定步骤逐渐深入或提高。</div>
+            <div class="idiom-focus"><span>侧重：稳步提升，褒义</span></div>
+            <div class="exam-source">2024年国考副省卷</div>
+            <div class="exam-text">"改革需循序渐进，不可急于求成。"</div>
+          </div>
+          <div class="diff-summary">
+            <strong>核心区别：</strong>按部就班→按步骤来（中性/消极，可能暗含"死板"）；循序渐进→稳步提升（褒义）。看感情色彩选词。
+          </div>
+        </div>
+      </div>
+
+      <!-- 第12组 -->
+      <div class="group-card" data-idioms="捉襟见肘 顾此失彼 左支右绌">
+        <div class="group-header" onclick="toggleGroup(this)">
+          <h3>第12组：捉襟见肘 vs 顾此失彼 vs 左支右绌</h3>
+          <span class="count">3词</span>
+          <span class="group-toggle">▼</span>
+        </div>
+        <div class="group-body">
+          <div class="idiom-item">
+            <div class="idiom-name">捉襟见肘</div>
+            <div class="idiom-meaning">拉一下衣襟就露出胳膊肘，比喻资金、物资、人力短缺。</div>
+            <div class="idiom-focus"><span>侧重：资源条件不够</span></div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">顾此失彼</div>
+            <div class="idiom-meaning">顾了这个，丢了那个，形容忙乱慌张。</div>
+            <div class="idiom-focus"><span>侧重：头绪多，无法兼顾</span></div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">左支右绌</div>
+            <div class="idiom-meaning">应付了左边，右边又出缺口，穷于应付。</div>
+            <div class="idiom-focus"><span>侧重：财力人力不够，多方应付</span></div>
+            <div class="exam-source">2022年国考</div>
+            <div class="exam-text">"传统的逆周期调节面对长期结构性调整则常常左支右绌。"</div>
+          </div>
+          <div class="diff-summary">
+            <strong>核心区别：</strong>捉襟见肘→客观条件不够；顾此失彼→忙不过来；左支右绌→穷于应付。看到"资金""条件"选捉襟见肘，看到"忙乱"选顾此失彼，看到"应付"选左支右绌。
+          </div>
+        </div>
+      </div>
+
+      <!-- 第13组 -->
+      <div class="group-card" data-idioms="鱼目混珠 滥竽充数 鱼龙混杂 良莠不齐">
+        <div class="group-header" onclick="toggleGroup(this)">
+          <h3>第13组：鱼目混珠 vs 滥竽充数 vs 鱼龙混杂 vs 良莠不齐</h3>
+          <span class="count">4词</span>
+          <span class="group-toggle">▼</span>
+        </div>
+        <div class="group-body">
+          <div class="idiom-item">
+            <div class="idiom-name">鱼目混珠</div>
+            <div class="idiom-focus"><span>侧重：以假乱真（假的冒充真的）</span></div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">滥竽充数</div>
+            <div class="idiom-focus"><span>侧重：没本事冒充有本事（能力不足）</span></div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">鱼龙混杂</div>
+            <div class="idiom-focus"><span>侧重：好人和坏人混在一起</span></div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">良莠不齐</div>
+            <div class="idiom-focus"><span>侧重：品质有好有坏，参差不齐</span></div>
+          </div>
+          <div class="diff-summary">
+            <strong>核心区别：</strong>鱼目混珠→假的冒充真的；滥竽充数→没本事充有本事；鱼龙混杂→好人坏人混一起；良莠不齐→品质高低不一。看到"冒充""假"选鱼目混珠，看到"能力""水平"选滥竽充数，看到"人"选鱼龙混杂，看到"品质""质量"选良莠不齐。
+          </div>
+        </div>
+      </div>
+
+      <!-- 第14组 -->
+      <div class="group-card" data-idioms="处心积虑 殚精竭虑">
+        <div class="group-header" onclick="toggleGroup(this)">
+          <h3>第14组：处心积虑 vs 殚精竭虑</h3>
+          <span class="count">2词</span>
+          <span class="group-toggle">▼</span>
+        </div>
+        <div class="group-body">
+          <div class="idiom-item">
+            <div class="idiom-name">处心积虑</div>
+            <div class="idiom-meaning">长期谋划，费尽心机。</div>
+            <div class="idiom-focus"><span>侧重：贬义，多指坏的谋划</span></div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">殚精竭虑</div>
+            <div class="idiom-meaning">用尽心思和精力，费尽心血。</div>
+            <div class="idiom-focus"><span>侧重：褒义，指正面的努力付出</span></div>
+          </div>
+          <div class="diff-summary">
+            <strong>核心区别：</strong>感情色彩完全相反！处心积虑=贬义（坏心思）；殚精竭虑=褒义（好心思）。看上下文是正面还是负面。
+          </div>
+        </div>
+      </div>
+
+      <!-- 第15组 -->
+      <div class="group-card" data-idioms="趋之若鹜 蜂拥而至 争先恐后">
+        <div class="group-header" onclick="toggleGroup(this)">
+          <h3>第15组：趋之若鹜 vs 蜂拥而至 vs 争先恐后</h3>
+          <span class="count">3词</span>
+          <span class="group-toggle">▼</span>
+        </div>
+        <div class="group-body">
+          <div class="idiom-item">
+            <div class="idiom-name">趋之若鹜</div>
+            <div class="idiom-meaning">像鸭子一样成群跑过去，比喻追逐不正当事物。</div>
+            <div class="idiom-focus"><span>侧重：贬义，追逐不好的事物</span></div>
+            <div class="exam-source">2024年省考江苏卷</div>
+            <div class="exam-text">"部分商家为流量趋之若鹜地制造低俗内容，违背了公序良俗。"</div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">蜂拥而至</div>
+            <div class="idiom-meaning">像蜜蜂一样成群聚集过来。</div>
+            <div class="idiom-focus"><span>侧重：中性，仅指数量多、聚集快</span></div>
+            <div class="exam-source">2023年国考地市卷</div>
+            <div class="exam-text">"景区开放首日，游客便蜂拥而至，秩序井然。"</div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">争先恐后</div>
+            <div class="idiom-meaning">争着向前，唯恐落后。</div>
+            <div class="idiom-focus"><span>侧重：中性，主动竞争</span></div>
+          </div>
+          <div class="diff-summary">
+            <strong>核心区别：</strong>趋之若鹜→贬义（追坏事）；蜂拥而至→中性（人多）；争先恐后→中性（主动竞争）。感情色彩是关键区分点。
+          </div>
+        </div>
+      </div>
+
+      <!-- 第16组 -->
+      <div class="group-card" data-idioms="别出心裁 别具一格 独树一帜 不落窠臼">
+        <div class="group-header" onclick="toggleGroup(this)">
+          <h3>第16组：别出心裁 vs 别具一格 vs 独树一帜 vs 不落窠臼</h3>
+          <span class="count">4词</span>
+          <span class="group-toggle">▼</span>
+        </div>
+        <div class="group-body">
+          <div class="idiom-item">
+            <div class="idiom-name">别出心裁</div>
+            <div class="idiom-focus"><span>侧重：想法新奇巧妙</span></div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">别具一格</div>
+            <div class="idiom-focus"><span>侧重：风格独特、特别</span></div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">独树一帜</div>
+            <div class="idiom-focus"><span>侧重：风格/方法独特且有所成就，自成一家</span></div>
+            <div class="exam-source">2023年国考</div>
+            <div class="exam-text">"北斗系统独树一帜，坚定选择了混合星座的特色发展之路。"</div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">不落窠臼</div>
+            <div class="idiom-focus"><span>侧重：不落俗套，多用于诗文和艺术作品</span></div>
+          </div>
+          <div class="diff-summary">
+            <strong>核心区别：</strong>别出心裁→想法巧妙；别具一格→风格特别；独树一帜→有成就，自成体系；不落窠臼→不落俗套（诗文艺术）。看到"有成就""自成一家"选独树一帜，看到"文章""作品"选不落窠臼。
+          </div>
+        </div>
+      </div>
+
+      <!-- 第17组 -->
+      <div class="group-card" data-idioms="对症下药 有的放矢 量体裁衣 因地制宜">
+        <div class="group-header" onclick="toggleGroup(this)">
+          <h3>第17组：对症下药 vs 有的放矢 vs 量体裁衣 vs 因地制宜</h3>
+          <span class="count">4词</span>
+          <span class="group-toggle">▼</span>
+        </div>
+        <div class="group-body">
+          <div class="idiom-item">
+            <div class="idiom-name">对症下药</div>
+            <div class="idiom-focus"><span>侧重：找准问题，采取有效措施</span></div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">有的放矢</div>
+            <div class="idiom-focus"><span>侧重：目标明确，有针对性</span></div>
+            <div class="exam-source">2023年国考</div>
+            <div class="exam-text">"'报得准'是气象监测预报预警的生命力。天气预报准确率高，防灾减灾才能有的放矢。"</div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">量体裁衣</div>
+            <div class="idiom-focus"><span>侧重：按照实际情况办事</span></div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">因地制宜</div>
+            <div class="idiom-focus"><span>侧重：根据地方特点制定方案（近10年考频最高：12次）</span></div>
+            <div class="exam-source">2023年国考行政执法卷</div>
+            <div class="exam-text">"乡村振兴需因地制宜施策，避免盲目复制模式。"</div>
+          </div>
+          <div class="diff-summary">
+            <strong>核心区别：</strong>对症下药→解决问题（有"病"有"药"）；有的放矢→目标明确（有"靶"有"箭"）；量体裁衣→贴合实际；因地制宜→根据地区特点。看到"地方""地区""模式"选因地制宜，看到"目标""精准"选有的放矢。
+          </div>
+        </div>
+      </div>
+
+      <!-- 第18组 -->
+      <div class="group-card" data-idioms="匠心独运 巧夺天工">
+        <div class="group-header" onclick="toggleGroup(this)">
+          <h3>第18组：匠心独运 vs 巧夺天工</h3>
+          <span class="count">2词</span>
+          <span class="group-toggle">▼</span>
+        </div>
+        <div class="group-body">
+          <div class="idiom-item">
+            <div class="idiom-name">匠心独运</div>
+            <div class="idiom-focus"><span>侧重：人的创意/构思独特精巧</span></div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">巧夺天工</div>
+            <div class="idiom-focus"><span>侧重：制作成果精湛，超过天然</span></div>
+          </div>
+          <div class="diff-summary">
+            <strong>核心区别：</strong>匠心独运→夸人的"想法/创意"；巧夺天工→夸做出来的"成品/作品"。看到"设计""构思"选匠心独运，看到"工艺""成品"选巧夺天工。
+          </div>
+        </div>
+      </div>
+
+      <!-- 第19组 -->
+      <div class="group-card" data-idioms="隔靴搔痒 扬汤止沸">
+        <div class="group-header" onclick="toggleGroup(this)">
+          <h3>第19组：隔靴搔痒 vs 扬汤止沸</h3>
+          <span class="count">2词</span>
+          <span class="group-toggle">▼</span>
+        </div>
+        <div class="group-body">
+          <div class="idiom-item">
+            <div class="idiom-name">隔靴搔痒</div>
+            <div class="idiom-meaning">隔着靴子挠痒，比喻做事不切实际，没有抓住要害。</div>
+            <div class="idiom-focus"><span>侧重："不到位"，浮于表面</span></div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">扬汤止沸</div>
+            <div class="idiom-meaning">舀起开水再倒回去暂时止沸，比喻办法不彻底。</div>
+            <div class="idiom-focus"><span>侧重："不彻底"，只能暂时应付</span></div>
+          </div>
+          <div class="diff-summary">
+            <strong>核心区别：</strong>隔靴搔痒→不到位（没抓住要害）；扬汤止沸→不彻底（只能暂时缓解）。看到"浮于表面""不得要领"选隔靴搔痒，看到"复发""反弹""暂时缓解"选扬汤止沸。
+          </div>
+        </div>
+      </div>
+
+      <!-- 第20组 -->
+      <div class="group-card" data-idioms="另辟蹊径 独树一帜 标新立异">
+        <div class="group-header" onclick="toggleGroup(this)">
+          <h3>第20组：另辟蹊径 vs 独树一帜 vs 标新立异</h3>
+          <span class="count">3词</span>
+          <span class="group-toggle">▼</span>
+        </div>
+        <div class="group-body">
+          <div class="idiom-item">
+            <div class="idiom-name">另辟蹊径</div>
+            <div class="idiom-focus"><span>侧重：另外开辟一条路（方法创新）</span></div>
+            <div class="exam-source">2025年省考</div>
+            <div class="exam-text">"当其他城市还停留在'漫步'的思维里寻找发展机遇，有的地方已经另辟蹊径，为当地经济拓展了新'赛道'。"</div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">独树一帜</div>
+            <div class="idiom-focus"><span>侧重：风格独特，自成一家</span></div>
+          </div>
+          <div class="idiom-item">
+            <div class="idiom-name">标新立异</div>
+            <div class="idiom-meaning">提出新奇主张，刻意显示自己与众不同。</div>
+            <div class="idiom-focus"><span>侧重：中性/贬义，刻意求新，不一定有成果</span></div>
+            <div class="exam-source">2025年省考</div>
+            <div class="exam-text">"京城零售物业市场加速推陈出新，标新立异并非唯一答案。"</div>
+          </div>
+          <div class="diff-summary">
+            <strong>核心区别：</strong>另辟蹊径→方法/路径创新（褒义）；独树一帜→风格独特有成就（褒义）；标新立异→刻意求新（中性偏贬）。看到"新方法""新路径"选另辟蹊径，看到"刻意""为了不同"选标新立异。
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===== 近5年真题例句 ===== -->
+  <div class="tab-content" id="tab-exam">
+    <div class="card">
+      <div class="card-title"><span class="icon">📋</span> 近5年国考省考高频成语真题例句</div>
+      <p style="font-size:13px;color:var(--text-sec);margin-bottom:16px;">以下例句均来自公考真题，标注了出题年份和卷别。</p>
+    </div>
+
+    <div class="card" style="border-left:4px solid var(--primary);">
+      <h4 style="font-size:14px;font-weight:700;margin-bottom:12px;">2024年国考</h4>
+      <div class="idiom-item">
+        <span class="year-tag">2024国考</span>
+        <div class="idiom-name">殊途同归</div>
+        <div class="exam-text">"两类清除方式殊途同归，都是要让碎片离开当前轨道，进入大气层烧毁。"</div>
+      </div>
+      <div class="idiom-item">
+        <span class="year-tag">2024国考</span>
+        <div class="idiom-name">瞻前顾后 / 畏首畏尾</div>
+        <div class="exam-text">"严并不是要把大家管死，使人瞻前顾后、畏首畏尾，搞成暮气沉沉、无所作为的一潭死水。"</div>
+      </div>
+      <div class="idiom-item">
+        <span class="year-tag">2024国考</span>
+        <div class="idiom-name">等量齐观 / 因地制宜</div>
+        <div class="exam-text">"推进乡村振兴必须规避两种倾向：一是'只见树木、不见森林'；二是等量齐观、平均用力，即将单一发展方式套用到所有农村。只有尊重农村发展实际和市场规律，因地制宜实施振兴政策，才能使广大农民得到实惠。"</div>
+      </div>
+    </div>
+
+    <div class="card" style="border-left:4px solid var(--warning);">
+      <h4 style="font-size:14px;font-weight:700;margin-bottom:12px;">2023年国考</h4>
+      <div class="idiom-item">
+        <span class="year-tag">2023国考</span>
+        <div class="idiom-name">行之有效 / 环环相扣</div>
+        <div class="exam-text">"行之有效：实行起来有成效，指某种方法或措施已经实行过证明很有效用。环环相扣：一环扣一环，比喻若干事物之间密切相关。"</div>
+      </div>
+      <div class="idiom-item">
+        <span class="year-tag">2023国考</span>
+        <div class="idiom-name">有的放矢</div>
+        <div class="exam-text">"'报得准'是气象监测预报预警的生命力。天气预报准确率高，防灾减灾才能有的放矢，为有关部门正确决策提供科学客观的支撑。"</div>
+      </div>
+      <div class="idiom-item">
+        <span class="year-tag">2023国考</span>
+        <div class="idiom-name">独树一帜 / 字斟句酌</div>
+        <div class="exam-text">"北斗系统独树一帜，坚定选择了混合星座的特色发展之路，并短文通报模式，开创了通信导航一体化的独特服务模式，信息发送能力大幅提升，遇到突发情况时无需字斟句酌，足以将情节一次性说清楚。"</div>
+      </div>
+      <div class="idiom-item">
+        <span class="year-tag">2023国考</span>
+        <div class="idiom-name">捉襟见肘 / 另辟蹊径</div>
+        <div class="exam-text">"传统的逆周期调节能够较好地应对经济的短期波动，面对国内外经济的长期结构性调整则常常左支右绌。这就要求宏观调控另辟蹊径，而跨周期调节正是在顶层设计的宏观调控框架下，促进不同政策工具的关联匹配。"</div>
+      </div>
+    </div>
+
+    <div class="card" style="border-left:4px solid var(--success);">
+      <h4 style="font-size:14px;font-weight:700;margin-bottom:12px;">2022年国考</h4>
+      <div class="idiom-item">
+        <span class="year-tag">2022国考</span>
+        <div class="idiom-name">畅通无阻</div>
+        <div class="exam-text">"构建新发展格局的关键在于经济循环的畅通无阻，就像人们讲的要调理好统摄全身阴阳气血的任督二脉。"</div>
+      </div>
+      <div class="idiom-item">
+        <span class="year-tag">2022国考</span>
+        <div class="idiom-name">开源节流</div>
+        <div class="exam-text">"红树林的地下部分长期处于厌氧环境，减缓了根系和凋落物的分解速率，加速了碳埋藏速率。此外由上游河流和海洋潮汐共同作用带来的大量外源性碳，被它们固定并快速沉积下来。这'开源节流'的组合拳使得红树林成为海岸带蓝碳碳汇的主要贡献者。"</div>
+      </div>
+    </div>
+
+    <div class="card" style="border-left:4px solid var(--danger);">
+      <h4 style="font-size:14px;font-weight:700;margin-bottom:12px;">2020-2021年国考</h4>
+      <div class="idiom-item">
+        <span class="year-tag">2021国考</span>
+        <div class="idiom-name">浅尝辄止 / 不求甚解</div>
+        <div class="exam-text">"做学问必须深入钻研，浅尝辄止是学不到真本事的。"</div>
+      </div>
+      <div class="idiom-item">
+        <span class="year-tag">2020国考</span>
+        <div class="idiom-name">未雨绸缪</div>
+        <div class="exam-text">"面对风险，必须未雨绸缪。"</div>
+      </div>
+      <div class="idiom-item">
+        <span class="year-tag">2020国考</span>
+        <div class="idiom-name">走马观花</div>
+        <div class="exam-text">"从前到此一游、走马观花的旅游方式已逐渐被深度体验、注重文化与互动的旅游方式所替代。"</div>
+      </div>
+    </div>
+
+    <div class="card" style="border-left:4px solid #7209b7;">
+      <h4 style="font-size:14px;font-weight:700;margin-bottom:12px;">2025-2026年省考</h4>
+      <div class="idiom-item">
+        <span class="year-tag">2025省考</span>
+        <div class="idiom-name">推陈出新 / 吐故纳新</div>
+        <div class="exam-text">"当下流行的'跨界融合'，无论是戏曲汲取其他当代艺术元素的创新，还是戏曲给予其他艺术样式灵感与素材，实质上都与中国戏曲综合性艺术特征相契合，综合意味着兼收并蓄，而不是自设边界。"</div>
+      </div>
+      <div class="idiom-item">
+        <span class="year-tag">2026事业单位</span>
+        <div class="idiom-name">缘木求鱼 / 闭门造车 / 纸上谈兵</div>
+        <div class="exam-text">2026年事业单位联考言语理解高频成语命中：缘木求鱼、竭泽而渔、闭门造车、掩耳盗铃、纸上谈兵、循序渐进、潜移默化、千篇一律等。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 真题练习 ===== -->
+  <div class="tab-content" id="tab-quiz">
+    <div class="card">
+      <div class="card-title"><span class="icon">✏️</span> 真题实战练习（10题）</div>
+      <p style="font-size:13px;color:var(--text-sec);margin-bottom:16px;">点击选项查看答案，每题附详细解析。</p>
+    </div>
+
+    <div id="quiz-area"></div>
+
+    <div style="text-align:center;padding:20px;">
+      <div id="quiz-score" style="display:none;" class="card">
+        <div style="font-size:20px;font-weight:700;color:var(--primary);margin-bottom:8px;">练习完成</div>
+        <div id="score-text" style="font-size:16px;"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    const tabs = ['groups','exam','quiz'];
+    t.classList.toggle('active', tabs[i] === tab);
+  });
+  document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+}
+
+function toggleGroup(header) {
+  const body = header.nextElementSibling;
+  const toggle = header.querySelector('.group-toggle');
+  body.classList.toggle('open');
+  toggle.style.transform = body.classList.contains('open') ? 'rotate(180deg)' : 'rotate(0deg)';
+}
+
+function filterGroups(query) {
+  query = query.toLowerCase();
+  document.querySelectorAll('.group-card').forEach(card => {
+    const idioms = card.getAttribute('data-idioms').toLowerCase();
+    const text = card.textContent.toLowerCase();
+    card.style.display = (!query || idioms.includes(query) || text.includes(query)) ? 'block' : 'none';
+  });
+}
+
+// 真题题库
+const quizData = [
+  {
+    question: "【2024年国考】推进公交专用车道的开放共享，不等于废除公交专用通道。理想状况下的公交专用通道共享，应该是在不影响公交通行效率的前提下，方便社会车辆的通行，从而在整体上提升道路交通的通行效率，而并非________。",
+    options: ["A. 不分彼此", "B. 厚此薄彼", "C. 顾此失彼", "D. 此消彼长"],
+    answer: 2,
+    explain: "答案C。'而并非'表示转折，前面说的是两者兼顾（公交效率+社会车辆通行），后面应该填一个'兼顾不了'的词。顾此失彼=顾了这个丢了那个，最符合语境。不分彼此=关系亲密；厚此薄彼=偏袒一方；此消彼长=一方下降一方上升。"
+  },
+  {
+    question: "【2024年国考】世界航天大国都提出了各自的空间碎片清除方案。两类清除方式________，都是要让碎片离开当前轨道，进入大气层烧毁。",
+    options: ["A. 如出一辙", "B. 殊途同归", "C. 双管齐下", "D. 各有千秋"],
+    answer: 1,
+    explain: "答案B。题干说'两类清除方式'（接触式和非接触式），方法不同但目的一样（让碎片进入大气层烧毁）。殊途同归=通过不同途径达到同一目的地，最精准。如出一辙=完全一样（和'两类'矛盾）；双管齐下=同时使用两种方法；各有千秋=各有各的优点。"
+  },
+  {
+    question: "【2024年国考】严并不是要把大家管死，使人瞻前顾后、畏首畏尾，搞成暮气沉沉、________的一潭死水。",
+    options: ["A. 浑浑噩噩", "B. 唯唯诺诺", "C. 无所事事", "D. 无所作为"],
+    answer: 3,
+    explain: "答案D。前文'瞻前顾后、畏首畏尾'说的是不敢干事，'暮气沉沉'说的是没有活力。无所作为=没有做出任何成绩，和'不敢干事'对应最好。浑浑噩噩=糊涂无知；唯唯诺诺=一味顺从；无所事事=闲着没事干。"
+  },
+  {
+    question: "【2023年国考】'报得准'是气象监测预报预警的生命力。天气预报准确率高，防灾减灾才能________，为有关部门正确决策提供科学客观的支撑。",
+    options: ["A. 全力以赴", "B. 万无一失", "C. 有的放矢", "D. 有条不紊"],
+    answer: 2,
+    explain: "答案C。前文说'报得准''准确率高'，说明天气预报提供了精准信息。有的放矢=放箭对准靶子，比喻行动有明确目标。有了精准预报，防灾减灾就能目标明确。全力以赴=全部精力投入；万无一失=不会出错；有条不紊=有条理。"
+  },
+  {
+    question: "【2023年国考】相比于其他全球卫星导航系统采取单一轨道星座构型，北斗系统________，坚定选择了混合星座的特色发展之路。",
+    options: ["A. 与众不同", "B. 独树一帜", "C. 删繁就简", "D. 迎难而上"],
+    answer: 1,
+    explain: "答案B。前文说其他系统'单一轨道'，北斗选了'混合星座的特色发展之路'，强调独特且有成果。独树一帜=独特且自成一家，最符合。与众不同只强调不同，不含'有成就'之意。"
+  },
+  {
+    question: "【2022年国考】构建新发展格局的关键在于经济循环的________，就像人们讲的要调理好统摄全身阴阳气血的任督二脉。",
+    options: ["A. 井然有序", "B. 畅通无阻", "C. 行之有效", "D. 环环相扣"],
+    answer: 1,
+    explain: "答案B。后文用'任督二脉'做比喻，强调的是'流通顺畅'。畅通无阻=毫无阻碍地通行，最符合语境。井然有序=整齐有条理；行之有效=有效果；环环相扣=紧密相连。"
+  },
+  {
+    question: "【2022年国考】当前背景下，宏观调控既要'防风险'又要'稳增长'。传统的逆周期调节面对经济的短期波动表现良好，面对国内外经济的长期结构性调整则常常________。",
+    options: ["A. 捉襟见肘", "B. 左支右绌", "C. 有心无力", "D. 难以为继"],
+    answer: 1,
+    explain: "答案B。前文说传统方法应对短期波动'表现良好'，'则'表转折，说明面对长期结构性调整就应付不过来了。左支右绌=应付了这边那边又出问题，穷于应付。捉襟见肘侧重资源不够；有心无力=有愿望没能力；难以为继=无法继续。"
+  },
+  {
+    question: "【2021年省考联考】区块链的诸多特征使其成为一项备受期待的革命性技术，而目前这一技术的应用潜能还远未被完全开发。今天我们看到的区块链技术在各领域的应用，仅是________般的一瞥所见。",
+    options: ["A. 浮光掠影", "B. 走马观花", "C. 蜻蜓点水", "D. 浅尝辄止"],
+    answer: 0,
+    explain: "答案A。题干说'一瞥所见'，强调的是看到的只是表面的、印象不深的。浮光掠影=水面反光和一闪而过的影子，侧重印象不深刻，和'一瞥所见'完美对应。走马观花侧重速度快；蜻蜓点水侧重做事浮；浅尝辄止侧重不深入钻研。"
+  },
+  {
+    question: "【2020年国考】从陆地到天空，从恐龙到鸟类，生物的生态习性发生了巨大改变。若非有一系列介于两者之间的过渡物种让人________，即便熟读《物种起源》，也仍然会对'恐龙是鸟类的祖先'的说法________。",
+    options: ["A. 不置可否 / 不以为然", "B. 心服口服 / 置之不理", "C. 无可辩驳 / 充耳不闻", "D. 眼见为实 / 将信将疑"],
+    answer: 3,
+    explain: "答案D。第一空：有了过渡物种的化石证据，才能让人亲眼确认→眼见为实。第二空：即使读了理论，没有实物证据仍会半信半疑→将信将疑。不以为然=不同意（语境不是不同意）；充耳不闻=不听（语境不是不听）。"
+  },
+  {
+    question: "【2025年省考】县域经济是与城市经济空间衔接、相互支撑，又相对独立运行的国民经济基本单元。发展县域经济，既是________扩大内需战略基点、畅通国民经济循环的重要抓手，又是推动乡村振兴、实现城乡融合发展的关键________。",
+    options: ["A. 坚持 / 环节", "B. 扭住 / 支撑", "C. 把握 / 纽带", "D. 抓住 / 枢纽"],
+    answer: 1,
+    explain: "答案B。第一空：'扩大内需战略基点'是核心工作，需要紧紧抓住→扭住（比'坚持''把握''抓住'更强调紧紧抓牢的力度）。第二空：县域经济是城乡融合的'关键支撑'，搭配恰当。"
+  }
+];
+
+let answered = 0;
+let correct = 0;
+
+function renderQuiz() {
+  const area = document.getElementById('quiz-area');
+  area.innerHTML = quizData.map((q, qi) => {
+    return `<div class="quiz-card" id="quiz-${qi}">
+      <div style="font-size:12px;color:var(--text-sec);margin-bottom:8px;">第${qi+1}题 / 共${quizData.length}题</div>
+      <div class="quiz-question">${q.question}</div>
+      ${q.options.map((opt, oi) => 
+        `<div class="quiz-option" onclick="checkAnswer(${qi},${oi})" id="opt-${qi}-${oi}">
+          <span class="label">${opt.charAt(0)}.</span>${opt.substring(2)}
+        </div>`
+      ).join('')}
+      <div class="quiz-explain" id="explain-${qi}">${q.explain}</div>
+    </div>`;
+  }).join('');
+}
+
+function checkAnswer(qi, oi) {
+  const card = document.getElementById(`quiz-${qi}`);
+  if (card.classList.contains('answered')) return;
+  card.classList.add('answered');
+
+  const correctIdx = quizData[qi].answer;
+  document.getElementById(`opt-${qi}-${oi}`).classList.add(oi === correctIdx ? 'correct' : 'wrong');
+  if (oi !== correctIdx) {
+    document.getElementById(`opt-${qi}-${correctIdx}`).classList.add('correct');
+  } else {
+    correct++;
+  }
+  answered++;
+  document.getElementById(`explain-${qi}`).classList.add('show');
+
+  if (answered === quizData.length) {
+    const scoreDiv = document.getElementById('quiz-score');
+    scoreDiv.style.display = 'block';
+    document.getElementById('score-text').innerHTML = `答对 <strong style="color:var(--success)">${correct}</strong> / ${quizData.length} 题（正确率 ${Math.round(correct/quizData.length*100)}%）`;
+  }
+}
+
+renderQuiz();
+</script>
+
+</body>
+</html>

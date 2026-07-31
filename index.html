@@ -781,6 +781,13 @@ body {
           </div>
         </div>
         <button class="btn btn-sm btn-primary btn-block" onclick="startQuiz()">开始翻卡</button>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="btn btn-sm" style="flex:1;background:var(--danger-light);color:var(--danger);border:1px solid var(--danger);min-height:40px;" onclick="startErrorReview()">📕 错词复习 <span id="error-count-badge" style="font-size:11px;"></span></button>
+          <button class="btn btn-sm" style="flex:1;background:var(--warning-light);color:var(--warning);border:1px solid var(--warning);min-height:40px;" onclick="startSpacedReview()">🔄 间隔复习 <span id="spaced-count-badge" style="font-size:11px;"></span></button>
+        </div>
+        <div style="margin-top:8px;text-align:center;">
+          <a href="成语语境强化练习.html" target="_blank" style="font-size:12px;color:var(--primary);text-decoration:none;font-weight:500;">📖 打开语境强化练习（易混淆辨析+真题）→</a>
+        </div>
         <div style="font-size:12px;color:var(--text-sec);margin-top:6px;text-align:center;">看到成语 → 心里默念释义 → 点击卡片翻转查看答案</div>
       </div>
     </div>
@@ -1312,6 +1319,8 @@ function exportData() {
     reviews: state.reviews,
     examDates: state.examDates,
     idiomState: idiomUserState,
+    idiomHistory: idiomReviewHistory,
+    idiomErrors: idiomErrorCount,
     planData: planData
   };
   var jsonStr = JSON.stringify(data);
@@ -1369,6 +1378,8 @@ function doImportFromText() {
     }
     if (data.idiomState) {
       idiomUserState = data.idiomState;
+      if (data.idiomHistory) idiomReviewHistory = data.idiomHistory;
+      if (data.idiomErrors) idiomErrorCount = data.idiomErrors;
       saveIdiomState();
     }
     if (data.planData) {
@@ -1407,6 +1418,8 @@ function importData(event) {
       }
       if (data.idiomState) {
         idiomUserState = data.idiomState;
+        if (data.idiomHistory) idiomReviewHistory = data.idiomHistory;
+        if (data.idiomErrors) idiomErrorCount = data.idiomErrors;
         saveIdiomState();
       }
       if (data.planData) {
@@ -2580,15 +2593,23 @@ const IDIOMS_DATA = [
 // Idiom state
 let idiomState = { statusFilter: 'all', search: '', freqFilter: 'all', groupFilter: 'all', chapterFilter: 'all', page: 1, perPage: 15, mode: 'browse' };
 let idiomUserState = {}; // user mastery tracking
+let idiomReviewHistory = {}; // spaced repetition history: {idx: [{date, status}]}
+let idiomErrorCount = {}; // error count: {idx: count}
 
 function loadIdiomState() {
   try {
     const d = localStorage.getItem('kaogong_idioms');
     if (d) idiomUserState = JSON.parse(d);
+    const h = localStorage.getItem('kaogong_idiom_history');
+    if (h) idiomReviewHistory = JSON.parse(h);
+    const e = localStorage.getItem('kaogong_idiom_errors');
+    if (e) idiomErrorCount = JSON.parse(e);
   } catch(e) {}
 }
 function saveIdiomState() {
   localStorage.setItem('kaogong_idioms', JSON.stringify(idiomUserState));
+  localStorage.setItem('kaogong_idiom_history', JSON.stringify(idiomReviewHistory));
+  localStorage.setItem('kaogong_idiom_errors', JSON.stringify(idiomErrorCount));
 }
 
 function setIdiomStatusFilter(status) {
@@ -2723,7 +2744,7 @@ function setIdiomMode(mode) {
   document.getElementById('idiom-list').style.display = mode === 'browse' ? 'block' : 'none';
   document.getElementById('idiom-quiz-area').style.display = mode === 'quiz' ? 'block' : 'none';
   document.getElementById('idiom-pagination').style.display = mode === 'browse' ? 'block' : 'none';
-  if (mode === 'quiz') renderQuizArea();
+  if (mode === 'quiz') { updateReviewBadges(); renderQuizArea(); }
   else renderIdioms();
 }
 
@@ -2815,6 +2836,68 @@ function startQuiz() {
   renderQuizArea();
 }
 
+// 错词复习：按错误频次排序，优先展示错得多的
+function startErrorReview() {
+  const errorIds = Object.keys(idiomErrorCount).filter(idx => idiomErrorCount[idx] > 0).map(Number);
+  if (!errorIds.length) { showToast('还没有错词记录，多做几轮翻卡就会自动归集', 'error'); return; }
+  let pool = errorIds.map(idx => ({...IDIOMS_DATA[idx], idx}));
+  // 按错误次数从高到低排序
+  pool.sort((a, b) => (idiomErrorCount[b.idx] || 0) - (idiomErrorCount[a.idx] || 0));
+  const selected = pool.slice(0, 30);
+  quizState = { cards: selected, current: 0, known: 0, fuzzy: 0, unknown: 0, total: selected.length, flipped: false, mode: 'error' };
+  setIdiomMode('quiz');
+  renderQuizArea();
+  showToast('错词复习：共' + errorIds.length + '个，本轮' + selected.length + '个（按错误频次排序）', 'success');
+}
+
+// 间隔复习：艾宾浩斯曲线 1/3/7/15/30天
+function startSpacedReview() {
+  const intervals = [1, 3, 7, 15, 30];
+  const t = today();
+  const dueIds = [];
+  // 找出所有有复习历史、且到了复习时间的成语
+  Object.keys(idiomReviewHistory).forEach(idxStr => {
+    const idx = Number(idxStr);
+    const history = idiomReviewHistory[idx];
+    if (!history || !history.length) return;
+    const lastReview = history[history.length - 1];
+    const reviewCount = history.length; // 已复习了几轮
+    const nextInterval = intervals[Math.min(reviewCount, intervals.length) - 1];
+    const nextDue = addDays(lastReview.date, nextInterval);
+    if (nextDue <= t) {
+      dueIds.push({ idx, daysOverdue: daysDiff(nextDue, t), errorCount: idiomErrorCount[idx] || 0 });
+    }
+  });
+  if (!dueIds.length) { showToast('目前没有到期的间隔复习任务，继续保持！', 'success'); return; }
+  // 逾期天数多的优先，错误多的优先
+  dueIds.sort((a, b) => b.daysOverdue - a.daysOverdue || b.errorCount - a.errorCount);
+  let pool = dueIds.slice(0, 30).map(d => ({...IDIOMS_DATA[d.idx], idx: d.idx}));
+  quizState = { cards: pool, current: 0, known: 0, fuzzy: 0, unknown: 0, total: pool.length, flipped: false, mode: 'spaced' };
+  setIdiomMode('quiz');
+  renderQuizArea();
+  showToast('间隔复习：共' + dueIds.length + '个到期，本轮' + pool.length + '个', 'success');
+}
+
+function updateReviewBadges() {
+  // 错词数
+  const errorTotal = Object.values(idiomErrorCount).reduce((s, c) => s + (c > 0 ? 1 : 0), 0);
+  const errorBadge = document.getElementById('error-count-badge');
+  if (errorBadge) errorBadge.textContent = errorTotal > 0 ? '(' + errorTotal + ')' : '';
+  // 间隔复习到期数
+  const intervals = [1, 3, 7, 15, 30];
+  const t = today();
+  let dueCount = 0;
+  Object.keys(idiomReviewHistory).forEach(idxStr => {
+    const history = idiomReviewHistory[idxStr];
+    if (!history || !history.length) return;
+    const lastReview = history[history.length - 1];
+    const nextInterval = intervals[Math.min(history.length, intervals.length) - 1];
+    if (addDays(lastReview.date, nextInterval) <= t) dueCount++;
+  });
+  const spacedBadge = document.getElementById('spaced-count-badge');
+  if (spacedBadge) spacedBadge.textContent = dueCount > 0 ? '(' + dueCount + ')' : '';
+}
+
 function flipCard() {
   quizState.flipped = true;
   renderQuizArea();
@@ -2829,10 +2912,15 @@ function markCard(status) {
   } else if (status === 'fuzzy') {
     quizState.fuzzy++;
     idiomUserState[card.idx] = 'fuzzy';
+    idiomErrorCount[card.idx] = (idiomErrorCount[card.idx] || 0) + 1;
   } else {
     quizState.unknown++;
     idiomUserState[card.idx] = 'unknown';
+    idiomErrorCount[card.idx] = (idiomErrorCount[card.idx] || 0) + 1;
   }
+  // Record review history for spaced repetition
+  if (!idiomReviewHistory[card.idx]) idiomReviewHistory[card.idx] = [];
+  idiomReviewHistory[card.idx].push({ date: today(), status: status });
   saveIdiomState();
   quizState.current++;
   quizState.flipped = false;
@@ -2854,19 +2942,22 @@ function renderQuizArea() {
 
   // Finished all cards
   if (quizState.current >= quizState.total) {
+    updateReviewBadges(); // 刷新徽章
     const pct = quizState.total > 0 ? Math.round((quizState.known / quizState.total) * 100) : 0;
     const grade = pct >= 90 ? '掌握得很扎实！' : pct >= 70 ? '不错，继续保持！' : pct >= 50 ? '还需要多练几轮' : '建议回浏览模式重点复习';
+    const modeLabel = quizState.mode === 'error' ? '📕 错词复习' : quizState.mode === 'spaced' ? '🔄 间隔复习' : '';
     area.innerHTML = `<div class="card" style="text-align:center;">
       <div style="font-size:48px;margin-bottom:12px;">${pct >= 70 ? '🎉' : '💪'}</div>
-      <div style="font-size:20px;font-weight:700;color:var(--primary);margin-bottom:4px;">本轮完成</div>
+      <div style="font-size:20px;font-weight:700;color:var(--primary);margin-bottom:4px;">${modeLabel ? modeLabel + ' · ' : ''}本轮完成</div>
       <div style="display:flex;justify-content:center;gap:16px;margin:16px 0;">
         <div><div style="font-size:28px;font-weight:700;color:var(--success);">${quizState.known}</div><div style="font-size:12px;color:var(--text-sec);">记住了</div></div>
         <div><div style="font-size:28px;font-weight:700;color:var(--warning);">${quizState.fuzzy}</div><div style="font-size:12px;color:var(--text-sec);">模糊</div></div>
         <div><div style="font-size:28px;font-weight:700;color:var(--danger);">${quizState.unknown}</div><div style="font-size:12px;color:var(--text-sec);">没记住</div></div>
       </div>
       <div style="font-size:14px;color:var(--text-sec);margin-bottom:16px;">正确率 ${pct}% · ${grade}</div>
-      <div style="display:flex;gap:8px;justify-content:center;">
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
         <button class="btn btn-primary" onclick="startQuiz()">再来一轮</button>
+        <button class="btn" style="background:var(--danger-light);color:var(--danger);border:1px solid var(--danger);" onclick="startErrorReview()">📕 错词复习</button>
         <button class="btn btn-outline" onclick="setIdiomMode('browse')">回浏览模式</button>
       </div>
     </div>`;
@@ -2886,7 +2977,7 @@ function renderQuizArea() {
       <!-- Header -->
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
         <span style="font-size:13px;font-weight:600;color:var(--primary);">第 ${quizState.current + 1} / ${quizState.total} 卡</span>
-        <span style="font-size:12px;color:var(--text-sec);">✓${quizState.known} ？${quizState.fuzzy} ✗${quizState.unknown}</span>
+        <span style="font-size:12px;color:var(--text-sec);">✓${quizState.known} ？${quizState.fuzzy} ✗${quizState.unknown}${(quizState.mode === 'error' && idiomErrorCount[card.idx]) ? ' · 错' + idiomErrorCount[card.idx] + '次' : ''}${(quizState.mode === 'spaced' && idiomReviewHistory[card.idx]) ? ' · 第' + (idiomReviewHistory[card.idx].length + 1) + '轮' : ''}</span>
       </div>
 
       ${!flipped ? `
@@ -3290,6 +3381,7 @@ function init() {
   }
 
   renderAll();
+  updateReviewBadges();
   
   // Show delayed task alert if any
   setTimeout(function() { showDelayedAlert(); }, 300);
