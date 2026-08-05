@@ -330,6 +330,8 @@ body {
 @media (max-width: 480px) {
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .stats-grid .stat-card:last-child { grid-column: span 2; }
+  #tab-errors .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  #tab-errors .stats-grid .stat-card:last-child { grid-column: auto !important; }
   .header { padding: 20px 16px 18px; }
   .header h1 { font-size: 19px; }
   .modal-content { padding: 20px 16px; }
@@ -443,6 +445,7 @@ body {
     <button class="tab" onclick="switchTab('dailyplan')">计划</button>
     <button class="tab" onclick="switchTab('review')">复盘</button>
     <button class="tab" onclick="switchTab('idioms')">成语</button>
+    <button class="tab" onclick="switchTab('errors')">错题集</button>
     <button class="tab" onclick="switchTab('stats')">统计</button>
   </div>
 
@@ -794,6 +797,95 @@ body {
     <div id="idiom-list"></div>
     <div id="idiom-quiz-area" style="display:none;"></div>
     <div id="idiom-pagination" style="text-align:center;padding:12px 0;"></div>
+  </div>
+
+  <!-- ===== 错题集 ===== -->
+  <div class="tab-content" id="tab-errors">
+    <!-- 分类统计卡片 -->
+    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);">
+      <div class="stat-card" style="cursor:pointer;" onclick="filterErrors('资料分析')">
+        <div class="stat-value primary" id="err-count-资料分析">0</div>
+        <div class="stat-label">资料分析</div>
+      </div>
+      <div class="stat-card" style="cursor:pointer;" onclick="filterErrors('言语理解')">
+        <div class="stat-value" style="color:var(--secondary);" id="err-count-言语理解">0</div>
+        <div class="stat-label">言语理解</div>
+      </div>
+      <div class="stat-card" style="cursor:pointer;" onclick="filterErrors('判断推理')">
+        <div class="stat-value" style="color:#f72585;" id="err-count-判断推理">0</div>
+        <div class="stat-label">判断推理</div>
+      </div>
+      <div class="stat-card" style="cursor:pointer;" onclick="filterErrors('数量关系')">
+        <div class="stat-value warning" id="err-count-数量关系">0</div>
+        <div class="stat-label">数量关系</div>
+      </div>
+    </div>
+
+    <!-- 筛选栏 -->
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
+      <div class="filter-bar" id="error-cat-filters" style="flex:1;margin-bottom:0;"></div>
+      <button class="btn btn-sm btn-primary" onclick="toggleAddError(this)" style="min-height:40px;">➕ 添加错题</button>
+    </div>
+
+    <!-- 添加错题表单（折叠） -->
+    <div id="add-error-area" style="display:none;background:var(--card);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);margin-bottom:16px;border:2px solid var(--primary);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h3 style="font-size:15px;font-weight:700;">📝 记录错题</h3>
+        <button class="btn btn-sm btn-ghost" onclick="toggleAddError()">收起</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">分类 *</label>
+        <select class="form-select" id="err-cat">
+          <option value="资料分析">资料分析</option>
+          <option value="言语理解">言语理解</option>
+          <option value="判断推理">判断推理</option>
+          <option value="数量关系">数量关系</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">题目来源</label>
+        <input class="form-input" id="err-source" placeholder="例：2024国考地市级第56题 / 粉笔模考第12期">
+      </div>
+      <div class="form-group">
+        <label class="form-label">题目内容 / 关键信息 *</label>
+        <textarea class="form-textarea" id="err-question" placeholder="记录题目关键内容，如题干、选项等..." style="min-height:80px;"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">错误原因</label>
+        <select class="form-select" id="err-reason">
+          <option value="知识点不熟">知识点不熟</option>
+          <option value="粗心大意">粗心大意</option>
+          <option value="审题不清">审题不清</option>
+          <option value="计算错误">计算错误</option>
+          <option value="时间不够">时间不够</option>
+          <option value="方法不对">方法不对</option>
+          <option value="其他">其他</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">正确解法 / 笔记</label>
+        <textarea class="form-textarea" id="err-notes" placeholder="记录正确的解题思路、涉及的知识点、下次注意事项..." style="min-height:80px;"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">掌握程度</label>
+        <div class="rating-group">
+          <button class="rating-btn hard" onclick="selectErrLevel('unknown')">✗ 完全不会</button>
+          <button class="rating-btn ok" onclick="selectErrLevel('fuzzy')">？ 似懂非懂</button>
+          <button class="rating-btn easy" onclick="selectErrLevel('known')">✓ 已掌握</button>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="addError()">保存错题</button>
+    </div>
+
+    <!-- 错题列表 -->
+    <div id="error-list"></div>
+
+    <!-- 空状态 -->
+    <div id="error-empty" style="text-align:center;padding:40px 20px;color:var(--text-sec);display:none;">
+      <div style="font-size:48px;margin-bottom:12px;">📋</div>
+      <div style="font-size:14px;">还没有错题记录</div>
+      <div style="font-size:13px;margin-top:4px;">每次做完题把错题记下来，考前重点复习</div>
+    </div>
   </div>
 
   <!-- ===== 统计 ===== -->
@@ -1292,6 +1384,8 @@ function doDelete(btn) {
 
 function clearAllData() {
   state.reviews = [];
+  errorData = [];
+  saveErrorData();
   save();
   showToast('所有数据已清空', 'success');
   renderAll();
@@ -1321,6 +1415,7 @@ function exportData() {
     idiomState: idiomUserState,
     idiomHistory: idiomReviewHistory,
     idiomErrors: idiomErrorCount,
+    errorData: errorData,
     planData: planData
   };
   var jsonStr = JSON.stringify(data);
@@ -1386,6 +1481,10 @@ function doImportFromText() {
       planData = data.planData;
       savePlanData();
     }
+    if (data.errorData) {
+      errorData = data.errorData;
+      saveErrorData();
+    }
     save();
     renderAll();
     document.getElementById('import-area').style.display = 'none';
@@ -1426,6 +1525,10 @@ function importData(event) {
         planData = data.planData;
         savePlanData();
       }
+      if (data.errorData) {
+        errorData = data.errorData;
+        saveErrorData();
+      }
       save();
       renderAll();
       showToast('数据导入成功！共恢复 ' + state.reviews.length + ' 条复盘记录', 'success');
@@ -1453,7 +1556,7 @@ function skipRound(reviewId, roundIdx) {
 function switchTab(tab) {
   ui.tab = tab;
   document.querySelectorAll('.tab').forEach((t,i) => {
-    const tabs = ['dashboard','dailyplan','review','idioms','stats'];
+    const tabs = ['dashboard','dailyplan','review','idioms','errors','stats'];
     t.classList.toggle('active', tabs[i] === tab);
   });
   document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
@@ -1480,6 +1583,7 @@ function renderAll() {
   }
   renderPlan();
   renderIdioms();
+  renderErrors();
   renderStats();
 }
 
@@ -1841,6 +1945,167 @@ function toggleExamGroup(header) {
     subs.style.display = 'none';
     toggle.style.transform = 'rotate(0deg)';
   }
+}
+
+// ============ 错题集 ============
+var errorData = [];
+var errorCatFilter = 'all';
+var selectedErrLevel = '';
+
+function loadErrorData() {
+  try {
+    var d = localStorage.getItem('kaogong_errors');
+    if (d) errorData = JSON.parse(d);
+  } catch(e) {}
+}
+
+function saveErrorData() {
+  localStorage.setItem('kaogong_errors', JSON.stringify(errorData));
+}
+
+function toggleAddError(btn) {
+  var area = document.getElementById('add-error-area');
+  if (area.style.display === 'none') {
+    area.style.display = 'block';
+    area.scrollIntoView({behavior: 'smooth'});
+  } else {
+    area.style.display = 'none';
+  }
+}
+
+function selectErrLevel(level) {
+  selectedErrLevel = level;
+  var btns = document.querySelectorAll('#add-error-area .rating-btn');
+  btns.forEach(function(b) { b.classList.remove('selected'); });
+  var cls = level === 'known' ? 'easy' : level === 'fuzzy' ? 'ok' : 'hard';
+  var target = document.querySelector('#add-error-area .rating-btn.' + cls);
+  if (target) target.classList.add('selected');
+}
+
+function addError() {
+  var cat = document.getElementById('err-cat').value;
+  var source = document.getElementById('err-source').value.trim();
+  var question = document.getElementById('err-question').value.trim();
+  var reason = document.getElementById('err-reason').value;
+  var notes = document.getElementById('err-notes').value.trim();
+
+  if (!question) { showToast('请填写题目内容', 'error'); return; }
+  if (!selectedErrLevel) { showToast('请选择掌握程度', 'error'); return; }
+
+  errorData.unshift({
+    id: genId(),
+    cat: cat,
+    source: source,
+    question: question,
+    reason: reason,
+    notes: notes,
+    level: selectedErrLevel,
+    date: today(),
+    reviewCount: 0
+  });
+
+  saveErrorData();
+  // 清空表单
+  document.getElementById('err-source').value = '';
+  document.getElementById('err-question').value = '';
+  document.getElementById('err-notes').value = '';
+  selectedErrLevel = '';
+  document.querySelectorAll('#add-error-area .rating-btn').forEach(function(b) { b.classList.remove('selected'); });
+  document.getElementById('add-error-area').style.display = 'none';
+  showToast('错题已记录！', 'success');
+  renderErrors();
+}
+
+function deleteError(id) {
+  errorData = errorData.filter(function(e) { return e.id !== id; });
+  saveErrorData();
+  showToast('已删除', 'success');
+  renderErrors();
+}
+
+function toggleErrorLevel(id) {
+  var err = errorData.find(function(e) { return e.id === id; });
+  if (!err) return;
+  // 循环切换: unknown -> fuzzy -> known -> unknown
+  if (err.level === 'unknown') err.level = 'fuzzy';
+  else if (err.level === 'fuzzy') err.level = 'known';
+  else err.level = 'unknown';
+  err.reviewCount = (err.reviewCount || 0) + 1;
+  saveErrorData();
+  renderErrors();
+}
+
+function filterErrors(cat) {
+  errorCatFilter = cat;
+  renderErrors();
+}
+
+var ERROR_CATS = ['资料分析', '言语理解', '判断推理', '数量关系'];
+var ERROR_CAT_COLORS = {
+  '资料分析': 'var(--primary)',
+  '言语理解': 'var(--secondary)',
+  '判断推理': '#f72585',
+  '数量关系': 'var(--warning)'
+};
+
+function renderErrors() {
+  // 更新分类统计
+  ERROR_CATS.forEach(function(cat) {
+    var count = errorData.filter(function(e) { return e.cat === cat; }).length;
+    var el = document.getElementById('err-count-' + cat);
+    if (el) el.textContent = count;
+  });
+
+  // 筛选按钮
+  var filterBar = document.getElementById('error-cat-filters');
+  if (filterBar) {
+    filterBar.innerHTML = '<button class="filter-chip ' + (errorCatFilter === 'all' ? 'active' : '') + '" onclick="filterErrors(\'all\')">全部 (' + errorData.length + ')</button>' +
+      ERROR_CATS.map(function(cat) {
+        var count = errorData.filter(function(e) { return e.cat === cat; }).length;
+        return '<button class="filter-chip ' + (errorCatFilter === cat ? 'active' : '') + '" onclick="filterErrors(\'' + cat + '\')">' + cat + ' (' + count + ')</button>';
+      }).join('');
+  }
+
+  // 错题列表
+  var filtered = errorCatFilter === 'all' ? errorData : errorData.filter(function(e) { return e.cat === errorCatFilter; });
+  var list = document.getElementById('error-list');
+  var empty = document.getElementById('error-empty');
+
+  if (!filtered.length) {
+    if (list) list.innerHTML = '';
+    if (empty) empty.style.display = 'block';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  if (!list) return;
+
+  list.innerHTML = filtered.map(function(err) {
+    var catColor = ERROR_CAT_COLORS[err.cat] || 'var(--text-sec)';
+    var levelText = err.level === 'known' ? '✓ 已掌握' : err.level === 'fuzzy' ? '？ 似懂非懂' : '✗ 完全不会';
+    var levelColor = err.level === 'known' ? 'var(--success)' : err.level === 'fuzzy' ? 'var(--warning)' : 'var(--danger)';
+    var levelBg = err.level === 'known' ? 'var(--success-light)' : err.level === 'fuzzy' ? 'var(--warning-light)' : 'var(--danger-light)';
+
+    return '<div class="card" style="padding:16px;margin-bottom:10px;border-left:4px solid ' + catColor + ';">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap;">' +
+            '<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:' + catColor + '20;color:' + catColor + ';font-weight:600;">' + esc(err.cat) + '</span>' +
+            '<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:' + levelBg + ';color:' + levelColor + ';font-weight:600;">' + levelText + '</span>' +
+            '<span style="font-size:11px;color:var(--text-light);">' + fmtDate(err.date) + '</span>' +
+            (err.reviewCount > 0 ? '<span style="font-size:11px;color:var(--text-sec);">复习' + err.reviewCount + '次</span>' : '') +
+          '</div>' +
+          (err.source ? '<div style="font-size:12px;color:var(--text-sec);margin-bottom:4px;">📌 ' + esc(err.source) + '</div>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div style="font-size:14px;color:var(--text);line-height:1.7;margin-bottom:8px;background:var(--bg);padding:12px;border-radius:8px;">' + esc(err.question).replace(/\n/g, '<br>') + '</div>' +
+      (err.reason ? '<div style="font-size:12px;color:var(--danger);margin-bottom:6px;">❌ 错因：' + esc(err.reason) + '</div>' : '') +
+      (err.notes ? '<div style="font-size:13px;color:var(--primary);line-height:1.6;padding:10px 12px;background:var(--primary-light);border-radius:8px;margin-bottom:8px;">💡 ' + esc(err.notes).replace(/\n/g, '<br>') + '</div>' : '') +
+      '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">' +
+        '<button class="btn btn-sm" style="background:' + levelBg + ';color:' + levelColor + ';border:1px solid ' + levelColor + ';min-height:36px;" onclick="toggleErrorLevel(\'' + err.id + '\')">切换掌握度</button>' +
+        '<button class="btn btn-sm" style="background:var(--danger-light);color:var(--danger);border:none;min-height:36px;" onclick="deleteError(\'' + err.id + '\')">删除</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
 }
 
 function renderStats() {
@@ -3356,6 +3621,7 @@ function init() {
   load();
   loadIdiomState();
   loadPlanData();
+  loadErrorData();
   rolloverTasks();
   document.getElementById('f-date').value = today();
 
