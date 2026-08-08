@@ -740,10 +740,6 @@ function renderSingleForm() {
         </div>
       </div>
       <div style="margin-bottom:14px">
-        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">我的笔记（可选）</label>
-        <textarea id="inp-notes" class="input-field" rows="3" placeholder="记录你的思考和总结"></textarea>
-      </div>
-      <div style="margin-bottom:14px">
         <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">拍照/上传图片</label>
         <input type="file" accept="image/*" capture="environment" id="inp-photoInput" style="display:none" onchange="handlePhotoUpload(this)">
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('inp-photoInput').click()"><i class="fas fa-camera"></i> 拍照/上传</button>
@@ -828,7 +824,7 @@ function parseBatchContent(text) {
   parts.forEach(part => {
     part.split(/【题目\d*】/).map(b => b.trim()).filter(b => b).forEach(b => blocks.push(b));
   });
-  const LABEL_ONLY = /^(?:【)?(?:我的答案|错选选项|错选|正确答案|题型|错误原因|解析|笔记)(?:】)?\s*[:：]?\s*$/;
+  const LABEL_ONLY = /^(?:【)?(?:我的答案|错选选项|错选|正确答案|题型|错误原因|解析)(?:】)?\s*[:：]?\s*$/;
   const results = [];
   blocks.forEach(block => {
     const rawLines = block.split('\n');
@@ -846,8 +842,8 @@ function parseBatchContent(text) {
       }
       lines.push(rawLines[i]);
     }
-    const q = { question: '', optionA: '', optionB: '', optionC: '', optionD: '', myAnswer: '', correctAnswer: '', type: '', errorReasons: [], analysis: '', notes: '' };
-    const qLines = [], aLines = [], nLines = [];
+    const q = { question: '', optionA: '', optionB: '', optionC: '', optionD: '', myAnswer: '', correctAnswer: '', type: '', errorReasons: [], analysis: '' };
+    const qLines = [], aLines = [];
     let section = 'question';
     let optSeen = false;
     lines.forEach(raw => {
@@ -864,15 +860,12 @@ function parseBatchContent(text) {
       if ((m = line.match(/^(?:【)?题型(?:】)?\s*[:：]\s*(.+)$/))) { q.type = m[1].trim(); section = 'meta'; return; }
       if ((m = line.match(/^(?:【)?错误原因(?:】)?\s*[:：]\s*(.+)$/))) { q.errorReasons = m[1].split(/[、,，\s]+/).filter(Boolean); section = 'meta'; return; }
       if ((m = line.match(/^(?:【)?解析(?:】)?\s*[:：]?\s*(.*)$/))) { section = 'analysis'; if (m[1].trim()) aLines.push(m[1].trim()); return; }
-      if ((m = line.match(/^(?:【)?笔记(?:】)?\s*[:：]?\s*(.*)$/))) { section = 'notes'; if (m[1].trim()) nLines.push(m[1].trim()); return; }
-      if (section === 'notes') { nLines.push(line); return; }
       if (section === 'analysis') { aLines.push(line); return; }
       if (optSeen) { aLines.push(line); return; }
       qLines.push(line);
     });
     q.question = qLines.join('\n').trim();
     q.analysis = aLines.join('\n').trim();
-    q.notes = nLines.join('\n').trim();
     if (q.question && q.myAnswer && q.correctAnswer) results.push(q);
   });
   return results;
@@ -914,7 +907,7 @@ function confirmBatchImport() {
       correctAnswer: p.correctAnswer,
       errorReasons: p.errorReasons.length ? p.errorReasons : [],
       analysis: p.analysis,
-      notes: p.notes,
+      notes: '',
       photos: [],
       createDate: todayStr,
       errorCount: 1,
@@ -1016,7 +1009,7 @@ function saveNewQuestion() {
     correctAnswer: correctAns,
     errorReasons: reasons,
     analysis: '',
-    notes: document.getElementById('inp-notes').value.trim(),
+    notes: '',
     photos: [...inputPhotos],
     createDate: new Date().toISOString().slice(0,10),
     errorCount: 1,
@@ -1155,10 +1148,10 @@ function renderErrorCard(q) {
         ${q.optionC ? `<div class="option-item ${q.myAnswer==='C'?'my-wrong':''} ${q.correctAnswer==='C'?'correct':''}">C. ${q.optionC}</div>` : ''}
         ${q.optionD ? `<div class="option-item ${q.myAnswer==='D'?'my-wrong':''} ${q.correctAnswer==='D'?'correct':''}">D. ${q.optionD}</div>` : ''}
         ${q.analysis ? `<div class="detail-section"><h4>解析</h4><p style="white-space:pre-line">${formatAnalysis(q.analysis)}</p></div>` : ''}
-        ${q.notes ? `<div class="detail-section"><h4>笔记</h4><p>${q.notes}</p></div>` : ''}
         ${hasPhoto ? `<div class="detail-section"><h4>照片</h4><div style="display:flex;gap:8px;flex-wrap:wrap">${q.photos.map(p => `<img src="${p}" class="photo-thumb" onclick="event.stopPropagation();previewPhoto('${p}')">`).join('')}</div></div>` : ''}
-        <div style="display:flex;gap:8px;margin-top:12px">
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
           <button class="btn btn-success btn-sm" onclick="event.stopPropagation();markMastered('${q.id}')"><i class="fas fa-check"></i> 标记掌握</button>
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();editQuestion('${q.id}')"><i class="fas fa-pen"></i> 编辑</button>
           <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();viewDetail('${q.id}')"><i class="fas fa-eye"></i> 详情</button>
           <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="event.stopPropagation();deleteQuestion('${q.id}')"><i class="fas fa-trash"></i> 删除</button>
         </div>
@@ -1195,7 +1188,10 @@ function viewDetail(id) {
     <div class="modal-content">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
         <h3 style="font-size:16px;font-weight:700;margin:0">错题详情</h3>
-        <button class="btn btn-outline btn-sm" onclick="closeDetail()"><i class="fas fa-times"></i></button>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-outline btn-sm" onclick="editQuestion('${q.id}')"><i class="fas fa-pen"></i> 编辑</button>
+          <button class="btn btn-outline btn-sm" onclick="closeDetail()"><i class="fas fa-times"></i></button>
+        </div>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
         <span class="badge ${getModuleClass(q.module)}">${q.module}</span>
@@ -1212,7 +1208,6 @@ function viewDetail(id) {
         <span>正确答案：<b style="color:var(--success)">${q.correctAnswer}</b></span>
       </div>
       ${q.analysis?`<div class="detail-section"><h4>解析</h4><p style="white-space:pre-line">${formatAnalysis(q.analysis)}</p></div>`:''}
-      ${q.notes?`<div class="detail-section"><h4>笔记</h4><p>${q.notes}</p></div>`:''}
       ${q.photos&&q.photos.length?`<div class="detail-section"><h4>照片</h4><div style="display:flex;gap:8px;flex-wrap:wrap">${q.photos.map(p=>`<img src="${p}" class="photo-thumb" onclick="previewPhoto('${p}')">`).join('')}</div></div>`:''}
       <div style="font-size:12px;color:var(--muted);margin-top:12px">
         创建日期：${q.createDate} | 错误次数：${q.errorCount} | 状态：${q.reviewStatus}
@@ -1224,6 +1219,96 @@ function viewDetail(id) {
 
 function closeDetail() {
   document.getElementById('detail-modal').className = 'hidden';
+}
+
+function editQuestion(id) {
+  const q = questions.find(x => x.id === id);
+  if (!q) return;
+  const el = document.getElementById('detail-modal');
+  const typeOptions = (MODULE_TYPES[q.module] || []).map(t => `<option value="${t}" ${t===q.type?'selected':''}>${t}</option>`).join('');
+  el.innerHTML = `<div class="modal-overlay modal-full" onclick="if(event.target===this)closeDetail()">
+    <div class="modal-content">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <h3 style="font-size:16px;font-weight:700;margin:0">编辑错题</h3>
+        <button class="btn btn-outline btn-sm" onclick="closeDetail()"><i class="fas fa-times"></i></button>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:12px">
+        <div style="flex:1">
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">模块</label>
+          <select id="edit-module" class="input-field" onchange="updateEditType()">
+            ${ALL_MODULES.map(m => `<option value="${m}" ${m===q.module?'selected':''}>${m}</option>`).join('')}
+          </select>
+        </div>
+        <div style="flex:1">
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">题型</label>
+          <select id="edit-type" class="input-field">${typeOptions}</select>
+        </div>
+      </div>
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">题干</label>
+      <textarea id="edit-question" class="input-field" rows="4" style="margin-bottom:12px">${q.question}</textarea>
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">选项A</label>
+      <input id="edit-optA" class="input-field" value="${(q.optionA||'').replace(/"/g,'&quot;')}" style="margin-bottom:8px">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">选项B</label>
+      <input id="edit-optB" class="input-field" value="${(q.optionB||'').replace(/"/g,'&quot;')}" style="margin-bottom:8px">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">选项C</label>
+      <input id="edit-optC" class="input-field" value="${(q.optionC||'').replace(/"/g,'&quot;')}" style="margin-bottom:8px">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">选项D</label>
+      <input id="edit-optD" class="input-field" value="${(q.optionD||'').replace(/"/g,'&quot;')}" style="margin-bottom:12px">
+      <div style="display:flex;gap:10px;margin-bottom:12px">
+        <div style="flex:1">
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">我的答案</label>
+          <select id="edit-myAns" class="input-field">
+            ${['A','B','C','D'].map(o => `<option ${o===q.myAnswer?'selected':''}>${o}</option>`).join('')}
+          </select>
+        </div>
+        <div style="flex:1">
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">正确答案</label>
+          <select id="edit-correctAns" class="input-field">
+            ${['A','B','C','D'].map(o => `<option ${o===q.correctAnswer?'selected':''}>${o}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">错误原因（多选）</label>
+      <div class="checkbox-group" id="edit-reasons" style="margin-bottom:12px">
+        ${ERROR_REASONS.map(r => `<div class="checkbox-item ${q.errorReasons.includes(r)?'checked':''}" onclick="toggleReason(this)"><input type="checkbox" value="${r}" ${q.errorReasons.includes(r)?'checked':''}><span>${r}</span></div>`).join('')}
+      </div>
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">解析</label>
+      <textarea id="edit-analysis" class="input-field" rows="6" style="margin-bottom:16px">${q.analysis||''}</textarea>
+      <button class="btn btn-primary" style="width:100%" onclick="saveEdit('${q.id}')"><i class="fas fa-save"></i> 保存修改</button>
+    </div>
+  </div>`;
+  el.className = '';
+}
+
+function updateEditType() {
+  const mod = document.getElementById('edit-module').value;
+  const sel = document.getElementById('edit-type');
+  sel.innerHTML = (MODULE_TYPES[mod] || []).map(t => `<option value="${t}">${t}</option>`).join('');
+}
+
+function saveEdit(id) {
+  const q = questions.find(x => x.id === id);
+  if (!q) return;
+  const question = document.getElementById('edit-question').value.trim();
+  if (!question) { showToast('题干不能为空'); return; }
+  q.module = document.getElementById('edit-module').value;
+  q.type = document.getElementById('edit-type').value;
+  q.question = question;
+  q.optionA = document.getElementById('edit-optA').value.trim();
+  q.optionB = document.getElementById('edit-optB').value.trim();
+  q.optionC = document.getElementById('edit-optC').value.trim();
+  q.optionD = document.getElementById('edit-optD').value.trim();
+  q.myAnswer = document.getElementById('edit-myAns').value;
+  q.correctAnswer = document.getElementById('edit-correctAns').value;
+  const reasons = [];
+  document.querySelectorAll('#edit-reasons .checkbox-item.checked input').forEach(inp => reasons.push(inp.value));
+  q.errorReasons = reasons;
+  q.analysis = document.getElementById('edit-analysis').value;
+  saveQuestions();
+  showToast('已保存修改');
+  closeDetail();
+  expandedCardId = null;
+  renderErrors();
 }
 
 function previewPhoto(base64) {
@@ -1518,8 +1603,11 @@ function renderSettings() {
     </div>
     <div class="card">
       <h3 style="font-size:15px;font-weight:700;margin:0 0 12px">清空数据</h3>
-      <p style="font-size:13px;color:var(--muted);margin:0 0 10px">会同时删除内置错题，下次打开将重新加载最新版内置数据</p>
-      <button class="btn btn-danger btn-sm" onclick="clearAllData()"><i class="fas fa-trash-alt"></i> 清空所有数据</button>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 10px">删除全部错题（含内置错题），清空后可一键恢复内置错题</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-danger btn-sm" onclick="clearAllData()"><i class="fas fa-trash-alt"></i> 清空所有数据</button>
+        <button class="btn btn-outline btn-sm" onclick="restoreSeedData()"><i class="fas fa-undo"></i> 恢复内置错题</button>
+      </div>
     </div>
     <div class="card">
       <h3 style="font-size:15px;font-weight:700;margin:0 0 12px">关于</h3>
@@ -1583,15 +1671,28 @@ function importData() {
 }
 
 function clearAllData() {
-  showConfirm('确定清空所有数据吗？会同时删除内置错题，下次打开将重新加载最新版内置数据。', () => {
+  showConfirm('确定清空所有数据吗？包括22道内置错题在内的所有错题都会被删除。清空后可在设置页点"恢复内置错题"找回。', () => {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(DAILY_KEY);
-    localStorage.removeItem(SEED_KEY);
     questions = [];
-    loadSeedData();
-    showToast('数据已清空，内置错题已重新加载');
+    saveQuestions();
+    localStorage.setItem(SEED_KEY, String(SEED_VERSION));
+    showToast('数据已全部清空');
     renderSettings();
   });
+}
+
+function restoreSeedData() {
+  let added = 0;
+  SEED_DATA.forEach(sq => {
+    const prefix = sq.question.slice(0, 20);
+    const dup = questions.some(q => q.question.slice(0, 20) === prefix);
+    if (!dup) { questions.push({...sq, photos: [], errorReasons: [...sq.errorReasons]}); added++; }
+  });
+  localStorage.setItem(SEED_KEY, String(SEED_VERSION));
+  saveQuestions();
+  showToast(added ? `已恢复 ${added} 道内置错题` : '内置错题都已存在，无需恢复');
+  renderSettings();
 }
 
 // ==================== INIT ====================
@@ -1614,4 +1715,4 @@ function init() {
 init();
 </script>
 </body>
-<!-- build: 0808h --></html>
+<!-- build: 0808i --></html>
