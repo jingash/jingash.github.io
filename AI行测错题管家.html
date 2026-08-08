@@ -149,7 +149,7 @@ const MODULE_COLOR_HEX = {
   '资料分析': '#22c55e', '常识判断': '#f97316'
 };
 const MODULE_TYPES = {
-  '言语理解': ['中心理解题','细节判断题','标题填入题','语句填空题','接语选择题','实词填空','成语填空','实词与成语综合填空'],
+  '言语理解': ['中心理解题','标题添加题','细节判断题','语句填空题','语句排序题','逻辑填空题'],
   '判断推理': ['图形推理','定义判断','类比推理','逻辑判断'],
   '数量关系': ['数学运算','数字推理'],
   '资料分析': ['增长率','增长量','比重','平均数','倍数','综合分析'],
@@ -508,6 +508,43 @@ function backfillTypes() {
     if (!q.type && q.analysis) {
       const m = q.analysis.match(/【考查知识点】\s*[:：]?\s*([^\n]+)/);
       if (m && m[1].trim()) { q.type = m[1].trim(); changed = true; }
+    }
+  });
+  if (changed) saveQuestions();
+}
+
+// 旧题型名归一化到新6类
+function normalizeVerbalType(type) {
+  if (!type) return '';
+  const t = String(type).trim();
+  if (t === '标题填入题') return '标题添加题';
+  if (t === '接语选择题') return '中心理解题';
+  if (t === '实词填空' || t === '成语填空' || t === '实词与成语综合填空') return '逻辑填空题';
+  return t;
+}
+
+// 按题干/解析里的关键词把非标准题型归到6类
+function classifyVerbalType(q) {
+  const text = (q.type || '') + ' ' + (q.analysis || '') + ' ' + (q.question || '');
+  if (/标题/.test(text)) return '标题添加题';
+  if (/语句排序|排序|语序|排列顺序/.test(text)) return '语句排序题';
+  if (/语句填空|填入横线|划横线|横线处|填入画横线/.test(text)) return '语句填空题';
+  if (/逻辑填空|成语填空|实词填空|成语|实词/.test(text)) return '逻辑填空题';
+  if (/细节判断|细节|非核心成分|举例论证|例证/.test(text)) return '细节判断题';
+  return '中心理解题';
+}
+
+// 把言语理解错题统一归类到6个标准题型，便于筛选
+function classifyVerbalTypes() {
+  const VERBAL_TYPES = MODULE_TYPES['言语理解'] || [];
+  let changed = false;
+  questions.forEach(q => {
+    if (q.module !== '言语理解') return;
+    const normalized = normalizeVerbalType(q.type);
+    if (normalized !== q.type) { q.type = normalized; changed = true; }
+    if (q.type && !VERBAL_TYPES.includes(q.type)) {
+      const classified = classifyVerbalType(q);
+      if (classified && classified !== q.type) { q.type = classified; changed = true; }
     }
   });
   if (changed) saveQuestions();
@@ -2114,6 +2151,7 @@ function init() {
   loadQuestions();
   loadSeedData();
   backfillTypes();
+  classifyVerbalTypes();
 
   // Nav event
   document.querySelectorAll('.nav-item').forEach(item => {
@@ -2130,4 +2168,4 @@ function init() {
 init();
 </script>
 </body>
-<!-- build: 0809b --></html>
+<!-- build: 0809c --></html>
