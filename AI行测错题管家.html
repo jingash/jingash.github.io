@@ -435,6 +435,7 @@ let reviewResults = [];
 let inputPhotos = [];
 let errorFilters = { module: '全部', reason: '全部', sort: '最新' };
 let expandedCardId = null;
+let errorsViewMode = 'categories';
 
 // ==================== DATA MANAGEMENT ====================
 function loadQuestions() {
@@ -828,7 +829,54 @@ function saveNewQuestion() {
 // ==================== ERRORS PAGE ====================
 function renderErrors() {
   const el = document.getElementById('page-errors');
+  if (errorsViewMode === 'categories') { renderErrorCategories(el); return; }
+  renderErrorList(el);
+}
 
+function renderErrorCategories(el) {
+  const MODULE_ICONS = {'言语理解':'fa-language','判断推理':'fa-puzzle-piece','数量关系':'fa-calculator','资料分析':'fa-chart-line','常识判断':'fa-lightbulb'};
+  const COLOR_VARS = {blue:'var(--blue)',purple:'var(--purple)',red:'var(--red)',green:'var(--green)',orange:'var(--orange)'};
+  const BG_MAP = {blue:'rgba(59,130,246,.12)',purple:'rgba(139,92,246,.12)',red:'rgba(239,68,68,.12)',green:'rgba(34,197,94,.12)',orange:'rgba(249,115,22,.12)'};
+  const cards = ALL_MODULES.map(m => {
+    const mq = questions.filter(q => q.module === m);
+    const mastered = mq.filter(q => q.reviewStatus === '已掌握').length;
+    const toReview = mq.length - mastered;
+    const rate = mq.length ? Math.round(mastered / mq.length * 100) : 0;
+    const ck = MODULE_COLORS[m] || 'blue';
+    const color = COLOR_VARS[ck];
+    const icon = MODULE_ICONS[m] || 'fa-book';
+    return `<div class="card" onclick="openErrorCategory('${m}')" style="cursor:pointer;margin:0;padding:16px;border-left:4px solid ${color}">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div style="width:40px;height:40px;border-radius:12px;background:${BG_MAP[ck]};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="fas ${icon}" style="color:${color};font-size:18px"></i>
+        </div>
+        <div style="min-width:0">
+          <div style="font-size:15px;font-weight:700">${m}</div>
+          <div style="font-size:12px;color:var(--muted)">${mq.length} 道错题</div>
+        </div>
+        <i class="fas fa-chevron-right" style="color:var(--muted);margin-left:auto;font-size:12px"></i>
+      </div>
+      <div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden;margin-bottom:8px">
+        <div style="height:100%;width:${rate}%;background:${color};border-radius:3px;transition:width .3s"></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted)">已掌握 ${mastered} · 待复习 ${toReview} · ${rate}%</div>
+    </div>`;
+  }).join('');
+  const totalMastered = questions.filter(q => q.reviewStatus === '已掌握').length;
+  el.innerHTML = `
+    <h2 style="font-size:18px;font-weight:700;margin:0 0 4px">错题本</h2>
+    <p style="font-size:13px;color:var(--muted);margin:0 0 14px">共 ${questions.length} 道错题 · 已掌握 ${totalMastered} 道，点击卡片进入对应模块</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">${cards}</div>
+    <div class="card" onclick="openErrorCategory('全部')" style="cursor:pointer;margin-top:12px;padding:14px 16px;display:flex;align-items:center;gap:10px">
+      <i class="fas fa-layer-group" style="color:var(--primary);font-size:16px"></i>
+      <span style="font-size:14px;font-weight:600">全部错题</span>
+      <span style="font-size:12px;color:var(--muted)">${questions.length} 道</span>
+      <i class="fas fa-chevron-right" style="color:var(--muted);margin-left:auto;font-size:12px"></i>
+    </div>
+  `;
+}
+
+function renderErrorList(el) {
   let filtered = [...questions];
   if (errorFilters.module !== '全部') filtered = filtered.filter(q => q.module === errorFilters.module);
   if (errorFilters.reason !== '全部') filtered = filtered.filter(q => q.errorReasons.includes(errorFilters.reason));
@@ -836,15 +884,16 @@ function renderErrors() {
   else filtered.sort((a,b) => (b.createDate||'').localeCompare(a.createDate||''));
 
   const allReasons = [...new Set(questions.flatMap(q => q.errorReasons))];
+  const title = errorFilters.module === '全部' ? '全部错题' : errorFilters.module;
 
   el.innerHTML = `
-    <h2 style="font-size:18px;font-weight:700;margin:0 0 12px">错题本</h2>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <button class="btn btn-outline btn-sm" onclick="backToErrorCategories()" style="padding:8px 12px"><i class="fas fa-arrow-left"></i></button>
+      <h2 style="font-size:18px;font-weight:700;margin:0">${title}</h2>
+      <span style="font-size:12px;color:var(--muted)">${filtered.length} 道</span>
+    </div>
     <div class="card" style="margin-bottom:12px;padding:10px 12px">
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <select id="filter-module" class="input-field" style="width:auto;flex:1;min-width:100px;padding:6px 28px 6px 10px;font-size:13px" onchange="errorFilters.module=this.value;renderErrors()">
-          <option value="全部">全部模块</option>
-          ${ALL_MODULES.map(m => `<option value="${m}" ${errorFilters.module===m?'selected':''}>${m}</option>`).join('')}
-        </select>
         <select id="filter-reason" class="input-field" style="width:auto;flex:1;min-width:100px;padding:6px 28px 6px 10px;font-size:13px" onchange="errorFilters.reason=this.value;renderErrors()">
           <option value="全部">全部原因</option>
           ${allReasons.map(r => `<option value="${r}" ${errorFilters.reason===r?'selected':''}>${r}</option>`).join('')}
@@ -860,6 +909,18 @@ function renderErrors() {
         filtered.map(q => renderErrorCard(q)).join('')}
     </div>
   `;
+}
+
+function openErrorCategory(m) {
+  errorsViewMode = 'list';
+  errorFilters.module = m;
+  renderErrors();
+}
+
+function backToErrorCategories() {
+  errorsViewMode = 'categories';
+  errorFilters.reason = '全部';
+  renderErrors();
 }
 
 function renderErrorCard(q) {
