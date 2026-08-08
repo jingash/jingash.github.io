@@ -717,8 +717,14 @@ function renderSingleForm() {
         </select>
       </div>
       <div style="margin-bottom:14px">
-        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">题干 <span style="color:var(--danger)">*</span></label>
-        <textarea id="inp-question" class="input-field" rows="4" placeholder="请输入题干内容"></textarea>
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">题干（文字或照片） <span style="color:var(--danger)">*</span></label>
+        <textarea id="inp-question" class="input-field" rows="4" placeholder="输入题干文字；若用照片当题干，此处可不填"></textarea>
+        <div style="margin-top:8px">
+          <input type="file" accept="image/*" capture="environment" id="inp-photoInput" style="display:none" onchange="handlePhotoUpload(this)">
+          <button class="btn btn-outline btn-sm" onclick="document.getElementById('inp-photoInput').click()"><i class="fas fa-camera"></i> 添加题干照片</button>
+          <p style="font-size:11px;color:var(--muted);margin:6px 0 0">题干可输入文字、也可放照片（二选一或都要）；照片同时留底原图</p>
+          <div id="inp-photoPreview" style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"></div>
+        </div>
       </div>
       <div style="margin-bottom:14px">
         <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">选项A</label>
@@ -755,13 +761,6 @@ function renderSingleForm() {
         <div class="checkbox-group" id="inp-reasons">
           ${ERROR_REASONS.map(r => `<div class="checkbox-item" onclick="toggleReason(this)"><input type="checkbox" value="${r}"><span>${r}</span></div>`).join('')}
         </div>
-      </div>
-      <div style="margin-bottom:14px">
-        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">拍照/上传图片</label>
-        <input type="file" accept="image/*" capture="environment" id="inp-photoInput" style="display:none" onchange="handlePhotoUpload(this)">
-        <button class="btn btn-outline btn-sm" onclick="document.getElementById('inp-photoInput').click()"><i class="fas fa-camera"></i> 拍照/上传</button>
-        <p style="font-size:11px;color:var(--muted);margin:6px 0 0">拍照后可留底原图；离线版本不含自动识别，题干文字请手动填写</p>
-        <div id="inp-photoPreview" style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"></div>
       </div>
       <button class="btn btn-accent" style="width:100%" onclick="saveNewQuestion()"><i class="fas fa-save"></i> 保存错题</button>
     </div>`;
@@ -1050,7 +1049,7 @@ function saveNewQuestion() {
   const question = document.getElementById('inp-question').value.trim();
   const myAns = document.getElementById('inp-myAns').value;
   const correctAns = document.getElementById('inp-correctAns').value;
-  if (!question) { showToast('请输入题干'); return; }
+  if (!question && inputPhotos.length === 0) { showToast('请输入题干文字或添加题干照片'); return; }
   if (!myAns) { showToast('请选择我的答案'); return; }
   if (!correctAns) { showToast('请选择正确答案'); return; }
 
@@ -1246,7 +1245,7 @@ function renderErrorCard(q) {
           ${sel?'<i class="fas fa-check" style="color:#fff;font-size:13px"></i>':''}
         </div>
         <div style="flex:1;min-width:0">
-          <p style="font-size:13px;line-height:1.5;margin:0 0 4px">${qText}</p>
+          ${q.question ? `<p style="font-size:13px;line-height:1.5;margin:0 0 4px">${qText}</p>` : (q.photos && q.photos.length ? `<p style="font-size:13px;color:var(--muted);margin:0 0 4px"><i class="fas fa-image"></i> 图片题</p>` : '')}
           <div style="font-size:12px;color:var(--muted)">我答<b style="color:var(--danger)">${q.myAnswer}</b> → 正确<b style="color:var(--success)">${q.correctAnswer}</b> · ${q.reviewStatus}</div>
         </div>
       </div>
@@ -1265,7 +1264,7 @@ function renderErrorCard(q) {
       ${hasPhoto ? '<span style="font-size:11px;color:var(--blue)"><i class="fas fa-image"></i></span>' : ''}
       <span style="font-size:11px;color:${statusColor};margin-left:auto;font-weight:600">${q.reviewStatus}</span>
     </div>
-    <p style="font-size:14px;line-height:1.6;margin:0 0 8px">${qText}</p>
+    ${q.question ? `<p style="font-size:14px;line-height:1.6;margin:0 0 8px">${qText}</p>` : (hasPhoto ? `<img src="${q.photos[0]}" style="max-width:100%;max-height:${isExpanded?'320px':'130px'};border-radius:8px;margin-bottom:8px" onclick="event.stopPropagation();previewPhoto('${q.photos[0]}')">` : '<p style="font-size:14px;color:var(--muted);margin:0 0 8px">（无题干内容）</p>')}
     <div style="display:flex;align-items:center;gap:12px;font-size:12px;color:var(--muted)">
       <span>我的答案：<b style="color:var(--danger)">${q.myAnswer}</b></span>
       <span>正确答案：<b style="color:var(--success)">${q.correctAnswer}</b></span>
@@ -1328,7 +1327,7 @@ function viewDetail(id) {
         ${q.type ? `<span style="font-size:11px;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:10px">${q.type}</span>` : ''}
         ${q.errorReasons.map(r=>`<span style="font-size:11px;color:var(--accent);background:rgba(249,115,22,.08);padding:2px 8px;border-radius:10px">${r}</span>`).join('')}
       </div>
-      <div class="detail-section"><h4>题干</h4><p>${q.question}</p></div>
+      <div class="detail-section"><h4>题干</h4>${q.question ? `<p>${q.question}</p>` : ''}${(!q.question && q.photos && q.photos.length) ? `<img src="${q.photos[0]}" style="max-width:100%;border-radius:8px" onclick="previewPhoto('${q.photos[0]}')">` : ''}</div>
       ${q.optionA?`<div class="option-item ${q.myAnswer==='A'?'my-wrong':''} ${q.correctAnswer==='A'?'correct':''}">A. ${q.optionA}</div>`:''}
       ${q.optionB?`<div class="option-item ${q.myAnswer==='B'?'my-wrong':''} ${q.correctAnswer==='B'?'correct':''}">B. ${q.optionB}</div>`:''}
       ${q.optionC?`<div class="option-item ${q.myAnswer==='C'?'my-wrong':''} ${q.correctAnswer==='C'?'correct':''}">C. ${q.optionC}</div>`:''}
@@ -1483,7 +1482,7 @@ function showReviewQuestion() {
         <span class="badge ${getModuleClass(q.module)}">${q.module}</span>
         ${q.type ? `<span style="font-size:11px;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:10px">${q.type}</span>` : ''}
       </div>
-      <div class="detail-section"><h4>题干</h4><p>${q.question}</p></div>
+      <div class="detail-section"><h4>题干</h4>${q.question ? `<p>${q.question}</p>` : ''}${(!q.question && q.photos && q.photos.length) ? `<img src="${q.photos[0]}" style="max-width:100%;max-height:340px;border-radius:8px" onclick="previewPhoto('${q.photos[0]}')">` : ''}</div>
       ${q.optionA?`<div class="option-item">A. ${q.optionA}</div>`:''}
       ${q.optionB?`<div class="option-item">B. ${q.optionB}</div>`:''}
       ${q.optionC?`<div class="option-item">C. ${q.optionC}</div>`:''}
@@ -1845,4 +1844,4 @@ function init() {
 init();
 </script>
 </body>
-<!-- build: 0808p --></html>
+<!-- build: 0808q --></html>
