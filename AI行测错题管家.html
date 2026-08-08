@@ -44,9 +44,10 @@ textarea.input-field{resize:vertical;min-height:80px}
 .checkbox-item{display:flex;align-items:center;gap:4px;padding:4px 12px;border:1.5px solid var(--border);border-radius:20px;font-size:13px;cursor:pointer;transition:all .15s;user-select:none}
 .checkbox-item.checked{border-color:var(--accent);background:rgba(249,115,22,.08);color:var(--accent)}
 .checkbox-item input{display:none}
-#bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1.5px solid var(--border);display:flex;z-index:100;box-shadow:0 -4px 16px rgba(0,0,0,.1);max-width:640px;margin:0 auto;padding-bottom:env(safe-area-inset-bottom)}
-.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:26px 0 22px;cursor:pointer;color:var(--muted);transition:color .15s;font-size:16px;font-weight:600;gap:6px}
-.nav-item.active{color:var(--accent)}
+#bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1.5px solid var(--border);display:flex;z-index:100;box-shadow:0 -4px 16px rgba(0,0,0,.1);max-width:640px;margin:0 auto;padding:12px 10px calc(12px + env(safe-area-inset-bottom));gap:6px}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px 0 15px;cursor:pointer;color:var(--muted);transition:all .2s;font-size:17px;font-weight:600;gap:7px;border-radius:18px}
+.nav-item.active{background:var(--primary);color:#fff;box-shadow:0 6px 18px rgba(12,25,41,.35)}
+.nav-icon-wrap{display:flex;align-items:center;justify-content:center}
 .nav-item i{font-size:32px}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:flex-end;justify-content:center;animation:fadeIn .2s}
 .modal-content{background:#fff;width:100%;max-width:640px;max-height:90vh;border-radius:20px 20px 0 0;overflow-y:auto;animation:slideUp .3s ease;padding:20px 16px 32px}
@@ -99,11 +100,11 @@ textarea.input-field{resize:vertical;min-height:80px}
   <div id="page-settings" class="page"></div>
   <!-- Bottom Nav -->
   <nav id="bottom-nav">
-    <div class="nav-item active" data-tab="home"><i class="fas fa-home"></i><span>首页</span></div>
-    <div class="nav-item" data-tab="input"><i class="fas fa-plus-circle"></i><span>录入</span></div>
-    <div class="nav-item" data-tab="errors"><i class="fas fa-book"></i><span>错题本</span></div>
-    <div class="nav-item" data-tab="stats"><i class="fas fa-chart-bar"></i><span>统计</span></div>
-    <div class="nav-item" data-tab="settings"><i class="fas fa-cog"></i><span>设置</span></div>
+    <div class="nav-item active" data-tab="home"><div class="nav-icon-wrap"><i class="fas fa-home"></i></div><span>首页</span></div>
+    <div class="nav-item" data-tab="input"><div class="nav-icon-wrap"><i class="fas fa-plus-circle"></i></div><span>录入</span></div>
+    <div class="nav-item" data-tab="errors"><div class="nav-icon-wrap"><i class="fas fa-book"></i></div><span>错题本</span></div>
+    <div class="nav-item" data-tab="stats"><div class="nav-icon-wrap"><i class="fas fa-chart-bar"></i></div><span>统计</span></div>
+    <div class="nav-item" data-tab="settings"><div class="nav-icon-wrap"><i class="fas fa-cog"></i></div><span>设置</span></div>
   </nav>
   <!-- Review Modal -->
   <div id="review-modal" class="hidden"></div>
