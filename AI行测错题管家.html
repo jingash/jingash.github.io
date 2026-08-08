@@ -949,7 +949,7 @@ function renderErrorCard(q) {
         ${q.optionB ? `<div class="option-item ${q.myAnswer==='B'?'my-wrong':''} ${q.correctAnswer==='B'?'correct':''}">B. ${q.optionB}</div>` : ''}
         ${q.optionC ? `<div class="option-item ${q.myAnswer==='C'?'my-wrong':''} ${q.correctAnswer==='C'?'correct':''}">C. ${q.optionC}</div>` : ''}
         ${q.optionD ? `<div class="option-item ${q.myAnswer==='D'?'my-wrong':''} ${q.correctAnswer==='D'?'correct':''}">D. ${q.optionD}</div>` : ''}
-        ${q.analysis ? `<div class="detail-section"><h4>正确解法</h4><p style="white-space:pre-line">${q.analysis}</p></div>` : ''}
+        ${q.analysis ? `<div class="detail-section"><h4>${q.module === '言语理解' ? '解析' : '正确解法'}</h4><p style="white-space:pre-line">${q.analysis}</p></div>` : ''}
         ${q.notes ? `<div class="detail-section"><h4>笔记</h4><p>${q.notes}</p></div>` : ''}
         ${hasPhoto ? `<div class="detail-section"><h4>照片</h4><div style="display:flex;gap:8px;flex-wrap:wrap">${q.photos.map(p => `<img src="${p}" class="photo-thumb" onclick="event.stopPropagation();previewPhoto('${p}')">`).join('')}</div></div>` : ''}
         <div style="display:flex;gap:8px;margin-top:12px">
@@ -1006,7 +1006,7 @@ function viewDetail(id) {
         <span>我的答案：<b style="color:var(--danger)">${q.myAnswer}</b></span>
         <span>正确答案：<b style="color:var(--success)">${q.correctAnswer}</b></span>
       </div>
-      ${q.analysis?`<div class="detail-section"><h4>正确解法</h4><p style="white-space:pre-line">${q.analysis}</p></div>`:''}
+      ${q.analysis?`<div class="detail-section"><h4>${q.module === '言语理解' ? '解析' : '正确解法'}</h4><p style="white-space:pre-line">${q.analysis}</p></div>`:''}
       ${q.notes?`<div class="detail-section"><h4>笔记</h4><p>${q.notes}</p></div>`:''}
       ${q.photos&&q.photos.length?`<div class="detail-section"><h4>照片</h4><div style="display:flex;gap:8px;flex-wrap:wrap">${q.photos.map(p=>`<img src="${p}" class="photo-thumb" onclick="previewPhoto('${p}')">`).join('')}</div></div>`:''}
       <div style="font-size:12px;color:var(--muted);margin-top:12px">
@@ -1409,4 +1409,4 @@ function init() {
 init();
 </script>
 </body>
-<!-- build: 0808e --></html>
+<!-- build: 0808f --></html>
