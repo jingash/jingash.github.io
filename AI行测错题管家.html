@@ -1592,7 +1592,9 @@ function editQuestion(id) {
   const q = questions.find(x => x.id === id);
   if (!q) return;
   const el = document.getElementById('detail-modal');
-  const typeOptions = `<option value="">未选择题型</option>` + (MODULE_TYPES[q.module] || []).map(t => `<option value="${t}" ${t===q.type?'selected':''}>${t}</option>`).join('');
+  const stdTypes = MODULE_TYPES[q.module] || [];
+  const hasCustomType = q.type && !stdTypes.includes(q.type);
+  const typeOptions = `<option value="">未选择题型</option>` + (hasCustomType ? `<option value="${q.type.replace(/"/g,'&quot;')}" selected>${q.type}</option>` : '') + stdTypes.map(t => `<option value="${t}" ${t===q.type?'selected':''}>${t}</option>`).join('');
   el.innerHTML = `<div class="modal-overlay modal-full" onclick="if(event.target===this)closeDetail()">
     <div class="modal-content">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
@@ -1659,7 +1661,9 @@ function updateEditType() {
   const mod = document.getElementById('edit-module').value;
   const sel = document.getElementById('edit-type');
   const cur = sel.value;
-  sel.innerHTML = `<option value="">未选择题型</option>` + (MODULE_TYPES[mod] || []).map(t => `<option value="${t}" ${t===cur?'selected':''}>${t}</option>`).join('');
+  const stdTypes = MODULE_TYPES[mod] || [];
+  const keepCustom = cur && !stdTypes.includes(cur);
+  sel.innerHTML = `<option value="">未选择题型</option>` + (keepCustom ? `<option value="${cur.replace(/"/g,'&quot;')}" selected>${cur}</option>` : '') + stdTypes.map(t => `<option value="${t}" ${t===cur?'selected':''}>${t}</option>`).join('');
 }
 
 function saveEdit(id) {
@@ -2126,4 +2130,4 @@ function init() {
 init();
 </script>
 </body>
-<!-- build: 0809a --></html>
+<!-- build: 0809b --></html>
