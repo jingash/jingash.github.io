@@ -451,7 +451,7 @@ let inputMode = 'single';
 let batchModule = '';
 let batchText = '';
 let batchParsed = null;
-let errorFilters = { module: '全部', reason: '全部', sort: '最新' };
+let errorFilters = { module: '全部', reason: '全部', source: '全部', sort: '最新' };
 let expandedCardId = null;
 let errorsViewMode = 'categories';
 let batchDeleteMode = false;
@@ -1350,6 +1350,7 @@ function getFilteredQuestions() {
   let filtered = [...questions];
   if (errorFilters.module !== '全部') filtered = filtered.filter(q => q.module === errorFilters.module);
   if (errorFilters.reason !== '全部') filtered = filtered.filter(q => q.errorReasons.includes(errorFilters.reason));
+  if (errorFilters.source !== '全部') filtered = filtered.filter(q => (q.source || '未填来源') === errorFilters.source);
   if (errorFilters.sort === '错误次数最多') filtered.sort((a,b) => b.errorCount - a.errorCount);
   else filtered.sort((a,b) => (b.createDate||'').localeCompare(a.createDate||''));
   return filtered;
@@ -1358,6 +1359,7 @@ function getFilteredQuestions() {
 function renderErrorList(el) {
   const filtered = getFilteredQuestions();
   const allReasons = [...new Set(questions.flatMap(q => q.errorReasons))];
+  const allSources = [...new Set(questions.map(q => q.source || '未填来源').filter(Boolean))];
   const title = errorFilters.module === '全部' ? '全部错题' : errorFilters.module;
   const selCount = Object.keys(batchSelectedIds).length;
 
@@ -1385,6 +1387,10 @@ function renderErrorList(el) {
         <select id="filter-reason" class="input-field" style="width:auto;flex:1;min-width:100px;padding:6px 28px 6px 10px;font-size:13px" onchange="errorFilters.reason=this.value;renderErrors()">
           <option value="全部">全部类型</option>
           ${allReasons.map(r => `<option value="${r}" ${errorFilters.reason===r?'selected':''}>${r}</option>`).join('')}
+        </select>
+        <select id="filter-source" class="input-field" style="width:auto;flex:1;min-width:100px;padding:6px 28px 6px 10px;font-size:13px" onchange="errorFilters.source=this.value;renderErrors()">
+          <option value="全部">全部来源</option>
+          ${allSources.map(s => `<option value="${s}" ${errorFilters.source===s?'selected':''}>${s}</option>`).join('')}
         </select>
         <select class="input-field" style="width:auto;flex:1;min-width:100px;padding:6px 28px 6px 10px;font-size:13px" onchange="errorFilters.sort=this.value;renderErrors()">
           <option value="最新" ${errorFilters.sort==='最新'?'selected':''}>最新</option>
@@ -1442,6 +1448,7 @@ function openErrorCategory(m) {
 function backToErrorCategories() {
   errorsViewMode = 'categories';
   errorFilters.reason = '全部';
+  errorFilters.source = '全部';
   batchDeleteMode = false;
   batchSelectedIds = {};
   renderErrors();
@@ -1471,9 +1478,9 @@ function renderErrorCard(q) {
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">
       <span class="badge ${getModuleClass(q.module)}">${q.module}</span>
       ${q.type ? `<span style="font-size:11px;color:#1e40af;background:rgba(59,130,246,.12);padding:2px 8px;border-radius:10px;font-weight:600">${q.type}</span>` : ''}
-      ${q.source ? `<span style="font-size:11px;color:#0f766e;background:rgba(20,184,166,.1);padding:2px 8px;border-radius:10px"><i class="fas fa-book-open" style="margin-right:3px;font-size:10px"></i>${q.source}</span>` : ''}
       ${q.errorReasons.map(r => `<span style="font-size:11px;color:var(--accent);background:rgba(249,115,22,.08);padding:2px 8px;border-radius:10px">${r}</span>`).join('')}
       ${hasPhoto ? '<span style="font-size:11px;color:var(--blue)"><i class="fas fa-image"></i></span>' : ''}
+      ${q.source ? `<span style="font-size:11px;color:#0f766e;background:rgba(20,184,166,.1);padding:2px 8px;border-radius:10px"><i class="fas fa-book-open" style="margin-right:3px;font-size:10px"></i>${q.source}</span>` : ''}
       <span style="font-size:11px;color:${statusColor};margin-left:auto;font-weight:600">${q.reviewStatus}</span>
     </div>
     ${hasPhoto ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${q.photos.map(p => `<img src="${p}" style="height:${isExpanded?'160px':'110px'};width:auto;max-width:${q.photos.length>1?'48%':'100%'};object-fit:cover;border-radius:8px;display:block" onclick="event.stopPropagation();previewPhoto('${p}')">`).join('')}</div>` : ''}
@@ -1538,8 +1545,8 @@ function viewDetail(id) {
       <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
         <span class="badge ${getModuleClass(q.module)}">${q.module}</span>
         ${q.type ? `<span style="font-size:11px;color:#1e40af;background:rgba(59,130,246,.12);padding:2px 8px;border-radius:10px;font-weight:600">${q.type}</span>` : ''}
-        ${q.source ? `<span style="font-size:11px;color:#0f766e;background:rgba(20,184,166,.1);padding:2px 8px;border-radius:10px"><i class="fas fa-book-open" style="margin-right:3px;font-size:10px"></i>${q.source}</span>` : ''}
         ${q.errorReasons.map(r=>`<span style="font-size:11px;color:var(--accent);background:rgba(249,115,22,.08);padding:2px 8px;border-radius:10px">${r}</span>`).join('')}
+        ${q.source ? `<span style="font-size:11px;color:#0f766e;background:rgba(20,184,166,.1);padding:2px 8px;border-radius:10px"><i class="fas fa-book-open" style="margin-right:3px;font-size:10px"></i>${q.source}</span>` : ''}
       </div>
       <div class="detail-section"><h4>题干</h4>${(q.photos && q.photos.length) ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:${q.question?'10px':'0'}">${q.photos.map(p=>`<img src="${p}" style="height:150px;width:auto;max-width:${q.photos.length>1?'48%':'100%'};object-fit:cover;border-radius:8px" onclick="previewPhoto('${p}')">`).join('')}</div>` : ''}${q.question ? `<p>${q.question}</p>` : ''}</div>
       ${q.optionA?`<div class="option-item ${q.myAnswer==='A'?'my-wrong':''} ${q.correctAnswer==='A'?'correct':''}">A. ${q.optionA}</div>`:''}
@@ -2101,4 +2108,4 @@ function init() {
 init();
 </script>
 </body>
-<!-- build: 0808y --></html>
+<!-- build: 0808z --></html>
