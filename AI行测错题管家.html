@@ -433,6 +433,10 @@ let reviewQueue = [];
 let reviewIndex = 0;
 let reviewResults = [];
 let inputPhotos = [];
+let inputMode = 'single';
+let batchModule = '';
+let batchText = '';
+let batchParsed = null;
 let errorFilters = { module: '全部', reason: '全部', sort: '最新' };
 let expandedCardId = null;
 let errorsViewMode = 'categories';
@@ -505,6 +509,12 @@ function loadSeedData() {
 
 function getModuleClass(mod) {
   return 'badge-' + (MODULE_COLORS[mod] || 'blue');
+}
+
+function formatAnalysis(text) {
+  if (!text) return '';
+  const escaped = String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return escaped.replace(/【([^】]*)】/g, '<strong>【$1】</strong>');
 }
 
 function genId() {
@@ -656,8 +666,26 @@ function renderInput() {
   const el = document.getElementById('page-input');
   inputPhotos = [];
   el.innerHTML = `
-    <h2 style="font-size:18px;font-weight:700;margin:0 0 16px">录入错题</h2>
-    <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h2 style="font-size:18px;font-weight:700;margin:0">录入错题</h2>
+      <button class="btn ${inputMode==='batch'?'btn-primary':'btn-outline'} btn-sm" onclick="toggleInputMode()">
+        <i class="fas fa-${inputMode==='batch'?'pen':'list'}"></i> ${inputMode==='batch'?'切换单条录入':'切换批量录入'}
+      </button>
+    </div>
+    ${inputMode==='batch' ? renderBatchForm() : renderSingleForm()}
+    <div id="batch-preview" style="margin-top:14px"></div>
+  `;
+  if (inputMode === 'single') updateSubTypes();
+}
+
+function toggleInputMode() {
+  inputMode = inputMode === 'single' ? 'batch' : 'single';
+  batchParsed = null;
+  renderInput();
+}
+
+function renderSingleForm() {
+  return `<div class="card">
       <div style="margin-bottom:14px">
         <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">模块 <span style="color:var(--danger)">*</span></label>
         <select id="inp-module" class="input-field" onchange="updateSubTypes()">
@@ -723,8 +751,185 @@ function renderInput() {
         <div id="inp-photoPreview" style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"></div>
       </div>
       <button class="btn btn-accent" style="width:100%" onclick="saveNewQuestion()"><i class="fas fa-save"></i> 保存错题</button>
+    </div>`;
+}
+
+function renderBatchForm() {
+  return `
+    <div class="card" style="margin-bottom:12px">
+      <div style="margin-bottom:12px">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">本批错题所属模块 <span style="color:var(--danger)">*</span></label>
+        <select id="batch-module" class="input-field">
+          <option value="">请选择模块</option>
+          ${ALL_MODULES.map(m => `<option value="${m}" ${batchModule===m?'selected':''}>${m}</option>`).join('')}
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:13px;font-weight:600">统一模板（照这个格式粘贴）</span>
+        <button class="btn btn-outline btn-sm" onclick="copyBatchTemplate()"><i class="fas fa-copy"></i> 复制模板</button>
+      </div>
+      <pre style="font-size:11.5px;background:var(--bg);padding:10px;border-radius:8px;line-height:1.7;margin:0;white-space:pre-wrap;color:var(--muted)">【题目1】
+这里写题干内容……
+A. 选项A内容
+B. 选项B内容
+C. 选项C内容
+D. 选项D内容
+我的答案：B
+正确答案：D
+题型：主旨概括
+错误原因：概念理解错误
+解析：【考查知识点】……
+【行文脉络】……
+【选项分析】……
+【导图分析】……
+
+【题目2】
+下一道题的题干……</pre>
     </div>
-  `;
+    <div class="card">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">粘贴错题内容（多题用【题目1】【题目2】依次分隔）</label>
+      <textarea id="batch-text" class="input-field" rows="12" placeholder="按上方模板粘贴，可一次粘贴多道题">${batchText}</textarea>
+      <button class="btn btn-primary" style="width:100%;margin-top:10px" onclick="parseBatchText()"><i class="fas fa-magic"></i> 解析并预览</button>
+    </div>`;
+}
+
+function copyBatchTemplate() {
+  const tpl = `【题目1】
+这里写题干内容……
+A. 选项A内容
+B. 选项B内容
+C. 选项C内容
+D. 选项D内容
+我的答案：B
+正确答案：D
+题型：主旨概括
+错误原因：概念理解错误
+解析：【考查知识点】……
+【行文脉络】……
+【选项分析】……
+【导图分析】……`;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(tpl).then(() => showToast('模板已复制')).catch(() => fallbackCopy(tpl));
+  } else fallbackCopy(tpl);
+}
+
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text; document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); showToast('模板已复制'); } catch(e) { showToast('复制失败，请手动长按模板复制'); }
+  document.body.removeChild(ta);
+}
+
+function parseBatchContent(text) {
+  let norm = text.replace(/\*\*/g, '');
+  norm = norm.replace(/(?:^|\n)\s*第\s*(\d+)\s*题\s*[：:]/g, '\n【题目$1】');
+  const parts = norm.split(/\n\s*-{3,}\s*\n/);
+  const blocks = [];
+  parts.forEach(part => {
+    part.split(/【题目\d*】/).map(b => b.trim()).filter(b => b).forEach(b => blocks.push(b));
+  });
+  const LABEL_ONLY = /^(?:【)?(?:我的答案|错选选项|错选|正确答案|题型|错误原因|解析|笔记)(?:】)?\s*[:：]?\s*$/;
+  const results = [];
+  blocks.forEach(block => {
+    const rawLines = block.split('\n');
+    const lines = [];
+    for (let i = 0; i < rawLines.length; i++) {
+      const t = rawLines[i].trim();
+      if (LABEL_ONLY.test(t)) {
+        let j = i + 1;
+        while (j < rawLines.length && !rawLines[j].trim()) j++;
+        if (j < rawLines.length && !LABEL_ONLY.test(rawLines[j].trim())) {
+          lines.push(t + '：' + rawLines[j].trim());
+          i = j;
+          continue;
+        }
+      }
+      lines.push(rawLines[i]);
+    }
+    const q = { question: '', optionA: '', optionB: '', optionC: '', optionD: '', myAnswer: '', correctAnswer: '', type: '', errorReasons: [], analysis: '', notes: '' };
+    const qLines = [], aLines = [], nLines = [];
+    let section = 'question';
+    let optSeen = false;
+    lines.forEach(raw => {
+      const line = raw.trim();
+      if (!line) return;
+      if (/^(?:【)?选项(?:】)?$/.test(line)) return;
+      let m;
+      if (!q.optionA && (m = line.match(/^(?:选项A|A)\s*[.、．:：]\s*(.+)$/))) { q.optionA = m[1].trim(); optSeen = true; return; }
+      if (!q.optionB && (m = line.match(/^(?:选项B|B)\s*[.、．:：]\s*(.+)$/))) { q.optionB = m[1].trim(); optSeen = true; return; }
+      if (!q.optionC && (m = line.match(/^(?:选项C|C)\s*[.、．:：]\s*(.+)$/))) { q.optionC = m[1].trim(); optSeen = true; return; }
+      if (!q.optionD && (m = line.match(/^(?:选项D|D)\s*[.、．:：]\s*(.+)$/))) { q.optionD = m[1].trim(); optSeen = true; return; }
+      if ((m = line.match(/^(?:【)?(?:我的答案|错选选项|错选)(?:】)?\s*[:：]?\s*([A-Da-d])/))) { q.myAnswer = m[1].toUpperCase(); section = 'meta'; return; }
+      if ((m = line.match(/^(?:【)?正确答案(?:】)?\s*[:：]?\s*([A-Da-d])/))) { q.correctAnswer = m[1].toUpperCase(); section = 'meta'; return; }
+      if ((m = line.match(/^(?:【)?题型(?:】)?\s*[:：]\s*(.+)$/))) { q.type = m[1].trim(); section = 'meta'; return; }
+      if ((m = line.match(/^(?:【)?错误原因(?:】)?\s*[:：]\s*(.+)$/))) { q.errorReasons = m[1].split(/[、,，\s]+/).filter(Boolean); section = 'meta'; return; }
+      if ((m = line.match(/^(?:【)?解析(?:】)?\s*[:：]?\s*(.*)$/))) { section = 'analysis'; if (m[1].trim()) aLines.push(m[1].trim()); return; }
+      if ((m = line.match(/^(?:【)?笔记(?:】)?\s*[:：]?\s*(.*)$/))) { section = 'notes'; if (m[1].trim()) nLines.push(m[1].trim()); return; }
+      if (section === 'notes') { nLines.push(line); return; }
+      if (section === 'analysis') { aLines.push(line); return; }
+      if (optSeen) { aLines.push(line); return; }
+      qLines.push(line);
+    });
+    q.question = qLines.join('\n').trim();
+    q.analysis = aLines.join('\n').trim();
+    q.notes = nLines.join('\n').trim();
+    if (q.question && q.myAnswer && q.correctAnswer) results.push(q);
+  });
+  return results;
+}
+
+function parseBatchText() {
+  batchModule = document.getElementById('batch-module').value;
+  batchText = document.getElementById('batch-text').value;
+  const pv = document.getElementById('batch-preview');
+  if (!batchModule) { showToast('请先选择本批错题的模块'); return; }
+  if (!batchText.trim()) { showToast('请粘贴错题内容'); return; }
+  batchParsed = parseBatchContent(batchText);
+  if (!batchParsed.length) {
+    pv.innerHTML = '<div class="card"><p style="color:var(--danger);font-size:13px;margin:0">没有解析出有效题目。请检查：每道题以【题目1】开头，且包含题干、我的答案、正确答案三项。</p></div>';
+    return;
+  }
+  pv.innerHTML = `
+    <div class="card">
+      <p style="font-size:14px;font-weight:700;margin:0 0 10px"><i class="fas fa-check-circle" style="color:var(--success)"></i> 解析成功 ${batchParsed.length} 道题</p>
+      ${batchParsed.map((q,i) => `<div style="padding:8px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5">
+        <span style="color:var(--muted)">第${i+1}题</span> ${q.question.slice(0,30)}${q.question.length>30?'…':''}
+        <span style="margin-left:6px;white-space:nowrap">我答<b style="color:var(--danger)">${q.myAnswer}</b> → 正确<b style="color:var(--success)">${q.correctAnswer}</b></span>
+      </div>`).join('')}
+      <button class="btn btn-success" style="width:100%;margin-top:12px" onclick="confirmBatchImport()"><i class="fas fa-file-import"></i> 确认导入 ${batchParsed.length} 道错题</button>
+    </div>`;
+}
+
+function confirmBatchImport() {
+  if (!batchParsed || !batchParsed.length) return;
+  const todayStr = new Date().toISOString().slice(0,10);
+  batchParsed.forEach(p => {
+    questions.push({
+      id: genId(),
+      module: batchModule,
+      type: p.type || '',
+      question: p.question,
+      optionA: p.optionA, optionB: p.optionB, optionC: p.optionC, optionD: p.optionD,
+      myAnswer: p.myAnswer,
+      correctAnswer: p.correctAnswer,
+      errorReasons: p.errorReasons.length ? p.errorReasons : [],
+      analysis: p.analysis,
+      notes: p.notes,
+      photos: [],
+      createDate: todayStr,
+      errorCount: 1,
+      reviewStatus: '待复习',
+      lastReviewDate: null,
+      isSeed: false
+    });
+  });
+  const added = batchParsed.length;
+  saveQuestions();
+  updateDailyStat('newErrors', added);
+  showToast(`成功导入 ${added} 道错题`);
+  batchParsed = null; batchText = '';
+  errorsViewMode = 'categories';
+  switchTab('errors');
 }
 
 function updateSubTypes() {
@@ -949,7 +1154,7 @@ function renderErrorCard(q) {
         ${q.optionB ? `<div class="option-item ${q.myAnswer==='B'?'my-wrong':''} ${q.correctAnswer==='B'?'correct':''}">B. ${q.optionB}</div>` : ''}
         ${q.optionC ? `<div class="option-item ${q.myAnswer==='C'?'my-wrong':''} ${q.correctAnswer==='C'?'correct':''}">C. ${q.optionC}</div>` : ''}
         ${q.optionD ? `<div class="option-item ${q.myAnswer==='D'?'my-wrong':''} ${q.correctAnswer==='D'?'correct':''}">D. ${q.optionD}</div>` : ''}
-        ${q.analysis ? `<div class="detail-section"><h4>${q.module === '言语理解' ? '解析' : '正确解法'}</h4><p style="white-space:pre-line">${q.analysis}</p></div>` : ''}
+        ${q.analysis ? `<div class="detail-section"><h4>解析</h4><p style="white-space:pre-line">${formatAnalysis(q.analysis)}</p></div>` : ''}
         ${q.notes ? `<div class="detail-section"><h4>笔记</h4><p>${q.notes}</p></div>` : ''}
         ${hasPhoto ? `<div class="detail-section"><h4>照片</h4><div style="display:flex;gap:8px;flex-wrap:wrap">${q.photos.map(p => `<img src="${p}" class="photo-thumb" onclick="event.stopPropagation();previewPhoto('${p}')">`).join('')}</div></div>` : ''}
         <div style="display:flex;gap:8px;margin-top:12px">
@@ -1006,7 +1211,7 @@ function viewDetail(id) {
         <span>我的答案：<b style="color:var(--danger)">${q.myAnswer}</b></span>
         <span>正确答案：<b style="color:var(--success)">${q.correctAnswer}</b></span>
       </div>
-      ${q.analysis?`<div class="detail-section"><h4>${q.module === '言语理解' ? '解析' : '正确解法'}</h4><p style="white-space:pre-line">${q.analysis}</p></div>`:''}
+      ${q.analysis?`<div class="detail-section"><h4>解析</h4><p style="white-space:pre-line">${formatAnalysis(q.analysis)}</p></div>`:''}
       ${q.notes?`<div class="detail-section"><h4>笔记</h4><p>${q.notes}</p></div>`:''}
       ${q.photos&&q.photos.length?`<div class="detail-section"><h4>照片</h4><div style="display:flex;gap:8px;flex-wrap:wrap">${q.photos.map(p=>`<img src="${p}" class="photo-thumb" onclick="previewPhoto('${p}')">`).join('')}</div></div>`:''}
       <div style="font-size:12px;color:var(--muted);margin-top:12px">
@@ -1091,7 +1296,7 @@ function showReviewAnswer() {
         <span>我的答案：<b style="color:var(--danger)">${q.myAnswer}</b></span>
         <span>正确答案：<b style="color:var(--success)">${q.correctAnswer}</b></span>
       </div>
-      ${q.analysis ? `<p style="font-size:13px;color:var(--muted);line-height:1.6;margin:8px 0 0;white-space:pre-line">${q.analysis}</p>` : ''}
+      ${q.analysis ? `<p style="font-size:13px;color:var(--muted);line-height:1.6;margin:8px 0 0;white-space:pre-line">${formatAnalysis(q.analysis)}</p>` : ''}
     </div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:12px">你掌握了吗？</p>
     <div class="review-btn-group">
@@ -1409,4 +1614,4 @@ function init() {
 init();
 </script>
 </body>
-<!-- build: 0808f --></html>
+<!-- build: 0808h --></html>
