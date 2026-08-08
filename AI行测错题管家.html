@@ -135,7 +135,7 @@ textarea.input-field{resize:vertical;min-height:80px}
 
 <script>
 // ==================== CONSTANTS ====================
-const SEED_VERSION = 6;
+const SEED_VERSION = 7;
 const STORAGE_KEY = 'xct_questions';
 const DAILY_KEY = 'xct_daily';
 const SEED_KEY = 'xct_seedLoaded';
@@ -1469,7 +1469,7 @@ function renderErrorCard(q) {
   return `<div class="card" style="cursor:pointer" onclick="toggleCardExpand('${q.id}')">
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">
       <span class="badge ${getModuleClass(q.module)}">${q.module}</span>
-      ${q.type ? `<span style="font-size:11px;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:10px">${q.type}</span>` : ''}
+      ${q.type ? `<span style="font-size:11px;color:#1e40af;background:rgba(59,130,246,.12);padding:2px 8px;border-radius:10px;font-weight:600">${q.type}</span>` : ''}
       ${q.errorReasons.map(r => `<span style="font-size:11px;color:var(--accent);background:rgba(249,115,22,.08);padding:2px 8px;border-radius:10px">${r}</span>`).join('')}
       ${hasPhoto ? '<span style="font-size:11px;color:var(--blue)"><i class="fas fa-image"></i></span>' : ''}
       <span style="font-size:11px;color:${statusColor};margin-left:auto;font-weight:600">${q.reviewStatus}</span>
@@ -1535,7 +1535,7 @@ function viewDetail(id) {
       </div>
       <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
         <span class="badge ${getModuleClass(q.module)}">${q.module}</span>
-        ${q.type ? `<span style="font-size:11px;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:10px">${q.type}</span>` : ''}
+        ${q.type ? `<span style="font-size:11px;color:#1e40af;background:rgba(59,130,246,.12);padding:2px 8px;border-radius:10px;font-weight:600">${q.type}</span>` : ''}
         ${q.errorReasons.map(r=>`<span style="font-size:11px;color:var(--accent);background:rgba(249,115,22,.08);padding:2px 8px;border-radius:10px">${r}</span>`).join('')}
       </div>
       <div class="detail-section"><h4>题干</h4>${(q.photos && q.photos.length) ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:${q.question?'10px':'0'}">${q.photos.map(p=>`<img src="${p}" style="height:150px;width:auto;max-width:${q.photos.length>1?'48%':'100%'};object-fit:cover;border-radius:8px" onclick="previewPhoto('${p}')">`).join('')}</div>` : ''}${q.question ? `<p>${q.question}</p>` : ''}</div>
@@ -1564,7 +1564,7 @@ function editQuestion(id) {
   const q = questions.find(x => x.id === id);
   if (!q) return;
   const el = document.getElementById('detail-modal');
-  const typeOptions = (MODULE_TYPES[q.module] || []).map(t => `<option value="${t}" ${t===q.type?'selected':''}>${t}</option>`).join('');
+  const typeOptions = `<option value="">未选择题型</option>` + (MODULE_TYPES[q.module] || []).map(t => `<option value="${t}" ${t===q.type?'selected':''}>${t}</option>`).join('');
   el.innerHTML = `<div class="modal-overlay modal-full" onclick="if(event.target===this)closeDetail()">
     <div class="modal-content">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
@@ -1628,7 +1628,8 @@ function editQuestion(id) {
 function updateEditType() {
   const mod = document.getElementById('edit-module').value;
   const sel = document.getElementById('edit-type');
-  sel.innerHTML = (MODULE_TYPES[mod] || []).map(t => `<option value="${t}">${t}</option>`).join('');
+  const cur = sel.value;
+  sel.innerHTML = `<option value="">未选择题型</option>` + (MODULE_TYPES[mod] || []).map(t => `<option value="${t}" ${t===cur?'selected':''}>${t}</option>`).join('');
 }
 
 function saveEdit(id) {
@@ -1698,7 +1699,7 @@ function showReviewQuestion() {
       </div>
       <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
         <span class="badge ${getModuleClass(q.module)}">${q.module}</span>
-        ${q.type ? `<span style="font-size:11px;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:10px">${q.type}</span>` : ''}
+        ${q.type ? `<span style="font-size:11px;color:#1e40af;background:rgba(59,130,246,.12);padding:2px 8px;border-radius:10px;font-weight:600">${q.type}</span>` : ''}
       </div>
       <div class="detail-section"><h4>题干</h4>${q.question ? `<p>${q.question}</p>` : ''}${(!q.question && q.photos && q.photos.length) ? `<img src="${q.photos[0]}" style="max-width:100%;max-height:340px;border-radius:8px" onclick="previewPhoto('${q.photos[0]}')">` : ''}</div>
       ${q.optionA?`<div id="review-opt-A" class="option-item" style="cursor:pointer" onclick="selectReviewOption('A')">A. ${q.optionA}</div>`:''}
@@ -2095,4 +2096,4 @@ function init() {
 init();
 </script>
 </body>
-<!-- build: 0808t --></html>
+<!-- build: 0808u --></html>
