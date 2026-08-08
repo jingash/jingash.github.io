@@ -444,6 +444,8 @@ let currentTab = 'home';
 let reviewQueue = [];
 let reviewIndex = 0;
 let reviewResults = [];
+let reviewSelected = null;
+let reviewSubmitted = false;
 let inputPhotos = [];
 let inputMode = 'single';
 let batchModule = '';
@@ -1461,7 +1463,6 @@ function renderErrorCard(q) {
     </div>`;
   }
   const isExpanded = expandedCardId === q.id;
-  const qText = isExpanded ? q.question : (q.question.length > 30 ? q.question.slice(0, 30) + '…' : q.question);
   const statusColor = q.reviewStatus === '已掌握' ? 'var(--success)' : q.reviewStatus === '模糊' ? 'var(--accent)' : 'var(--muted)';
   const hasPhoto = q.photos && q.photos.length > 0;
 
@@ -1474,14 +1475,15 @@ function renderErrorCard(q) {
       <span style="font-size:11px;color:${statusColor};margin-left:auto;font-weight:600">${q.reviewStatus}</span>
     </div>
     ${hasPhoto ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${q.photos.map(p => `<img src="${p}" style="height:${isExpanded?'160px':'110px'};width:auto;max-width:${q.photos.length>1?'48%':'100%'};object-fit:cover;border-radius:8px;display:block" onclick="event.stopPropagation();previewPhoto('${p}')">`).join('')}</div>` : ''}
-    ${q.question ? `<p style="font-size:14px;line-height:1.6;margin:0 0 8px">${qText}</p>` : (!hasPhoto ? '<p style="font-size:14px;color:var(--muted);margin:0 0 8px">（无题干内容）</p>' : '')}
-    <div style="display:flex;align-items:center;gap:12px;font-size:12px;color:var(--muted)">
-      <span>我的答案：<b style="color:var(--danger)">${q.myAnswer}</b></span>
-      <span>正确答案：<b style="color:var(--success)">${q.correctAnswer}</b></span>
-      <span style="margin-left:auto">错误${q.errorCount}次</span>
-    </div>
+    ${q.question ? `<p style="font-size:14px;line-height:1.7;margin:0 0 8px">${q.question}</p>` : (!hasPhoto ? '<p style="font-size:14px;color:var(--muted);margin:0 0 8px">（无题干内容）</p>' : '')}
+    ${!isExpanded ? `<div style="display:flex;align-items:center;font-size:12px;color:var(--muted)"><span>错误${q.errorCount}次 · 点击查看选项与解析</span><i class="fas fa-chevron-down" style="margin-left:auto;color:var(--primary);font-size:11px"></i></div>` : ''}
     ${isExpanded ? `
-      <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px">
+      <div style="margin-top:4px;border-top:1px solid var(--border);padding-top:12px">
+        <div style="display:flex;align-items:center;gap:12px;font-size:13px;margin-bottom:10px">
+          <span>我的答案：<b style="color:var(--danger)">${q.myAnswer}</b></span>
+          <span>正确答案：<b style="color:var(--success)">${q.correctAnswer}</b></span>
+          <span style="margin-left:auto;font-size:12px;color:var(--muted)">错误${q.errorCount}次</span>
+        </div>
         ${q.optionA ? `<div class="option-item ${q.myAnswer==='A'?'my-wrong':''} ${q.correctAnswer==='A'?'correct':''}">A. ${q.optionA}</div>` : ''}
         ${q.optionB ? `<div class="option-item ${q.myAnswer==='B'?'my-wrong':''} ${q.correctAnswer==='B'?'correct':''}">B. ${q.optionB}</div>` : ''}
         ${q.optionC ? `<div class="option-item ${q.myAnswer==='C'?'my-wrong':''} ${q.correctAnswer==='C'?'correct':''}">C. ${q.optionC}</div>` : ''}
@@ -1683,6 +1685,8 @@ function startReview() {
 
 function showReviewQuestion() {
   if (reviewIndex >= reviewQueue.length) { endReview(); return; }
+  reviewSelected = null;
+  reviewSubmitted = false;
   const q = reviewQueue[reviewIndex];
   const el = document.getElementById('review-modal');
   const hasPhoto = q.photos && q.photos.length > 0;
@@ -1697,12 +1701,13 @@ function showReviewQuestion() {
         ${q.type ? `<span style="font-size:11px;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:10px">${q.type}</span>` : ''}
       </div>
       <div class="detail-section"><h4>题干</h4>${q.question ? `<p>${q.question}</p>` : ''}${(!q.question && q.photos && q.photos.length) ? `<img src="${q.photos[0]}" style="max-width:100%;max-height:340px;border-radius:8px" onclick="previewPhoto('${q.photos[0]}')">` : ''}</div>
-      ${q.optionA?`<div class="option-item">A. ${q.optionA}</div>`:''}
-      ${q.optionB?`<div class="option-item">B. ${q.optionB}</div>`:''}
-      ${q.optionC?`<div class="option-item">C. ${q.optionC}</div>`:''}
-      ${q.optionD?`<div class="option-item">D. ${q.optionD}</div>`:''}
+      ${q.optionA?`<div id="review-opt-A" class="option-item" style="cursor:pointer" onclick="selectReviewOption('A')">A. ${q.optionA}</div>`:''}
+      ${q.optionB?`<div id="review-opt-B" class="option-item" style="cursor:pointer" onclick="selectReviewOption('B')">B. ${q.optionB}</div>`:''}
+      ${q.optionC?`<div id="review-opt-C" class="option-item" style="cursor:pointer" onclick="selectReviewOption('C')">C. ${q.optionC}</div>`:''}
+      ${q.optionD?`<div id="review-opt-D" class="option-item" style="cursor:pointer" onclick="selectReviewOption('D')">D. ${q.optionD}</div>`:''}
       <div id="review-answer-area" style="margin-top:16px;text-align:center">
-        <button class="btn btn-accent" onclick="showReviewAnswer()"><i class="fas fa-eye"></i> 显示正确答案</button>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:10px">先选出你的答案，再提交查看对错与解析</p>
+        <button id="review-submit-btn" class="btn btn-accent" style="opacity:.5;pointer-events:none" onclick="submitReviewAnswer()"><i class="fas fa-paper-plane"></i> 提交答案</button>
       </div>
       ${hasPhoto ? `<div style="margin-top:12px"><button class="btn btn-outline btn-sm" onclick="toggleReviewPhoto()"><i class="fas fa-image"></i> 查看照片</button><div id="review-photos" class="hidden" style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">${q.photos.map(p=>`<img src="${p}" class="photo-thumb" onclick="previewPhoto('${p}')">`).join('')}</div></div>` : ''}
     </div>
@@ -1715,23 +1720,54 @@ function toggleReviewPhoto() {
   if (el) el.classList.toggle('hidden');
 }
 
-function showReviewAnswer() {
+function selectReviewOption(L) {
+  if (reviewSubmitted) return;
+  reviewSelected = L;
+  ['A','B','C','D'].forEach(x => {
+    const el = document.getElementById('review-opt-' + x);
+    if (!el) return;
+    if (x === L) { el.style.borderColor = 'var(--accent)'; el.style.background = 'rgba(249,115,22,.08)'; el.style.fontWeight = '600'; }
+    else { el.style.borderColor = ''; el.style.background = ''; el.style.fontWeight = ''; }
+  });
+  const btn = document.getElementById('review-submit-btn');
+  if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
+}
+
+function submitReviewAnswer() {
+  if (!reviewSelected || reviewSubmitted) return;
+  reviewSubmitted = true;
   const q = reviewQueue[reviewIndex];
+  const correct = reviewSelected === q.correctAnswer;
+  ['A','B','C','D'].forEach(x => {
+    const el = document.getElementById('review-opt-' + x);
+    if (!el) return;
+    el.setAttribute('onclick', '');
+    el.style.cursor = 'default';
+    if (x === q.correctAnswer) { el.style.borderColor = 'var(--success)'; el.style.background = 'rgba(34,197,94,.1)'; el.style.fontWeight = '600'; }
+    else if (x === reviewSelected) { el.style.borderColor = 'var(--danger)'; el.style.background = 'rgba(239,68,68,.08)'; el.style.fontWeight = '600'; }
+    else { el.style.borderColor = ''; el.style.background = ''; el.style.fontWeight = ''; }
+  });
   const area = document.getElementById('review-answer-area');
   area.innerHTML = `
-    <div style="background:var(--bg);border-radius:12px;padding:16px;margin-bottom:16px;text-align:left">
-      <div style="display:flex;gap:16px;margin-bottom:8px;font-size:15px">
-        <span>我的答案：<b style="color:var(--danger)">${q.myAnswer}</b></span>
+    <div style="background:${correct ? 'rgba(34,197,94,.08)' : 'rgba(239,68,68,.06)'};border-radius:12px;padding:16px;margin-top:4px;text-align:left">
+      <div style="font-size:16px;font-weight:700;margin-bottom:10px;color:${correct ? 'var(--success)' : 'var(--danger)'}">
+        <i class="fas fa-${correct ? 'check-circle' : 'times-circle'}"></i> ${correct ? '回答正确！' : '回答错误'}
+      </div>
+      <div style="display:flex;gap:16px;margin-bottom:8px;font-size:14px">
+        <span>你的答案：<b style="color:${correct ? 'var(--success)' : 'var(--danger)'}">${reviewSelected}</b></span>
         <span>正确答案：<b style="color:var(--success)">${q.correctAnswer}</b></span>
       </div>
-      ${q.analysis ? `<p style="font-size:13px;color:var(--muted);line-height:1.6;margin:8px 0 0;white-space:pre-line">${formatAnalysis(q.analysis)}</p>` : ''}
+      ${q.analysis ? `<div style="font-size:13px;color:var(--muted);line-height:1.7;margin:8px 0 0;white-space:pre-line;border-top:1px dashed var(--border);padding-top:10px">${formatAnalysis(q.analysis)}</div>` : ''}
     </div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:12px">你掌握了吗？</p>
-    <div class="review-btn-group">
-      <button class="btn btn-danger" onclick="reviewMark('还是不会')"><i class="fas fa-times"></i> 还是不会</button>
-      <button class="btn btn-accent" onclick="reviewMark('模糊')"><i class="fas fa-question"></i> 模糊</button>
-      <button class="btn btn-success" onclick="reviewMark('已掌握')"><i class="fas fa-check"></i> 已掌握</button>
-    </div>
+    ${correct ? `
+      <button class="btn btn-success" style="width:100%;margin-top:14px" onclick="reviewMark('已掌握')"><i class="fas fa-check"></i> 答对了，标记已掌握</button>
+    ` : `
+      <p style="font-size:13px;color:var(--muted);margin:14px 0 10px">这道题没答对，怎么安排？</p>
+      <div class="review-btn-group" style="margin-top:0">
+        <button class="btn btn-danger" onclick="reviewMark('还是不会')"><i class="fas fa-redo"></i> 还是不会（本轮重做）</button>
+        <button class="btn btn-accent" onclick="reviewMark('模糊')"><i class="fas fa-question"></i> 有点模糊（下轮再复）</button>
+      </div>
+    `}
   `;
 }
 
@@ -1752,6 +1788,7 @@ function reviewMark(status) {
     updateDailyStat('reviews', 1);
   }
   reviewResults.push({ id: q.id, status });
+  if (status === '还是不会') reviewQueue.push(q);
   reviewIndex++;
   showReviewQuestion();
 }
@@ -2058,4 +2095,4 @@ function init() {
 init();
 </script>
 </body>
-<!-- build: 0808s --></html>
+<!-- build: 0808t --></html>
