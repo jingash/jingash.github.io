@@ -135,7 +135,7 @@ textarea.input-field{resize:vertical;min-height:80px}
 
 <script>
 // ==================== CONSTANTS ====================
-const SEED_VERSION = 3;
+const SEED_VERSION = 4;
 const STORAGE_KEY = 'xct_questions';
 const DAILY_KEY = 'xct_daily';
 const SEED_KEY = 'xct_seedLoaded';
@@ -422,6 +422,18 @@ const SEED_DATA = [
     myAnswer:'C',correctAnswer:'A',errorReasons:['概念理解错误'],
     analysis:'【考查知识点】结论提观点\n【行文脉络】分述（技术细节）+ 结论（尾句：此类技术革新……使政策更精准）。\n【选项分析】\nA项紧扣尾句结论，最为精准。\nC项"推动宏观经济发展"范围过大，偏离了文段末尾明确的落脚点"货币政策"。\n【导图分析】导图提示：结论词"使、使得"引导的内容是重点。本题尾句明确了技术革新对"政策精准"的作用。',
     notes:'导图分析：结论词"使、使得"引导的内容是重点。本题尾句明确了技术革新对"政策精准"的作用。教训：选项范围大于文段落脚点的，排除。',
+    photos:[],createDate:'2026-08-08',errorCount:1,reviewStatus:'待复习',lastReviewDate:null,isSeed:true
+  },
+  {
+    id:'seed-23',module:'言语理解',type:'主旨概括（例证类）',
+    question:'在生态系统中起着至关重要作用的南极磷虾，是如何度过寒冷、黑暗而漫长的极夜的?科学家发现，当浮游植物因缺少阳光而停止生长时，南极磷虾就会转向捕食中小型浮游动物。储藏在海冰中的微生物——南极冰藻、是南极磷虾在冬天的天然"粮仓"。在没有饵料的情况下，南极磷虾能存活200天左右；在食物极其匮乏时，南极磷虾会逐渐变小，靠消耗体内的脂肪来维持生命。这段文字最有可能用来例证：',
+    optionA:'南极磷虾在极端环境中有特殊能力',
+    optionB:'特别的环境会孕育出特别的生命体',
+    optionC:'南极冰藻在生态系统中有重要作用',
+    optionD:'生物具有应对特殊环境的生存本领',
+    myAnswer:'A',correctAnswer:'D',errorReasons:['概念理解错误'],
+    analysis:'【考查知识点】中心理解题-核心成分识别（例证类/由点及面）\n【行文脉络】设问引出话题（南极磷虾如何度过极夜）+具体举例说明（捕食转向、利用冰藻、缩小体型等生存本领）。\n【错选项及原因】错选项：A 原因分析：没理解例证目的，陷入"就事论事"的陷阱。当时看到全文都在详细描述南极磷虾的生存细节，就下意识选了A。实际作者观点找错，题目问的是"用来例证什么"，根据导图逻辑，例子本身（南极磷虾）是为了证明一个更宏观的普适道理。A项只是例子本身，而D项才是该例子要支撑的宏观观点——生物应对环境的本领。\n【导图分析】导图指出："举例论证本身不是重点，是为了证明前后的观点"。在例证类题型中，要学会"由点及面"，从具体物种（磷虾）上升到普遍规律（生物）。',
+    notes:'',
     photos:[],createDate:'2026-08-08',errorCount:1,reviewStatus:'待复习',lastReviewDate:null,isSeed:true
   }
 ];
@@ -766,21 +778,22 @@ function renderBatchForm() {
       </div>
       <pre style="font-size:11.5px;background:var(--bg);padding:10px;border-radius:8px;line-height:1.7;margin:0;white-space:pre-wrap;color:var(--muted)">【题目1】
 这里写题干内容……
+【选项】
 A. 选项A内容
 B. 选项B内容
 C. 选项C内容
 D. 选项D内容
-我的答案：B
-正确答案：D
-题型：主旨概括
-错误原因：概念理解错误
-解析：【考查知识点】……
+【考查知识点】……
 【行文脉络】……
-【选项分析】……
+【正确答案】D
+【错选项及原因】错选项：B 原因分析：……
 【导图分析】……
 
 【题目2】
-下一道题的题干……</pre>
+下一道题的题干……
+（题型、错误原因可选填，格式：
+题型：主旨概括
+错误原因：概念理解错误）</pre>
     </div>
     <div class="card">
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">粘贴错题内容（多题用【题目1】【题目2】依次分隔）</label>
@@ -792,18 +805,18 @@ D. 选项D内容
 function copyBatchTemplate() {
   const tpl = `【题目1】
 这里写题干内容……
+【选项】
 A. 选项A内容
 B. 选项B内容
 C. 选项C内容
 D. 选项D内容
-我的答案：B
-正确答案：D
-题型：主旨概括
-错误原因：概念理解错误
-解析：【考查知识点】……
+【考查知识点】……
 【行文脉络】……
-【选项分析】……
-【导图分析】……`;
+【正确答案】D
+【错选项及原因】错选项：B 原因分析：……
+【导图分析】……
+题型：主旨概括
+错误原因：概念理解错误`;
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(tpl).then(() => showToast('模板已复制')).catch(() => fallbackCopy(tpl));
   } else fallbackCopy(tpl);
@@ -842,11 +855,23 @@ function parseBatchContent(text) {
       }
       lines.push(rawLines[i]);
     }
+    // 展开单行并列选项：一行里同时出现 A. B. C. D. 时拆成多行
+    const finalLines = [];
+    lines.forEach(l => {
+      const t = l.trim();
+      const stripped = t.replace(/^(?:【)?选项(?:】)?\s*/, '');
+      const markerCount = (stripped.match(/(?:^|\s)(?:A|B|C|D)\s*[.、．:：]/g) || []).length;
+      if (markerCount >= 2) {
+        stripped.split(/(?=(?:A|B|C|D)\s*[.、．:：])/).map(s => s.trim()).filter(s => s).forEach(s => finalLines.push(s));
+      } else {
+        finalLines.push(l);
+      }
+    });
     const q = { question: '', optionA: '', optionB: '', optionC: '', optionD: '', myAnswer: '', correctAnswer: '', type: '', errorReasons: [], analysis: '' };
     const qLines = [], aLines = [];
     let section = 'question';
     let optSeen = false;
-    lines.forEach(raw => {
+    finalLines.forEach(raw => {
       const line = raw.trim();
       if (!line) return;
       if (/^(?:【)?选项(?:】)?$/.test(line)) return;
@@ -855,6 +880,13 @@ function parseBatchContent(text) {
       if (!q.optionB && (m = line.match(/^(?:选项B|B)\s*[.、．:：]\s*(.+)$/))) { q.optionB = m[1].trim(); optSeen = true; return; }
       if (!q.optionC && (m = line.match(/^(?:选项C|C)\s*[.、．:：]\s*(.+)$/))) { q.optionC = m[1].trim(); optSeen = true; return; }
       if (!q.optionD && (m = line.match(/^(?:选项D|D)\s*[.、．:：]\s*(.+)$/))) { q.optionD = m[1].trim(); optSeen = true; return; }
+      if ((m = line.match(/^(?:【)?错选项及原因(?:】)?/))) {
+        const lm = line.match(/错选项\s*[:：]\s*([A-Da-d])/);
+        if (lm && !q.myAnswer) q.myAnswer = lm[1].toUpperCase();
+        section = 'analysis';
+        aLines.push(line);
+        return;
+      }
       if ((m = line.match(/^(?:【)?(?:我的答案|错选选项|错选)(?:】)?\s*[:：]?\s*([A-Da-d])/))) { q.myAnswer = m[1].toUpperCase(); section = 'meta'; return; }
       if ((m = line.match(/^(?:【)?正确答案(?:】)?\s*[:：]?\s*([A-Da-d])/))) { q.correctAnswer = m[1].toUpperCase(); section = 'meta'; return; }
       if ((m = line.match(/^(?:【)?题型(?:】)?\s*[:：]\s*(.+)$/))) { q.type = m[1].trim(); section = 'meta'; return; }
@@ -1715,4 +1747,4 @@ function init() {
 init();
 </script>
 </body>
-<!-- build: 0808i --></html>
+<!-- build: 0808j --></html>
