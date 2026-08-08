@@ -46,11 +46,13 @@ textarea.input-field{resize:vertical;min-height:80px}
 .checkbox-item input{display:none}
 #bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:100;max-width:640px;margin:0 auto;padding:0 16px calc(12px + env(safe-area-inset-bottom))}
 #bottom-nav .nav-inner{background:#e8ecf2;border-radius:999px;display:flex;padding:14px 8px;box-shadow:0 6px 24px rgba(0,0,0,.1);gap:4px}
-.nav-item{flex:1;display:flex;flex-direction:column-reverse;align-items:center;justify-content:center;cursor:pointer;color:#1e293b;transition:all .25s;font-size:15px;font-weight:600;gap:6px;padding:10px 6px;border-radius:999px}
-.nav-item .nav-icon-wrap{width:52px;height:52px;border-radius:50%;background:#7dd3fc;display:flex;align-items:center;justify-content:center;transition:all .25s;box-shadow:0 2px 8px rgba(125,211,252,.4)}
-.nav-item .nav-icon-wrap i{font-size:24px;color:#fff}
-.nav-item.active{background:#0c4a6e;color:#fff}
-.nav-item.active .nav-icon-wrap{background:#0284c7;box-shadow:0 4px 14px rgba(2,132,199,.5)}
+.nav-item{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:all .25s;padding:14px 8px;border-radius:999px;background:#7dd3fc}
+.nav-icon-wrap{display:flex;align-items:center;justify-content:center}
+.nav-icon-wrap i{font-size:20px;color:#1e293b}
+.nav-item span{color:#1e293b;font-size:15px;font-weight:600}
+.nav-item.active{background:#0284c7}
+.nav-item.active .nav-icon-wrap i{color:#fff}
+.nav-item.active span{color:#fff}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:flex-end;justify-content:center;animation:fadeIn .2s}
 .modal-content{background:#fff;width:100%;max-width:640px;max-height:90vh;border-radius:20px 20px 0 0;overflow-y:auto;animation:slideUp .3s ease;padding:20px 16px 32px}
 .modal-full{align-items:stretch}.modal-full .modal-content{max-height:100vh;border-radius:0;height:100%}
@@ -101,7 +103,7 @@ textarea.input-field{resize:vertical;min-height:80px}
   <!-- Page: Settings -->
   <div id="page-settings" class="page"></div>
   <!-- Bottom Nav -->
-  <nav id="bottom-nav">
+    <nav id="bottom-nav">
     <div class="nav-inner">
       <div class="nav-item active" data-tab="home"><div class="nav-icon-wrap"><i class="fas fa-home"></i></div><span>首页</span></div>
       <div class="nav-item" data-tab="input"><div class="nav-icon-wrap"><i class="fas fa-plus-circle"></i></div><span>录入</span></div>
@@ -1322,13 +1324,4 @@ function init() {
 
   // Nav event
   document.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('click', () => switchTab(item.dataset.tab));
-  });
-
-  renderHome();
-}
-
-init();
-</script>
-</body>
-</html>
+    item.addEventListener(
