@@ -679,6 +679,9 @@ function renderHome() {
 function renderInput() {
   const el = document.getElementById('page-input');
   inputPhotos = [];
+  batchModule = '';
+  batchText = '';
+  batchParsed = null;
   el.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <h2 style="font-size:18px;font-weight:700;margin:0">录入错题</h2>
@@ -774,11 +777,14 @@ function renderBatchForm() {
           ${ALL_MODULES.map(m => `<option value="${m}" ${batchModule===m?'selected':''}>${m}</option>`).join('')}
         </select>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
         <span style="font-size:13px;font-weight:600">统一模板（照这个格式粘贴）</span>
-        <button class="btn btn-outline btn-sm" onclick="copyBatchTemplate()"><i class="fas fa-copy"></i> 复制模板</button>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-outline btn-sm" onclick="toggleBatchTemplate()"><i class="fas fa-chevron-down" id="batch-template-icon" style="font-size:11px"></i> <span id="batch-template-label">展开模板</span></button>
+          <button class="btn btn-outline btn-sm" onclick="copyBatchTemplate()"><i class="fas fa-copy"></i> 复制</button>
+        </div>
       </div>
-      <pre style="font-size:11.5px;background:var(--bg);padding:10px;border-radius:8px;line-height:1.7;margin:0;white-space:pre-wrap;color:var(--muted)">第 1 题：（第 1 页）
+      <pre id="batch-template" style="display:none;font-size:11.5px;background:var(--bg);padding:10px;border-radius:8px;line-height:1.7;margin:10px 0 0;white-space:pre-wrap;color:var(--muted)">第 1 题：（第 1 页）
 这里写题干内容……
 这段文字意在强调：
 
@@ -808,6 +814,17 @@ D. 选项D内容
       <textarea id="batch-text" class="input-field" rows="12" placeholder="按上方模板粘贴，可一次粘贴多道题">${batchText}</textarea>
       <button class="btn btn-primary" style="width:100%;margin-top:10px" onclick="parseBatchText()"><i class="fas fa-magic"></i> 解析并预览</button>
     </div>`;
+}
+
+function toggleBatchTemplate() {
+  const pre = document.getElementById('batch-template');
+  const label = document.getElementById('batch-template-label');
+  const icon = document.getElementById('batch-template-icon');
+  if (!pre) return;
+  const open = pre.style.display === 'none';
+  pre.style.display = open ? 'block' : 'none';
+  if (icon) icon.className = open ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
+  if (label) label.textContent = open ? '收起模板' : '展开模板';
 }
 
 function copyBatchTemplate() {
@@ -1243,7 +1260,7 @@ function renderErrorCard(q) {
   return `<div class="card" style="cursor:pointer" onclick="toggleCardExpand('${q.id}')">
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">
       <span class="badge ${getModuleClass(q.module)}">${q.module}</span>
-      ${q.type ? `<span style="font-size:12px;font-weight:600;color:#1d4ed8;background:#dbeafe;padding:2px 9px;border-radius:10px">${q.type}</span>` : ''}
+      ${q.type ? `<span style="font-size:11px;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:10px">${q.type}</span>` : ''}
       ${q.errorReasons.map(r => `<span style="font-size:11px;color:var(--accent);background:rgba(249,115,22,.08);padding:2px 8px;border-radius:10px">${r}</span>`).join('')}
       ${hasPhoto ? '<span style="font-size:11px;color:var(--blue)"><i class="fas fa-image"></i></span>' : ''}
       <span style="font-size:11px;color:${statusColor};margin-left:auto;font-weight:600">${q.reviewStatus}</span>
@@ -1308,7 +1325,7 @@ function viewDetail(id) {
       </div>
       <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
         <span class="badge ${getModuleClass(q.module)}">${q.module}</span>
-        ${q.type ? `<span style="font-size:12px;font-weight:600;color:#1d4ed8;background:#dbeafe;padding:2px 9px;border-radius:10px">${q.type}</span>` : ''}
+        ${q.type ? `<span style="font-size:11px;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:10px">${q.type}</span>` : ''}
         ${q.errorReasons.map(r=>`<span style="font-size:11px;color:var(--accent);background:rgba(249,115,22,.08);padding:2px 8px;border-radius:10px">${r}</span>`).join('')}
       </div>
       <div class="detail-section"><h4>题干</h4><p>${q.question}</p></div>
@@ -1464,7 +1481,7 @@ function showReviewQuestion() {
       </div>
       <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
         <span class="badge ${getModuleClass(q.module)}">${q.module}</span>
-        ${q.type ? `<span style="font-size:12px;font-weight:600;color:#1d4ed8;background:#dbeafe;padding:2px 9px;border-radius:10px">${q.type}</span>` : ''}
+        ${q.type ? `<span style="font-size:11px;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:10px">${q.type}</span>` : ''}
       </div>
       <div class="detail-section"><h4>题干</h4><p>${q.question}</p></div>
       ${q.optionA?`<div class="option-item">A. ${q.optionA}</div>`:''}
@@ -1828,4 +1845,4 @@ function init() {
 init();
 </script>
 </body>
-<!-- build: 0808n --></html>
+<!-- build: 0808o --></html>
