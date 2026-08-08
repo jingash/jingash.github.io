@@ -1020,6 +1020,7 @@ function handlePhotoUpload(input) {
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, w, h);
       const base64 = canvas.toDataURL('image/jpeg', 0.7);
+      cropTarget = 'input';
       openCropModal(base64);
     };
     img.src = e.target.result;
@@ -1030,6 +1031,79 @@ function handlePhotoUpload(input) {
 
 let cropState = null;
 let cropDrag = null;
+let cropTarget = null;
+let editDraft = null;
+
+function captureEditDraft() {
+  const g = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+  return {
+    module: g('edit-module'), type: g('edit-type'), question: g('edit-question'),
+    optA: g('edit-optA'), optB: g('edit-optB'), optC: g('edit-optC'), optD: g('edit-optD'),
+    myAns: g('edit-myAns'), correctAns: g('edit-correctAns'), analysis: g('edit-analysis'),
+    reasons: [...document.querySelectorAll('#edit-reasons .checkbox-item.checked input')].map(i => i.value)
+  };
+}
+
+function restoreEditDraft() {
+  if (!editDraft) return;
+  const d = editDraft;
+  const s = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  s('edit-module', d.module); updateEditType(); s('edit-type', d.type);
+  s('edit-question', d.question);
+  s('edit-optA', d.optA); s('edit-optB', d.optB); s('edit-optC', d.optC); s('edit-optD', d.optD);
+  s('edit-myAns', d.myAns); s('edit-correctAns', d.correctAns); s('edit-analysis', d.analysis);
+  document.querySelectorAll('#edit-reasons .checkbox-item').forEach(item => {
+    const inp = item.querySelector('input');
+    const checked = d.reasons.includes(inp.value);
+    item.classList.toggle('checked', checked);
+    inp.checked = checked;
+  });
+}
+
+function handleEditPhotoUpload(input, qid) {
+  const file = input.files[0];
+  if (!file) return;
+  const q = questions.find(x => x.id === qid);
+  if (!q) { input.value = ''; return; }
+  if (q.photos.length >= 3) { showToast('最多3张照片'); input.value = ''; return; }
+  editDraft = captureEditDraft();
+  cropTarget = { mode: 'edit', id: qid };
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      let w = img.width, h = img.height;
+      const maxSide = 1000;
+      if (w > maxSide || h > maxSide) {
+        if (w > h) { h = Math.round(h * maxSide / w); w = maxSide; }
+        else { w = Math.round(w * maxSide / h); h = maxSide; }
+      }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      openCropModal(canvas.toDataURL('image/jpeg', 0.7));
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+function refreshEditPhotos(qid) {
+  const q = questions.find(x => x.id === qid);
+  const container = document.getElementById('edit-photoPreview');
+  if (!q || !container) return;
+  container.innerHTML = q.photos.map((p,i)=>`<div style="position:relative;display:inline-block"><img src="${p}" style="width:84px;height:84px;object-fit:cover;border-radius:8px;display:block" onclick="previewPhoto('${p}')"><button onclick="removeEditPhoto('${qid}',${i})" style="position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;background:var(--danger);color:#fff;border:2px solid #fff;font-size:13px;line-height:18px;cursor:pointer;padding:0">×</button></div>`).join('') || '<span style="font-size:12px;color:var(--muted)">暂无照片</span>';
+}
+
+function removeEditPhoto(qid, idx) {
+  const q = questions.find(x => x.id === qid);
+  if (!q) return;
+  q.photos.splice(idx, 1);
+  saveQuestions();
+  refreshEditPhotos(qid);
+  showToast('照片已删除');
+}
 
 function openCropModal(baseSrc) {
   const el = document.getElementById('detail-modal');
@@ -1116,7 +1190,13 @@ function resetCrop() {
   positionCropBox();
 }
 
-function cancelCrop() { closeDetail(); }
+function cancelCrop() {
+  const fromEdit = cropTarget && cropTarget.mode === 'edit';
+  const qid = fromEdit ? cropTarget.id : null;
+  cropState = null; cropTarget = null;
+  closeDetail();
+  if (fromEdit) { editQuestion(qid); setTimeout(restoreEditDraft, 0); }
+}
 
 function confirmCrop() {
   if (!cropState) return;
@@ -1125,6 +1205,7 @@ function confirmCrop() {
   const sy = crop.y / dispH * natH;
   const sw = crop.w / dispW * natW;
   const sh = crop.h / dispH * natH;
+  const target = cropTarget;
   const img = new Image();
   img.onload = function() {
     let cw = Math.round(sw), ch = Math.round(sh);
@@ -1137,10 +1218,22 @@ function confirmCrop() {
     canvas.width = cw; canvas.height = ch;
     canvas.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch);
     const base64 = canvas.toDataURL('image/jpeg', 0.7);
-    inputPhotos.push(base64);
-    renderPhotoPreview();
-    closeDetail();
-    showToast('照片已添加');
+    cropState = null;
+    if (target && target.mode === 'edit') {
+      const q = questions.find(x => x.id === target.id);
+      if (q && q.photos.length < 3) { q.photos.push(base64); saveQuestions(); }
+      cropTarget = null;
+      closeDetail();
+      editQuestion(target.id);
+      setTimeout(restoreEditDraft, 0);
+      showToast('照片已添加');
+    } else {
+      inputPhotos.push(base64);
+      renderPhotoPreview();
+      cropTarget = null;
+      closeDetail();
+      showToast('照片已添加');
+    }
   };
   img.src = src;
 }
@@ -1373,7 +1466,6 @@ function renderErrorCard(q) {
   const hasPhoto = q.photos && q.photos.length > 0;
 
   return `<div class="card" style="cursor:pointer" onclick="toggleCardExpand('${q.id}')">
-    ${hasPhoto ? `<img src="${q.photos[0]}" style="width:100%;height:150px;object-fit:cover;border-radius:10px;margin-bottom:10px;display:block" onclick="event.stopPropagation();previewPhoto('${q.photos[0]}')">` : ''}
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">
       <span class="badge ${getModuleClass(q.module)}">${q.module}</span>
       ${q.type ? `<span style="font-size:11px;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:10px">${q.type}</span>` : ''}
@@ -1381,6 +1473,7 @@ function renderErrorCard(q) {
       ${hasPhoto ? '<span style="font-size:11px;color:var(--blue)"><i class="fas fa-image"></i></span>' : ''}
       <span style="font-size:11px;color:${statusColor};margin-left:auto;font-weight:600">${q.reviewStatus}</span>
     </div>
+    ${hasPhoto ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${q.photos.map(p => `<img src="${p}" style="height:${isExpanded?'160px':'110px'};width:auto;max-width:${q.photos.length>1?'48%':'100%'};object-fit:cover;border-radius:8px;display:block" onclick="event.stopPropagation();previewPhoto('${p}')">`).join('')}</div>` : ''}
     ${q.question ? `<p style="font-size:14px;line-height:1.6;margin:0 0 8px">${qText}</p>` : (!hasPhoto ? '<p style="font-size:14px;color:var(--muted);margin:0 0 8px">（无题干内容）</p>' : '')}
     <div style="display:flex;align-items:center;gap:12px;font-size:12px;color:var(--muted)">
       <span>我的答案：<b style="color:var(--danger)">${q.myAnswer}</b></span>
@@ -1394,7 +1487,6 @@ function renderErrorCard(q) {
         ${q.optionC ? `<div class="option-item ${q.myAnswer==='C'?'my-wrong':''} ${q.correctAnswer==='C'?'correct':''}">C. ${q.optionC}</div>` : ''}
         ${q.optionD ? `<div class="option-item ${q.myAnswer==='D'?'my-wrong':''} ${q.correctAnswer==='D'?'correct':''}">D. ${q.optionD}</div>` : ''}
         ${q.analysis ? `<div class="detail-section"><h4>解析</h4><p style="white-space:pre-line">${formatAnalysis(q.analysis)}</p></div>` : ''}
-        ${hasPhoto ? `<div class="detail-section"><h4>照片</h4><div style="display:flex;gap:8px;flex-wrap:wrap">${q.photos.map(p => `<img src="${p}" class="photo-thumb" onclick="event.stopPropagation();previewPhoto('${p}')">`).join('')}</div></div>` : ''}
         <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
           <button class="btn btn-success btn-sm" onclick="event.stopPropagation();markMastered('${q.id}')"><i class="fas fa-check"></i> 标记掌握</button>
           <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();editQuestion('${q.id}')"><i class="fas fa-pen"></i> 编辑</button>
@@ -1444,7 +1536,7 @@ function viewDetail(id) {
         ${q.type ? `<span style="font-size:11px;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:10px">${q.type}</span>` : ''}
         ${q.errorReasons.map(r=>`<span style="font-size:11px;color:var(--accent);background:rgba(249,115,22,.08);padding:2px 8px;border-radius:10px">${r}</span>`).join('')}
       </div>
-      <div class="detail-section"><h4>题干</h4>${q.question ? `<p>${q.question}</p>` : ''}${(!q.question && q.photos && q.photos.length) ? `<img src="${q.photos[0]}" style="max-width:100%;border-radius:8px" onclick="previewPhoto('${q.photos[0]}')">` : ''}</div>
+      <div class="detail-section"><h4>题干</h4>${(q.photos && q.photos.length) ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:${q.question?'10px':'0'}">${q.photos.map(p=>`<img src="${p}" style="height:150px;width:auto;max-width:${q.photos.length>1?'48%':'100%'};object-fit:cover;border-radius:8px" onclick="previewPhoto('${p}')">`).join('')}</div>` : ''}${q.question ? `<p>${q.question}</p>` : ''}</div>
       ${q.optionA?`<div class="option-item ${q.myAnswer==='A'?'my-wrong':''} ${q.correctAnswer==='A'?'correct':''}">A. ${q.optionA}</div>`:''}
       ${q.optionB?`<div class="option-item ${q.myAnswer==='B'?'my-wrong':''} ${q.correctAnswer==='B'?'correct':''}">B. ${q.optionB}</div>`:''}
       ${q.optionC?`<div class="option-item ${q.myAnswer==='C'?'my-wrong':''} ${q.correctAnswer==='C'?'correct':''}">C. ${q.optionC}</div>`:''}
@@ -1454,7 +1546,6 @@ function viewDetail(id) {
         <span>正确答案：<b style="color:var(--success)">${q.correctAnswer}</b></span>
       </div>
       ${q.analysis?`<div class="detail-section"><h4>解析</h4><p style="white-space:pre-line">${formatAnalysis(q.analysis)}</p></div>`:''}
-      ${q.photos&&q.photos.length?`<div class="detail-section"><h4>照片</h4><div style="display:flex;gap:8px;flex-wrap:wrap">${q.photos.map(p=>`<img src="${p}" class="photo-thumb" onclick="previewPhoto('${p}')">`).join('')}</div></div>`:''}
       <div style="font-size:12px;color:var(--muted);margin-top:12px">
         创建日期：${q.createDate} | 错误次数：${q.errorCount} | 状态：${q.reviewStatus}
       </div>
@@ -1492,6 +1583,12 @@ function editQuestion(id) {
       </div>
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">题干</label>
       <textarea id="edit-question" class="input-field" rows="4" style="margin-bottom:12px">${q.question}</textarea>
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">题干照片（最多3张，可增删）</label>
+      <div id="edit-photoPreview" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+        ${q.photos.map((p,i)=>`<div style="position:relative;display:inline-block"><img src="${p}" style="width:84px;height:84px;object-fit:cover;border-radius:8px;display:block" onclick="previewPhoto('${p}')"><button onclick="removeEditPhoto('${q.id}',${i})" style="position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;background:var(--danger);color:#fff;border:2px solid #fff;font-size:13px;line-height:18px;cursor:pointer;padding:0">×</button></div>`).join('') || '<span style="font-size:12px;color:var(--muted)">暂无照片</span>'}
+      </div>
+      <input type="file" id="edit-photoInput" accept="image/*" capture="environment" style="display:none" onchange="handleEditPhotoUpload(this,'${q.id}')">
+      <button class="btn btn-outline btn-sm" style="margin-bottom:12px" onclick="document.getElementById('edit-photoInput').click()"><i class="fas fa-camera"></i> 添加照片</button>
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">选项A</label>
       <input id="edit-optA" class="input-field" value="${(q.optionA||'').replace(/"/g,'&quot;')}" style="margin-bottom:8px">
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">选项B</label>
@@ -1961,4 +2058,4 @@ function init() {
 init();
 </script>
 </body>
-<!-- build: 0808r --></html>
+<!-- build: 0808s --></html>
