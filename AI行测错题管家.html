@@ -500,8 +500,13 @@ function backfillTypes() {
   // 对已导入但题型为空的错题，从解析里的【考查知识点】自动提取题型，让标签能显示
   let changed = false;
   questions.forEach(q => {
+    // 清理题型开头误带的冒号/空白
+    if (q.type && /^[:：\s]/.test(q.type)) {
+      const cleaned = q.type.replace(/^[:：\s]+/, '');
+      if (cleaned !== q.type) { q.type = cleaned; changed = true; }
+    }
     if (!q.type && q.analysis) {
-      const m = q.analysis.match(/【考查知识点】\s*([^\n]+)/);
+      const m = q.analysis.match(/【考查知识点】\s*[:：]?\s*([^\n]+)/);
       if (m && m[1].trim()) { q.type = m[1].trim(); changed = true; }
     }
   });
@@ -905,7 +910,7 @@ function parseBatchContent(text) {
       if ((m = line.match(/^(?:【)?(?:我的答案|错选选项|错选项|错选)(?:】)?\s*[:：]?\s*([A-Da-d])/))) { q.myAnswer = m[1].toUpperCase(); section = 'meta'; return; }
       if ((m = line.match(/^(?:【)?正确答案(?:】)?\s*[:：]?\s*([A-Da-d])/))) { q.correctAnswer = m[1].toUpperCase(); section = 'meta'; return; }
       if ((m = line.match(/^(?:【)?题型(?:】)?\s*[:：]\s*(.+)$/))) { q.type = m[1].trim(); section = 'meta'; return; }
-      if ((m = line.match(/^【考查知识点】\s*(.+)$/))) { if (!q.type) q.type = m[1].trim(); section = 'analysis'; aLines.push(line); return; }
+      if ((m = line.match(/^【考查知识点】\s*[:：]?\s*(.+)$/))) { if (!q.type) q.type = m[1].trim(); section = 'analysis'; aLines.push(line); return; }
       if ((m = line.match(/^(?:【)?错误(?:原因|类型)(?:】)?\s*[:：]\s*(.+)$/))) { q.errorReasons = m[1].split(/[、,，\s]+/).filter(Boolean); section = 'meta'; return; }
       if ((m = line.match(/^(?:【)?解析(?:】)?\s*[:：]?\s*(.*)$/))) { section = 'analysis'; if (m[1].trim()) aLines.push(m[1].trim()); return; }
       if (section === 'analysis') { aLines.push(line); return; }
@@ -2081,4 +2086,4 @@ function init() {
 init();
 </script>
 </body>
-<!-- build: 0808w --></html>
+<!-- build: 0808x --></html>
