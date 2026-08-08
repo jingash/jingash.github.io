@@ -709,6 +709,10 @@ function renderSingleForm() {
         </select>
       </div>
       <div style="margin-bottom:14px">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">题目来源（可选）</label>
+        <input id="inp-source" class="input-field" placeholder="如：2025联考真题 / 粉笔5000题 / 某模考卷">
+      </div>
+      <div style="margin-bottom:14px">
         <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">题干（文字或照片） <span style="color:var(--danger)">*</span></label>
         <textarea id="inp-question" class="input-field" rows="4" placeholder="输入题干文字；若用照片当题干，此处可不填"></textarea>
         <div style="margin-top:8px">
@@ -796,9 +800,10 @@ D. 选项D内容
 
 下一题以"第 2 题：（第 2 页）"开头，
 或用 --- 分隔。
-（题型、错误类型可选填，格式：
+（题型、错误类型、来源可选填，格式：
 题型：主旨概括
-错误类型：概念理解错误）</pre>
+错误类型：概念理解错误
+来源：2025联考真题）</pre>
     </div>
     <div class="card">
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">粘贴错题内容（多题用【题目1】【题目2】依次分隔）</label>
@@ -836,7 +841,8 @@ D. 选项D内容
 错选项：B
 原因分析：……
 【选项分析】……
-【导图分析】……`;
+【导图分析】……
+来源：2025联考真题`;
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(tpl).then(() => showToast('模板已复制')).catch(() => fallbackCopy(tpl));
   } else fallbackCopy(tpl);
@@ -887,7 +893,7 @@ function parseBatchContent(text) {
         finalLines.push(l);
       }
     });
-    const q = { question: '', optionA: '', optionB: '', optionC: '', optionD: '', myAnswer: '', correctAnswer: '', type: '', errorReasons: [], analysis: '' };
+    const q = { question: '', optionA: '', optionB: '', optionC: '', optionD: '', myAnswer: '', correctAnswer: '', type: '', source: '', errorReasons: [], analysis: '' };
     const qLines = [], aLines = [];
     let section = 'question';
     let optSeen = false;
@@ -910,6 +916,7 @@ function parseBatchContent(text) {
       if ((m = line.match(/^(?:【)?(?:我的答案|错选选项|错选项|错选)(?:】)?\s*[:：]?\s*([A-Da-d])/))) { q.myAnswer = m[1].toUpperCase(); section = 'meta'; return; }
       if ((m = line.match(/^(?:【)?正确答案(?:】)?\s*[:：]?\s*([A-Da-d])/))) { q.correctAnswer = m[1].toUpperCase(); section = 'meta'; return; }
       if ((m = line.match(/^(?:【)?题型(?:】)?\s*[:：]\s*(.+)$/))) { q.type = m[1].trim(); section = 'meta'; return; }
+      if ((m = line.match(/^(?:【)?(?:错题来源|题目来源|试题来源|来源)(?:】)?\s*[:：]?\s*(.+)$/))) { if (!q.source) q.source = m[1].trim(); section = 'meta'; return; }
       if ((m = line.match(/^【考查知识点】\s*[:：]?\s*(.+)$/))) { if (!q.type) q.type = m[1].trim(); section = 'analysis'; aLines.push(line); return; }
       if ((m = line.match(/^(?:【)?错误(?:原因|类型)(?:】)?\s*[:：]\s*(.+)$/))) { q.errorReasons = m[1].split(/[、,，\s]+/).filter(Boolean); section = 'meta'; return; }
       if ((m = line.match(/^(?:【)?解析(?:】)?\s*[:：]?\s*(.*)$/))) { section = 'analysis'; if (m[1].trim()) aLines.push(m[1].trim()); return; }
@@ -954,6 +961,7 @@ function confirmBatchImport() {
       id: genId(),
       module: batchModule,
       type: p.type || '',
+      source: p.source || '',
       question: p.question,
       optionA: p.optionA, optionB: p.optionB, optionC: p.optionC, optionD: p.optionD,
       myAnswer: p.myAnswer,
@@ -1030,7 +1038,7 @@ let editDraft = null;
 function captureEditDraft() {
   const g = id => { const el = document.getElementById(id); return el ? el.value : ''; };
   return {
-    module: g('edit-module'), type: g('edit-type'), question: g('edit-question'),
+    module: g('edit-module'), type: g('edit-type'), source: g('edit-source'), question: g('edit-question'),
     optA: g('edit-optA'), optB: g('edit-optB'), optC: g('edit-optC'), optD: g('edit-optD'),
     myAns: g('edit-myAns'), correctAns: g('edit-correctAns'), analysis: g('edit-analysis'),
     reasons: [...document.querySelectorAll('#edit-reasons .checkbox-item.checked input')].map(i => i.value)
@@ -1042,6 +1050,7 @@ function restoreEditDraft() {
   const d = editDraft;
   const s = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
   s('edit-module', d.module); updateEditType(); s('edit-type', d.type);
+  s('edit-source', d.source);
   s('edit-question', d.question);
   s('edit-optA', d.optA); s('edit-optB', d.optB); s('edit-optC', d.optC); s('edit-optD', d.optD);
   s('edit-myAns', d.myAns); s('edit-correctAns', d.correctAns); s('edit-analysis', d.analysis);
@@ -1262,6 +1271,7 @@ function saveNewQuestion() {
     id: genId(),
     module: document.getElementById('inp-module').value,
     type: document.getElementById('inp-type').value,
+    source: document.getElementById('inp-source').value.trim(),
     question,
     optionA: document.getElementById('inp-optA').value.trim(),
     optionB: document.getElementById('inp-optB').value.trim(),
@@ -1461,6 +1471,7 @@ function renderErrorCard(q) {
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">
       <span class="badge ${getModuleClass(q.module)}">${q.module}</span>
       ${q.type ? `<span style="font-size:11px;color:#1e40af;background:rgba(59,130,246,.12);padding:2px 8px;border-radius:10px;font-weight:600">${q.type}</span>` : ''}
+      ${q.source ? `<span style="font-size:11px;color:#0f766e;background:rgba(20,184,166,.1);padding:2px 8px;border-radius:10px"><i class="fas fa-book-open" style="margin-right:3px;font-size:10px"></i>${q.source}</span>` : ''}
       ${q.errorReasons.map(r => `<span style="font-size:11px;color:var(--accent);background:rgba(249,115,22,.08);padding:2px 8px;border-radius:10px">${r}</span>`).join('')}
       ${hasPhoto ? '<span style="font-size:11px;color:var(--blue)"><i class="fas fa-image"></i></span>' : ''}
       <span style="font-size:11px;color:${statusColor};margin-left:auto;font-weight:600">${q.reviewStatus}</span>
@@ -1527,6 +1538,7 @@ function viewDetail(id) {
       <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
         <span class="badge ${getModuleClass(q.module)}">${q.module}</span>
         ${q.type ? `<span style="font-size:11px;color:#1e40af;background:rgba(59,130,246,.12);padding:2px 8px;border-radius:10px;font-weight:600">${q.type}</span>` : ''}
+        ${q.source ? `<span style="font-size:11px;color:#0f766e;background:rgba(20,184,166,.1);padding:2px 8px;border-radius:10px"><i class="fas fa-book-open" style="margin-right:3px;font-size:10px"></i>${q.source}</span>` : ''}
         ${q.errorReasons.map(r=>`<span style="font-size:11px;color:var(--accent);background:rgba(249,115,22,.08);padding:2px 8px;border-radius:10px">${r}</span>`).join('')}
       </div>
       <div class="detail-section"><h4>题干</h4>${(q.photos && q.photos.length) ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:${q.question?'10px':'0'}">${q.photos.map(p=>`<img src="${p}" style="height:150px;width:auto;max-width:${q.photos.length>1?'48%':'100%'};object-fit:cover;border-radius:8px" onclick="previewPhoto('${p}')">`).join('')}</div>` : ''}${q.question ? `<p>${q.question}</p>` : ''}</div>
@@ -1574,6 +1586,8 @@ function editQuestion(id) {
           <select id="edit-type" class="input-field">${typeOptions}</select>
         </div>
       </div>
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">题目来源（可选）</label>
+      <input id="edit-source" class="input-field" value="${(q.source||'').replace(/"/g,'&quot;')}" placeholder="如：2025联考真题 / 粉笔5000题" style="margin-bottom:12px">
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">题干</label>
       <textarea id="edit-question" class="input-field" rows="4" style="margin-bottom:12px">${q.question}</textarea>
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">题干照片（最多3张，可增删）</label>
@@ -1630,6 +1644,7 @@ function saveEdit(id) {
   if (!question) { showToast('题干不能为空'); return; }
   q.module = document.getElementById('edit-module').value;
   q.type = document.getElementById('edit-type').value;
+  q.source = document.getElementById('edit-source').value.trim();
   q.question = question;
   q.optionA = document.getElementById('edit-optA').value.trim();
   q.optionB = document.getElementById('edit-optB').value.trim();
@@ -2086,4 +2101,4 @@ function init() {
 init();
 </script>
 </body>
-<!-- build: 0808x --></html>
+<!-- build: 0808y --></html>
