@@ -523,6 +523,23 @@ function formatAnalysis(text) {
   return escaped.replace(/【([^】]*)】/g, '<strong>【$1】</strong>');
 }
 
+function escHtml(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// 渲染题干：把末尾的问句（以：或？结尾）另起一行并加粗
+function renderQuestionText(qtext) {
+  if (!qtext) return '';
+  const m = qtext.match(/(?:^|[。\n])([^。：？\n]*[：:？?])\s*$/);
+  if (m && m[1] && m[1].trim().length > 2) {
+    const questionPart = m[1].trim();
+    const body = qtext.slice(0, m.index).replace(/[。\s\n]+$/, '');
+    const bodyHtml = escHtml(body).replace(/\n/g, '<br>');
+    return bodyHtml + (body ? '<br>' : '') + '<b style="color:var(--primary)">' + escHtml(questionPart) + '</b>';
+  }
+  return escHtml(qtext).replace(/\n/g, '<br>');
+}
+
 function genId() {
   return 'q_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
 }
@@ -857,6 +874,7 @@ function fallbackCopy(text) {
 
 function parseBatchContent(text) {
   let norm = text.replace(/\*\*/g, '');
+  norm = norm.replace(/^#{1,6}[ \t]*/gm, '');
   norm = norm.replace(/(?:^|\n)\s*第\s*(\d+)\s*题\s*[：:]/g, '\n【题目$1】\n第 $1 题：');
   const parts = norm.split(/\n\s*-{3,}\s*\n/);
   const blocks = [];
@@ -1484,7 +1502,7 @@ function renderErrorCard(q) {
       <span style="font-size:11px;color:${statusColor};margin-left:auto;font-weight:600">${q.reviewStatus}</span>
     </div>
     ${hasPhoto ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${q.photos.map(p => `<img src="${p}" style="height:${isExpanded?'160px':'110px'};width:auto;max-width:${q.photos.length>1?'48%':'100%'};object-fit:cover;border-radius:8px;display:block" onclick="event.stopPropagation();previewPhoto('${p}')">`).join('')}</div>` : ''}
-    ${q.question ? `<p style="font-size:14px;line-height:1.7;margin:0 0 8px">${q.question}</p>` : (!hasPhoto ? '<p style="font-size:14px;color:var(--muted);margin:0 0 8px">（无题干内容）</p>' : '')}
+    ${q.question ? `<p style="font-size:14px;line-height:1.7;margin:0 0 8px">${renderQuestionText(q.question)}</p>` : (!hasPhoto ? '<p style="font-size:14px;color:var(--muted);margin:0 0 8px">（无题干内容）</p>' : '')}
     ${!isExpanded ? `<div style="display:flex;align-items:center;font-size:12px;color:var(--muted)"><span>错误${q.errorCount}次 · 点击查看选项与解析</span><i class="fas fa-chevron-down" style="margin-left:auto;color:var(--primary);font-size:11px"></i></div>` : ''}
     ${isExpanded ? `
       <div style="margin-top:4px;border-top:1px solid var(--border);padding-top:12px">
@@ -1548,7 +1566,7 @@ function viewDetail(id) {
         ${q.errorReasons.map(r=>`<span style="font-size:11px;color:var(--accent);background:rgba(249,115,22,.08);padding:2px 8px;border-radius:10px">${r}</span>`).join('')}
         ${q.source ? `<span style="font-size:11px;color:#0f766e;background:rgba(20,184,166,.1);padding:2px 8px;border-radius:10px"><i class="fas fa-book-open" style="margin-right:3px;font-size:10px"></i>${q.source}</span>` : ''}
       </div>
-      <div class="detail-section"><h4>题干</h4>${(q.photos && q.photos.length) ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:${q.question?'10px':'0'}">${q.photos.map(p=>`<img src="${p}" style="height:150px;width:auto;max-width:${q.photos.length>1?'48%':'100%'};object-fit:cover;border-radius:8px" onclick="previewPhoto('${p}')">`).join('')}</div>` : ''}${q.question ? `<p>${q.question}</p>` : ''}</div>
+      <div class="detail-section"><h4>题干</h4>${(q.photos && q.photos.length) ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:${q.question?'10px':'0'}">${q.photos.map(p=>`<img src="${p}" style="height:150px;width:auto;max-width:${q.photos.length>1?'48%':'100%'};object-fit:cover;border-radius:8px" onclick="previewPhoto('${p}')">`).join('')}</div>` : ''}${q.question ? `<p style="line-height:1.7">${renderQuestionText(q.question)}</p>` : ''}</div>
       ${q.optionA?`<div class="option-item ${q.myAnswer==='A'?'my-wrong':''} ${q.correctAnswer==='A'?'correct':''}">A. ${q.optionA}</div>`:''}
       ${q.optionB?`<div class="option-item ${q.myAnswer==='B'?'my-wrong':''} ${q.correctAnswer==='B'?'correct':''}">B. ${q.optionB}</div>`:''}
       ${q.optionC?`<div class="option-item ${q.myAnswer==='C'?'my-wrong':''} ${q.correctAnswer==='C'?'correct':''}">C. ${q.optionC}</div>`:''}
@@ -1714,7 +1732,7 @@ function showReviewQuestion() {
         <span class="badge ${getModuleClass(q.module)}">${q.module}</span>
         ${q.type ? `<span style="font-size:11px;color:#1e40af;background:rgba(59,130,246,.12);padding:2px 8px;border-radius:10px;font-weight:600">${q.type}</span>` : ''}
       </div>
-      <div class="detail-section"><h4>题干</h4>${q.question ? `<p>${q.question}</p>` : ''}${(!q.question && q.photos && q.photos.length) ? `<img src="${q.photos[0]}" style="max-width:100%;max-height:340px;border-radius:8px" onclick="previewPhoto('${q.photos[0]}')">` : ''}</div>
+      <div class="detail-section"><h4>题干</h4>${q.question ? `<p style="line-height:1.7">${renderQuestionText(q.question)}</p>` : ''}${(!q.question && q.photos && q.photos.length) ? `<img src="${q.photos[0]}" style="max-width:100%;max-height:340px;border-radius:8px" onclick="previewPhoto('${q.photos[0]}')">` : ''}</div>
       ${q.optionA?`<div id="review-opt-A" class="option-item" style="cursor:pointer" onclick="selectReviewOption('A')">A. ${q.optionA}</div>`:''}
       ${q.optionB?`<div id="review-opt-B" class="option-item" style="cursor:pointer" onclick="selectReviewOption('B')">B. ${q.optionB}</div>`:''}
       ${q.optionC?`<div id="review-opt-C" class="option-item" style="cursor:pointer" onclick="selectReviewOption('C')">C. ${q.optionC}</div>`:''}
@@ -2108,4 +2126,4 @@ function init() {
 init();
 </script>
 </body>
-<!-- build: 0808z --></html>
+<!-- build: 0809a --></html>
