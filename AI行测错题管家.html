@@ -1324,4 +1324,17 @@ function init() {
 
   // Nav event
   document.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener(
+    item.addEventListener('click', () => {
+      const tab = item.dataset.tab;
+      switchTab(tab);
+    });
+  });
+
+  // Show home page by default
+  switchTab('home');
+}
+
+init();
+</script>
+</body>
+</html>
