@@ -496,6 +496,18 @@ function loadSeedData() {
   localStorage.setItem(SEED_KEY, String(SEED_VERSION));
 }
 
+function backfillTypes() {
+  // 对已导入但题型为空的错题，从解析里的【考查知识点】自动提取题型，让标签能显示
+  let changed = false;
+  questions.forEach(q => {
+    if (!q.type && q.analysis) {
+      const m = q.analysis.match(/【考查知识点】\s*([^\n]+)/);
+      if (m && m[1].trim()) { q.type = m[1].trim(); changed = true; }
+    }
+  });
+  if (changed) saveQuestions();
+}
+
 function getModuleClass(mod) {
   return 'badge-' + (MODULE_COLORS[mod] || 'blue');
 }
@@ -893,6 +905,7 @@ function parseBatchContent(text) {
       if ((m = line.match(/^(?:【)?(?:我的答案|错选选项|错选项|错选)(?:】)?\s*[:：]?\s*([A-Da-d])/))) { q.myAnswer = m[1].toUpperCase(); section = 'meta'; return; }
       if ((m = line.match(/^(?:【)?正确答案(?:】)?\s*[:：]?\s*([A-Da-d])/))) { q.correctAnswer = m[1].toUpperCase(); section = 'meta'; return; }
       if ((m = line.match(/^(?:【)?题型(?:】)?\s*[:：]\s*(.+)$/))) { q.type = m[1].trim(); section = 'meta'; return; }
+      if ((m = line.match(/^【考查知识点】\s*(.+)$/))) { if (!q.type) q.type = m[1].trim(); section = 'analysis'; aLines.push(line); return; }
       if ((m = line.match(/^(?:【)?错误(?:原因|类型)(?:】)?\s*[:：]\s*(.+)$/))) { q.errorReasons = m[1].split(/[、,，\s]+/).filter(Boolean); section = 'meta'; return; }
       if ((m = line.match(/^(?:【)?解析(?:】)?\s*[:：]?\s*(.*)$/))) { section = 'analysis'; if (m[1].trim()) aLines.push(m[1].trim()); return; }
       if (section === 'analysis') { aLines.push(line); return; }
@@ -2051,6 +2064,7 @@ function restoreSeedData() {
 function init() {
   loadQuestions();
   loadSeedData();
+  backfillTypes();
 
   // Nav event
   document.querySelectorAll('.nav-item').forEach(item => {
@@ -2067,4 +2081,4 @@ function init() {
 init();
 </script>
 </body>
-<!-- build: 0808v --></html>
+<!-- build: 0808w --></html>
