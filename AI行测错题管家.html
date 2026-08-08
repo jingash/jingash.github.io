@@ -489,38 +489,11 @@ function updateDailyStat(key, amount) {
 }
 
 function loadSeedData() {
-  const loaded = localStorage.getItem(SEED_KEY);
-  if (!loaded) {
-    // First time: load all 22
-    questions = SEED_DATA.map(q => ({...q, photos: [], errorReasons: [...q.errorReasons]}));
-    saveQuestions();
-    localStorage.setItem(SEED_KEY, String(SEED_VERSION));
-  } else {
-    const ver = parseInt(loaded);
-    if (ver < SEED_VERSION) {
-      // Upgrade: refresh built-in question content, keep user progress
-      SEED_DATA.forEach(sq => {
-        const idx = questions.findIndex(q => q.id === sq.id);
-        if (idx >= 0) {
-          const old = questions[idx];
-          questions[idx] = {
-            ...sq,
-            errorReasons: [...sq.errorReasons],
-            photos: old.photos || [],
-            errorCount: (typeof old.errorCount === 'number') ? old.errorCount : 1,
-            reviewStatus: old.reviewStatus || '待复习',
-            lastReviewed: old.lastReviewed
-          };
-        } else {
-          const prefix = sq.question.slice(0, 20);
-          const dup = questions.some(q => q.question.slice(0, 20) === prefix);
-          if (!dup) questions.push({...sq, photos: [], errorReasons: [...sq.errorReasons]});
-        }
-      });
-      saveQuestions();
-      localStorage.setItem(SEED_KEY, String(SEED_VERSION));
-    }
-  }
+  // 应用户要求：清除全部内置错题（seed- 编号），只保留用户自己录入/批量上传的错题（q_ 编号）
+  const before = questions.length;
+  questions = questions.filter(q => !(q.id && String(q.id).indexOf('seed-') === 0));
+  if (questions.length !== before) saveQuestions();
+  localStorage.setItem(SEED_KEY, String(SEED_VERSION));
 }
 
 function getModuleClass(mod) {
@@ -1984,10 +1957,9 @@ function renderSettings() {
     </div>
     <div class="card">
       <h3 style="font-size:15px;font-weight:700;margin:0 0 12px">清空数据</h3>
-      <p style="font-size:13px;color:var(--muted);margin:0 0 10px">删除全部错题（含内置错题），清空后可一键恢复内置错题</p>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 10px">删除你自己录入的全部错题（不含任何内置题，系统已不带内置错题）</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-danger btn-sm" onclick="clearAllData()"><i class="fas fa-trash-alt"></i> 清空所有数据</button>
-        <button class="btn btn-outline btn-sm" onclick="restoreSeedData()"><i class="fas fa-undo"></i> 恢复内置错题</button>
+        <button class="btn btn-danger btn-sm" onclick="clearAllData()"><i class="fas fa-trash-alt"></i> 清空所有错题</button>
       </div>
     </div>
     <div class="card">
@@ -1995,9 +1967,8 @@ function renderSettings() {
       <div style="font-size:13px;color:var(--muted);line-height:1.8">
         <p style="margin:0"><b>AI行测错题管家</b> v1.0</p>
         <p style="margin:0">面向公考备考人群的错题管理工具</p>
-        <p style="margin:0">内置数据版本：${SEED_VERSION}</p>
         <p style="margin:0">当前错题总数：${questions.length}</p>
-        <p style="margin:0">所有数据存储在本地浏览器中</p>
+        <p style="margin:0">所有数据存储在本地浏览器中，无内置错题</p>
       </div>
     </div>
   `;
@@ -2052,13 +2023,13 @@ function importData() {
 }
 
 function clearAllData() {
-  showConfirm('确定清空所有数据吗？包括22道内置错题在内的所有错题都会被删除。清空后可在设置页点"恢复内置错题"找回。', () => {
+  showConfirm('确定清空吗？你自己录入的全部错题都会被删除（系统无内置错题，删了就没了）。', () => {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(DAILY_KEY);
     questions = [];
     saveQuestions();
     localStorage.setItem(SEED_KEY, String(SEED_VERSION));
-    showToast('数据已全部清空');
+    showToast('错题已全部清空');
     renderSettings();
   });
 }
@@ -2096,4 +2067,4 @@ function init() {
 init();
 </script>
 </body>
-<!-- build: 0808u --></html>
+<!-- build: 0808v --></html>
