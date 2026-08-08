@@ -1243,7 +1243,7 @@ function renderErrorCard(q) {
   return `<div class="card" style="cursor:pointer" onclick="toggleCardExpand('${q.id}')">
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">
       <span class="badge ${getModuleClass(q.module)}">${q.module}</span>
-      <span style="font-size:12px;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:10px">${q.type || '未分类'}</span>
+      ${q.type ? `<span style="font-size:12px;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:10px">${q.type}</span>` : ''}
       ${q.errorReasons.map(r => `<span style="font-size:11px;color:var(--accent);background:rgba(249,115,22,.08);padding:2px 8px;border-radius:10px">${r}</span>`).join('')}
       ${hasPhoto ? '<span style="font-size:11px;color:var(--blue)"><i class="fas fa-image"></i></span>' : ''}
       <span style="font-size:11px;color:${statusColor};margin-left:auto;font-weight:600">${q.reviewStatus}</span>
@@ -1308,7 +1308,7 @@ function viewDetail(id) {
       </div>
       <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
         <span class="badge ${getModuleClass(q.module)}">${q.module}</span>
-        <span style="font-size:12px;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:10px">${q.type||'未分类'}</span>
+        ${q.type ? `<span style="font-size:12px;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:10px">${q.type}</span>` : ''}
         ${q.errorReasons.map(r=>`<span style="font-size:11px;color:var(--accent);background:rgba(249,115,22,.08);padding:2px 8px;border-radius:10px">${r}</span>`).join('')}
       </div>
       <div class="detail-section"><h4>题干</h4><p>${q.question}</p></div>
@@ -1464,7 +1464,7 @@ function showReviewQuestion() {
       </div>
       <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
         <span class="badge ${getModuleClass(q.module)}">${q.module}</span>
-        <span style="font-size:12px;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:10px">${q.type||'未分类'}</span>
+        ${q.type ? `<span style="font-size:12px;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:10px">${q.type}</span>` : ''}
       </div>
       <div class="detail-section"><h4>题干</h4><p>${q.question}</p></div>
       ${q.optionA?`<div class="option-item">A. ${q.optionA}</div>`:''}
@@ -1828,4 +1828,4 @@ function init() {
 init();
 </script>
 </body>
-<!-- build: 0808l --></html>
+<!-- build: 0808m --></html>
