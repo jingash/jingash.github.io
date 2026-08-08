@@ -1020,13 +1020,129 @@ function handlePhotoUpload(input) {
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, w, h);
       const base64 = canvas.toDataURL('image/jpeg', 0.7);
-      inputPhotos.push(base64);
-      renderPhotoPreview();
+      openCropModal(base64);
     };
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
   input.value = '';
+}
+
+let cropState = null;
+let cropDrag = null;
+
+function openCropModal(baseSrc) {
+  const el = document.getElementById('detail-modal');
+  el.innerHTML = `<div class="modal-overlay" style="align-items:center" onclick="if(event.target===this)cancelCrop()">
+    <div class="modal-content" style="max-width:600px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <h3 style="font-size:16px;font-weight:700;margin:0"><i class="fas fa-crop-alt" style="color:var(--primary);margin-right:6px"></i>裁剪照片</h3>
+        <button class="btn btn-outline btn-sm" onclick="cancelCrop()"><i class="fas fa-times"></i></button>
+      </div>
+      <div id="crop-stage" style="margin:0 auto;position:relative;user-select:none;touch-action:none;line-height:0"></div>
+      <p style="font-size:12px;color:var(--muted);margin:10px 0 0;line-height:1.5">拖动选框调整位置，拖动右下角蓝色圆点调整裁剪范围；不裁剪直接点"确定"即保留整图。</p>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn btn-outline btn-sm" style="flex:1" onclick="cancelCrop()">取消</button>
+        <button class="btn btn-outline btn-sm" style="flex:1" onclick="resetCrop()"><i class="fas fa-expand"></i> 重置</button>
+        <button class="btn btn-primary btn-sm" style="flex:1" onclick="confirmCrop()"><i class="fas fa-check"></i> 确定</button>
+      </div>
+    </div>
+  </div>`;
+  el.className = '';
+  const img = new Image();
+  img.onload = function() { setupCropStage(img, baseSrc); };
+  img.src = baseSrc;
+}
+
+function setupCropStage(img, baseSrc) {
+  const stage = document.getElementById('crop-stage');
+  const maxW = Math.min(window.innerWidth - 80, 560);
+  const maxH = Math.min(window.innerHeight * 0.52, 460);
+  let dw = img.naturalWidth, dh = img.naturalHeight;
+  const ratio = Math.min(maxW / dw, maxH / dh, 1);
+  dw = Math.round(dw * ratio); dh = Math.round(dh * ratio);
+  stage.style.width = dw + 'px';
+  stage.style.height = dh + 'px';
+  stage.innerHTML = `<img src="${baseSrc}" style="width:${dw}px;height:${dh}px;display:block;pointer-events:none;border-radius:6px">
+    <div id="crop-box" style="position:absolute;border:2px solid #0284c7;box-shadow:0 0 0 9999px rgba(0,0,0,.45);cursor:move;box-sizing:border-box;border-radius:4px;touch-action:none">
+      <div id="crop-handle" style="position:absolute;right:-11px;bottom:-11px;width:22px;height:22px;background:#0284c7;border:2px solid #fff;border-radius:50%;cursor:nwse-resize;touch-action:none;box-shadow:0 1px 4px rgba(0,0,0,.3)"></div>
+    </div>`;
+  cropState = { natW: img.naturalWidth, natH: img.naturalHeight, dispW: dw, dispH: dh, crop: { x: 0, y: 0, w: dw, h: dh }, src: baseSrc };
+  positionCropBox();
+  const box = document.getElementById('crop-box');
+  const handle = document.getElementById('crop-handle');
+  box.addEventListener('pointerdown', e => startCropDrag(e, 'move'));
+  handle.addEventListener('pointerdown', e => { e.stopPropagation(); startCropDrag(e, 'resize'); });
+}
+
+function startCropDrag(e, mode) {
+  e.preventDefault();
+  cropDrag = { mode, startX: e.clientX, startY: e.clientY, orig: { ...cropState.crop } };
+  const move = ev => doCropDrag(ev);
+  const up = () => { cropDrag = null; window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+  window.addEventListener('pointermove', move);
+  window.addEventListener('pointerup', up);
+}
+
+function doCropDrag(e) {
+  if (!cropDrag || !cropState) return;
+  const { mode, startX, startY, orig } = cropDrag;
+  const dx = e.clientX - startX, dy = e.clientY - startY;
+  const c = cropState.crop;
+  const minSize = 30;
+  if (mode === 'move') {
+    c.x = Math.max(0, Math.min(orig.x + dx, cropState.dispW - c.w));
+    c.y = Math.max(0, Math.min(orig.y + dy, cropState.dispH - c.h));
+  } else {
+    c.w = Math.max(minSize, Math.min(orig.w + dx, cropState.dispW - c.x));
+    c.h = Math.max(minSize, Math.min(orig.h + dy, cropState.dispH - c.y));
+  }
+  positionCropBox();
+}
+
+function positionCropBox() {
+  const box = document.getElementById('crop-box');
+  if (!box || !cropState) return;
+  const c = cropState.crop;
+  box.style.left = c.x + 'px';
+  box.style.top = c.y + 'px';
+  box.style.width = c.w + 'px';
+  box.style.height = c.h + 'px';
+}
+
+function resetCrop() {
+  if (!cropState) return;
+  cropState.crop = { x: 0, y: 0, w: cropState.dispW, h: cropState.dispH };
+  positionCropBox();
+}
+
+function cancelCrop() { closeDetail(); }
+
+function confirmCrop() {
+  if (!cropState) return;
+  const { natW, natH, dispW, dispH, crop, src } = cropState;
+  const sx = crop.x / dispW * natW;
+  const sy = crop.y / dispH * natH;
+  const sw = crop.w / dispW * natW;
+  const sh = crop.h / dispH * natH;
+  const img = new Image();
+  img.onload = function() {
+    let cw = Math.round(sw), ch = Math.round(sh);
+    const maxSide = 1000;
+    if (cw > maxSide || ch > maxSide) {
+      const r = Math.min(maxSide / cw, maxSide / ch);
+      cw = Math.round(cw * r); ch = Math.round(ch * r);
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = cw; canvas.height = ch;
+    canvas.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch);
+    const base64 = canvas.toDataURL('image/jpeg', 0.7);
+    inputPhotos.push(base64);
+    renderPhotoPreview();
+    closeDetail();
+    showToast('照片已添加');
+  };
+  img.src = src;
 }
 
 function renderPhotoPreview() {
@@ -1257,6 +1373,7 @@ function renderErrorCard(q) {
   const hasPhoto = q.photos && q.photos.length > 0;
 
   return `<div class="card" style="cursor:pointer" onclick="toggleCardExpand('${q.id}')">
+    ${hasPhoto ? `<img src="${q.photos[0]}" style="width:100%;height:150px;object-fit:cover;border-radius:10px;margin-bottom:10px;display:block" onclick="event.stopPropagation();previewPhoto('${q.photos[0]}')">` : ''}
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">
       <span class="badge ${getModuleClass(q.module)}">${q.module}</span>
       ${q.type ? `<span style="font-size:11px;color:var(--muted);background:var(--bg);padding:2px 8px;border-radius:10px">${q.type}</span>` : ''}
@@ -1264,7 +1381,7 @@ function renderErrorCard(q) {
       ${hasPhoto ? '<span style="font-size:11px;color:var(--blue)"><i class="fas fa-image"></i></span>' : ''}
       <span style="font-size:11px;color:${statusColor};margin-left:auto;font-weight:600">${q.reviewStatus}</span>
     </div>
-    ${q.question ? `<p style="font-size:14px;line-height:1.6;margin:0 0 8px">${qText}</p>` : (hasPhoto ? `<img src="${q.photos[0]}" style="max-width:100%;max-height:${isExpanded?'320px':'130px'};border-radius:8px;margin-bottom:8px" onclick="event.stopPropagation();previewPhoto('${q.photos[0]}')">` : '<p style="font-size:14px;color:var(--muted);margin:0 0 8px">（无题干内容）</p>')}
+    ${q.question ? `<p style="font-size:14px;line-height:1.6;margin:0 0 8px">${qText}</p>` : (!hasPhoto ? '<p style="font-size:14px;color:var(--muted);margin:0 0 8px">（无题干内容）</p>' : '')}
     <div style="display:flex;align-items:center;gap:12px;font-size:12px;color:var(--muted)">
       <span>我的答案：<b style="color:var(--danger)">${q.myAnswer}</b></span>
       <span>正确答案：<b style="color:var(--success)">${q.correctAnswer}</b></span>
@@ -1844,4 +1961,4 @@ function init() {
 init();
 </script>
 </body>
-<!-- build: 0808q --></html>
+<!-- build: 0808r --></html>
