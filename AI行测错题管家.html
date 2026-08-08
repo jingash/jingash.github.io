@@ -452,6 +452,8 @@ let batchParsed = null;
 let errorFilters = { module: '全部', reason: '全部', sort: '最新' };
 let expandedCardId = null;
 let errorsViewMode = 'categories';
+let batchDeleteMode = false;
+let batchSelectedIds = {};
 
 // ==================== DATA MANAGEMENT ====================
 function loadQuestions() {
@@ -746,7 +748,7 @@ function renderSingleForm() {
         </div>
       </div>
       <div style="margin-bottom:14px">
-        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">错误原因（多选）</label>
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">错误类型（多选）</label>
         <div class="checkbox-group" id="inp-reasons">
           ${ERROR_REASONS.map(r => `<div class="checkbox-item" onclick="toggleReason(this)"><input type="checkbox" value="${r}"><span>${r}</span></div>`).join('')}
         </div>
@@ -797,9 +799,9 @@ D. 选项D内容
 
 下一题以"第 2 题：（第 2 页）"开头，
 或用 --- 分隔。
-（题型、错误原因可选填，格式：
+（题型、错误类型可选填，格式：
 题型：主旨概括
-错误原因：概念理解错误）</pre>
+错误类型：概念理解错误）</pre>
     </div>
     <div class="card">
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">粘贴错题内容（多题用【题目1】【题目2】依次分隔）</label>
@@ -847,7 +849,7 @@ function parseBatchContent(text) {
   parts.forEach(part => {
     part.split(/【题目\d*】/).map(b => b.trim()).filter(b => b).forEach(b => blocks.push(b));
   });
-  const LABEL_ONLY = /^(?:【)?(?:我的答案|错选选项|错选|正确答案|题型|错误原因|解析)(?:】)?\s*[:：]?\s*$/;
+  const LABEL_ONLY = /^(?:【)?(?:我的答案|错选选项|错选|正确答案|题型|错误原因|错误类型|解析)(?:】)?\s*[:：]?\s*$/;
   const results = [];
   blocks.forEach(block => {
     const rawLines = block.split('\n');
@@ -900,7 +902,7 @@ function parseBatchContent(text) {
       if ((m = line.match(/^(?:【)?(?:我的答案|错选选项|错选项|错选)(?:】)?\s*[:：]?\s*([A-Da-d])/))) { q.myAnswer = m[1].toUpperCase(); section = 'meta'; return; }
       if ((m = line.match(/^(?:【)?正确答案(?:】)?\s*[:：]?\s*([A-Da-d])/))) { q.correctAnswer = m[1].toUpperCase(); section = 'meta'; return; }
       if ((m = line.match(/^(?:【)?题型(?:】)?\s*[:：]\s*(.+)$/))) { q.type = m[1].trim(); section = 'meta'; return; }
-      if ((m = line.match(/^(?:【)?错误原因(?:】)?\s*[:：]\s*(.+)$/))) { q.errorReasons = m[1].split(/[、,，\s]+/).filter(Boolean); section = 'meta'; return; }
+      if ((m = line.match(/^(?:【)?错误(?:原因|类型)(?:】)?\s*[:：]\s*(.+)$/))) { q.errorReasons = m[1].split(/[、,，\s]+/).filter(Boolean); section = 'meta'; return; }
       if ((m = line.match(/^(?:【)?解析(?:】)?\s*[:：]?\s*(.*)$/))) { section = 'analysis'; if (m[1].trim()) aLines.push(m[1].trim()); return; }
       if (section === 'analysis') { aLines.push(line); return; }
       if (optSeen) { aLines.push(line); return; }
@@ -1116,26 +1118,44 @@ function renderErrorCategories(el) {
   `;
 }
 
-function renderErrorList(el) {
+function getFilteredQuestions() {
   let filtered = [...questions];
   if (errorFilters.module !== '全部') filtered = filtered.filter(q => q.module === errorFilters.module);
   if (errorFilters.reason !== '全部') filtered = filtered.filter(q => q.errorReasons.includes(errorFilters.reason));
   if (errorFilters.sort === '错误次数最多') filtered.sort((a,b) => b.errorCount - a.errorCount);
   else filtered.sort((a,b) => (b.createDate||'').localeCompare(a.createDate||''));
+  return filtered;
+}
 
+function renderErrorList(el) {
+  const filtered = getFilteredQuestions();
   const allReasons = [...new Set(questions.flatMap(q => q.errorReasons))];
   const title = errorFilters.module === '全部' ? '全部错题' : errorFilters.module;
+  const selCount = Object.keys(batchSelectedIds).length;
 
   el.innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
       <button class="btn btn-outline btn-sm" onclick="backToErrorCategories()" style="padding:8px 12px"><i class="fas fa-arrow-left"></i></button>
       <h2 style="font-size:18px;font-weight:700;margin:0">${title}</h2>
       <span style="font-size:12px;color:var(--muted)">${filtered.length} 道</span>
+      <button class="btn ${batchDeleteMode?'btn-danger':'btn-outline'} btn-sm" style="margin-left:auto" onclick="toggleBatchDeleteMode()">
+        <i class="fas fa-${batchDeleteMode?'times':'trash-alt'}"></i> ${batchDeleteMode?'退出批量':'批量删除'}
+      </button>
     </div>
+    ${batchDeleteMode ? `
+    <div class="card" style="margin-bottom:12px;padding:10px 12px;background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.25)">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:700;color:var(--danger)">已选 ${selCount} 道</span>
+        <button class="btn btn-outline btn-sm" onclick="batchSelectAll()">全选</button>
+        <button class="btn btn-outline btn-sm" onclick="batchSelectedIds={};renderErrors()">清空选择</button>
+        <button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="batchDeleteSelected()"><i class="fas fa-trash"></i> 删除选中${selCount?'('+selCount+')':''}</button>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin:8px 0 0">点击卡片即可勾选要删除的错题</p>
+    </div>` : `
     <div class="card" style="margin-bottom:12px;padding:10px 12px">
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <select id="filter-reason" class="input-field" style="width:auto;flex:1;min-width:100px;padding:6px 28px 6px 10px;font-size:13px" onchange="errorFilters.reason=this.value;renderErrors()">
-          <option value="全部">全部原因</option>
+          <option value="全部">全部类型</option>
           ${allReasons.map(r => `<option value="${r}" ${errorFilters.reason===r?'selected':''}>${r}</option>`).join('')}
         </select>
         <select class="input-field" style="width:auto;flex:1;min-width:100px;padding:6px 28px 6px 10px;font-size:13px" onchange="errorFilters.sort=this.value;renderErrors()">
@@ -1143,7 +1163,7 @@ function renderErrorList(el) {
           <option value="错误次数最多" ${errorFilters.sort==='错误次数最多'?'selected':''}>错误次数最多</option>
         </select>
       </div>
-    </div>
+    </div>`}
     <div id="error-cards">
       ${filtered.length === 0 ? '<div class="empty-state"><i class="fas fa-inbox"></i><p>暂无符合条件的错题</p></div>' :
         filtered.map(q => renderErrorCard(q)).join('')}
@@ -1151,19 +1171,70 @@ function renderErrorList(el) {
   `;
 }
 
+function toggleBatchDeleteMode() {
+  batchDeleteMode = !batchDeleteMode;
+  batchSelectedIds = {};
+  expandedCardId = null;
+  renderErrors();
+}
+
+function toggleBatchSelect(id) {
+  if (batchSelectedIds[id]) delete batchSelectedIds[id];
+  else batchSelectedIds[id] = true;
+  renderErrors();
+}
+
+function batchSelectAll() {
+  getFilteredQuestions().forEach(q => batchSelectedIds[q.id] = true);
+  renderErrors();
+}
+
+function batchDeleteSelected() {
+  const ids = Object.keys(batchSelectedIds);
+  if (!ids.length) { showToast('请先点击卡片勾选要删除的错题'); return; }
+  showConfirm(`确定删除选中的 ${ids.length} 道错题吗？删除后无法恢复。`, () => {
+    questions = questions.filter(q => !batchSelectedIds[q.id]);
+    saveQuestions();
+    batchSelectedIds = {};
+    batchDeleteMode = false;
+    expandedCardId = null;
+    renderErrors();
+    showToast(`已删除 ${ids.length} 道错题`);
+  });
+}
+
 function openErrorCategory(m) {
   errorsViewMode = 'list';
   errorFilters.module = m;
+  batchDeleteMode = false;
+  batchSelectedIds = {};
   renderErrors();
 }
 
 function backToErrorCategories() {
   errorsViewMode = 'categories';
   errorFilters.reason = '全部';
+  batchDeleteMode = false;
+  batchSelectedIds = {};
   renderErrors();
 }
 
 function renderErrorCard(q) {
+  if (batchDeleteMode) {
+    const sel = !!batchSelectedIds[q.id];
+    const qText = q.question.length > 40 ? q.question.slice(0, 40) + '…' : q.question;
+    return `<div class="card" style="cursor:pointer;padding:12px;${sel?'box-shadow:0 0 0 2px var(--danger)':''}" onclick="toggleBatchSelect('${q.id}')">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:24px;height:24px;border-radius:50%;border:2px solid ${sel?'var(--danger)':'var(--border)'};background:${sel?'var(--danger)':'#fff'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          ${sel?'<i class="fas fa-check" style="color:#fff;font-size:13px"></i>':''}
+        </div>
+        <div style="flex:1;min-width:0">
+          <p style="font-size:13px;line-height:1.5;margin:0 0 4px">${qText}</p>
+          <div style="font-size:12px;color:var(--muted)">我答<b style="color:var(--danger)">${q.myAnswer}</b> → 正确<b style="color:var(--success)">${q.correctAnswer}</b> · ${q.reviewStatus}</div>
+        </div>
+      </div>
+    </div>`;
+  }
   const isExpanded = expandedCardId === q.id;
   const qText = isExpanded ? q.question : (q.question.length > 30 ? q.question.slice(0, 30) + '…' : q.question);
   const statusColor = q.reviewStatus === '已掌握' ? 'var(--success)' : q.reviewStatus === '模糊' ? 'var(--accent)' : 'var(--muted)';
@@ -1310,7 +1381,7 @@ function editQuestion(id) {
           </select>
         </div>
       </div>
-      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">错误原因（多选）</label>
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">错误类型（多选）</label>
       <div class="checkbox-group" id="edit-reasons" style="margin-bottom:12px">
         ${ERROR_REASONS.map(r => `<div class="checkbox-item ${q.errorReasons.includes(r)?'checked':''}" onclick="toggleReason(this)"><input type="checkbox" value="${r}" ${q.errorReasons.includes(r)?'checked':''}><span>${r}</span></div>`).join('')}
       </div>
@@ -1757,4 +1828,4 @@ function init() {
 init();
 </script>
 </body>
-<!-- build: 0808k --></html>
+<!-- build: 0808l --></html>
