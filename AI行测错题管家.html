@@ -853,6 +853,7 @@ D. 选项D内容
 
 【考查知识点】……
 【行文脉络】……
+【核心观点】……
 【正确答案】D
 【错选项及原因】
 错选项：B
@@ -862,11 +863,11 @@ D. 选项D内容
 
 下一题以"第 2 题：（第 2 页）"开头，
 或用 --- 分隔。
-（题型、错误类型、来源、正确率可选填，格式：
-题型：主旨概括
+（以下可选填）
+题型：中心理解题
 错误类型：概念理解错误
 来源：2025联考真题
-正确率：65）</pre>
+正确率：65</pre>
     </div>
     <div class="card">
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">粘贴错题内容（多题用【题目1】【题目2】依次分隔）</label>
@@ -983,6 +984,7 @@ function parseBatchContent(text) {
       if ((m = line.match(/^(?:【)?题型(?:】)?\s*[:：]\s*(.+)$/))) { q.type = m[1].trim(); section = 'meta'; return; }
       if ((m = line.match(/^(?:【)?(?:错题来源|题目来源|试题来源|来源)(?:】)?\s*[:：]?\s*(.+)$/))) { if (!q.source) q.source = m[1].trim(); section = 'meta'; return; }
       if ((m = line.match(/^【考查知识点】\s*[:：]?\s*(.+)$/))) { if (!q.type) q.type = m[1].trim(); section = 'analysis'; aLines.push(line); return; }
+      if ((m = line.match(/^【核心观点】\s*[:：]?\s*(.+)$/))) { section = 'analysis'; aLines.push(line); return; }
       if ((m = line.match(/^(?:【)?错误(?:原因|类型)(?:】)?\s*[:：]\s*(.+)$/))) { q.errorReasons = m[1].split(/[、,，\s]+/).filter(Boolean); section = 'meta'; return; }
       if ((m = line.match(/^(?:【)?解析(?:】)?\s*[:：]?\s*(.*)$/))) { section = 'analysis'; if (m[1].trim()) aLines.push(m[1].trim()); return; }
       if (section === 'analysis') { aLines.push(line); return; }
@@ -1045,6 +1047,7 @@ function confirmBatchImport() {
   });
   const added = batchParsed.length;
   saveQuestions();
+  classifyVerbalTypes();
   updateDailyStat('newErrors', added);
   showToast(`成功导入 ${added} 道错题`);
   batchParsed = null; batchText = '';
@@ -1104,7 +1107,7 @@ let editDraft = null;
 function captureEditDraft() {
   const g = id => { const el = document.getElementById(id); return el ? el.value : ''; };
   return {
-    module: g('edit-module'), type: g('edit-type'), source: g('edit-source'), question: g('edit-question'),
+    module: g('edit-module'), type: g('edit-type'), source: g('edit-source'), accuracy: g('edit-accuracy'), question: g('edit-question'),
     optA: g('edit-optA'), optB: g('edit-optB'), optC: g('edit-optC'), optD: g('edit-optD'),
     myAns: g('edit-myAns'), correctAns: g('edit-correctAns'), analysis: g('edit-analysis'),
     reasons: [...document.querySelectorAll('#edit-reasons .checkbox-item.checked input')].map(i => i.value)
@@ -1116,7 +1119,7 @@ function restoreEditDraft() {
   const d = editDraft;
   const s = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
   s('edit-module', d.module); updateEditType(); s('edit-type', d.type);
-  s('edit-source', d.source);
+  s('edit-source', d.source); s('edit-accuracy', d.accuracy);
   s('edit-question', d.question);
   s('edit-optA', d.optA); s('edit-optB', d.optB); s('edit-optC', d.optC); s('edit-optD', d.optD);
   s('edit-myAns', d.myAns); s('edit-correctAns', d.correctAns); s('edit-analysis', d.analysis);
@@ -1648,11 +1651,8 @@ function renderErrorCard(q) {
 
   return `<div class="card" style="cursor:pointer" onclick="toggleCardExpand('${q.id}')">
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">
-      <span class="badge ${getModuleClass(q.module)}">${q.module}</span>
       ${q.accuracy ? `<span style="font-size:11px;color:#059669;background:rgba(5,150,105,.1);padding:2px 8px;border-radius:10px;font-weight:600">${q.accuracy}%</span>` : ''}
       ${q.type ? `<span style="font-size:11px;color:#1e40af;background:rgba(59,130,246,.12);padding:2px 8px;border-radius:10px;font-weight:600">${q.type}</span>` : ''}
-      ${q.errorReasons.map(r => `<span style="font-size:11px;color:var(--accent);background:rgba(249,115,22,.08);padding:2px 8px;border-radius:10px">${r}</span>`).join('')}
-      ${hasPhoto ? '<span style="font-size:11px;color:var(--blue)"><i class="fas fa-image"></i></span>' : ''}
       ${q.source ? `<span style="font-size:11px;color:#0f766e;background:rgba(20,184,166,.1);padding:2px 8px;border-radius:10px"><i class="fas fa-book-open" style="margin-right:3px;font-size:10px"></i>${q.source}</span>` : ''}
       <span style="font-size:11px;color:${statusColor};margin-left:auto;font-weight:600">${q.reviewStatus}</span>
     </div>
@@ -1770,6 +1770,8 @@ function editQuestion(id) {
       </div>
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">题目来源（可选）</label>
       <input id="edit-source" class="input-field" value="${(q.source||'').replace(/"/g,'&quot;')}" placeholder="如：2025联考真题 / 粉笔5000题" style="margin-bottom:12px">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">正确率（%）</label>
+      <input id="edit-accuracy" class="input-field" type="number" min="0" max="100" value="${q.accuracy||''}" placeholder="如：65" style="margin-bottom:12px">
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">题干</label>
       <textarea id="edit-question" class="input-field" rows="4" style="margin-bottom:12px">${q.question}</textarea>
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">题干照片（最多3张，可增删）</label>
@@ -1829,6 +1831,7 @@ function saveEdit(id) {
   q.module = document.getElementById('edit-module').value;
   q.type = document.getElementById('edit-type').value;
   q.source = document.getElementById('edit-source').value.trim();
+  q.accuracy = document.getElementById('edit-accuracy').value.trim();
   q.question = question;
   q.optionA = document.getElementById('edit-optA').value.trim();
   q.optionB = document.getElementById('edit-optB').value.trim();
@@ -2286,4 +2289,4 @@ function init() {
 init();
 </script>
 </body>
-<!-- build: 0809j --></html>
+<!-- build: 0809k --></html>
