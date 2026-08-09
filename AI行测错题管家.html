@@ -1485,12 +1485,11 @@ function exportForPrint() {
     grouped[t].push(q);
   });
   
-  // 构建筛选条件描述
+  // 构建标题和筛选条件描述
+  const moduleTitle = errorFilters.module !== '全部' ? errorFilters.module + '错题练习' : '行测错题练习';
   const condParts = [];
-  if (errorFilters.module !== '全部') condParts.push(errorFilters.module);
   if (errorFilters.type !== '全部') condParts.push(errorFilters.type);
-  if (errorFilters.source !== '全部') condParts.push(errorFilters.source);
-  const condText = condParts.length ? condParts.join(' · ') : '全部错题';
+  const condText = condParts.length ? condParts.join(' · ') : '';
   
   // 生成打印HTML（试卷风格：只保留题干+问题+选项）
   let globalIdx = 0;
@@ -1498,14 +1497,21 @@ function exportForPrint() {
     const qs = grouped[typeName];
     const cardsHtml = qs.map(q => {
       globalIdx++;
-      // 题干渲染（处理问句加粗→改为普通换行）
+      // 题干渲染：去掉原题号（如"第2题：（第1页）"），处理问句换行
       let qText = q.question || '';
       if (qText) {
+        // 去掉开头的原题号（如"第2题：（第1页）"或"第3题：（第2页）"）
+        qText = qText.replace(/^第\s*\d+\s*题\s*[：:]\s*（[^）]*）\s*/, '');
         const qEscaped = qText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
         qText = qEscaped.replace(/\n/g,'<br>');
       }
-      // 选项（纯文本，不标注正确答案）
-      const optsHtml = (q.options || []).map(opt => {
+      // 选项：从 optionA/B/C/D 读取
+      const opts = [];
+      if (q.optionA) opts.push('A. ' + q.optionA);
+      if (q.optionB) opts.push('B. ' + q.optionB);
+      if (q.optionC) opts.push('C. ' + q.optionC);
+      if (q.optionD) opts.push('D. ' + q.optionD);
+      const optsHtml = opts.map(opt => {
         return `<div style="padding:2px 0 2px 16px">${opt.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}</div>`;
       }).join('');
       
@@ -1520,7 +1526,6 @@ function exportForPrint() {
     
     return `
     <div style="margin-bottom:24px">
-      <div style="font-size:15px;font-weight:normal;border-bottom:1px solid #374151;padding-bottom:4px;margin-bottom:12px">${typeName}（共${qs.length}题）</div>
       ${cardsHtml}
     </div>`;
   }).join('');
@@ -1529,7 +1534,7 @@ function exportForPrint() {
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>错题练习 - ${condText}</title>
+<title>${moduleTitle}</title>
 <style>
   @page { size: A4; margin: 20mm 15mm; }
   * { box-sizing: border-box; }
@@ -1550,8 +1555,8 @@ function exportForPrint() {
 <body>
   <div class="toolbar"><button onclick="window.print()">打印</button></div>
   <div class="print-header">
-    <h1>行测错题练习</h1>
-    <div class="meta">${condText}</div>
+    <h1>${moduleTitle}</h1>
+    ${condText ? `<div class="meta">${condText}</div>` : ''}
     <div class="info">共${filtered.length}题 &nbsp;|&nbsp; ${new Date().toLocaleDateString('zh-CN')}</div>
   </div>
   ${sectionsHtml}
@@ -2272,4 +2277,4 @@ function init() {
 init();
 </script>
 </body>
-<!-- build: 0809g --></html>
+<!-- build: 0809h --></html>
