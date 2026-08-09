@@ -498,8 +498,10 @@ function loadSeedData() {
 
 function backfillTypes() {
   // 对已导入但题型为空的错题，从解析里的【考查知识点】自动提取题型，让标签能显示
+  // 但言语理解题不走这个逻辑，直接走 classifyVerbalTypes 统一分类到6个标准题型
   let changed = false;
   questions.forEach(q => {
+    if (q.module === '言语理解') return; // 言语理解题跳过，由 classifyVerbalTypes 处理
     // 清理题型开头误带的冒号/空白
     if (q.type && /^[:：\s]/.test(q.type)) {
       const cleaned = q.type.replace(/^[:：\s]+/, '');
@@ -540,9 +542,11 @@ function classifyVerbalTypes() {
   let changed = false;
   questions.forEach(q => {
     if (q.module !== '言语理解') return;
+    // 先归一化旧题型名
     const normalized = normalizeVerbalType(q.type);
     if (normalized !== q.type) { q.type = normalized; changed = true; }
-    if (q.type && !VERBAL_TYPES.includes(q.type)) {
+    // 如果题型不是6个标准类型之一（或为空），直接分类到6类
+    if (!q.type || !VERBAL_TYPES.includes(q.type)) {
       const classified = classifyVerbalType(q);
       if (classified && classified !== q.type) { q.type = classified; changed = true; }
     }
@@ -2168,4 +2172,4 @@ function init() {
 init();
 </script>
 </body>
-<!-- build: 0809c --></html>
+<!-- build: 0809d --></html>
