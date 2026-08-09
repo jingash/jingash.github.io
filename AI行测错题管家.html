@@ -451,7 +451,7 @@ let inputMode = 'single';
 let batchModule = '';
 let batchText = '';
 let batchParsed = null;
-let errorFilters = { module: '全部', reason: '全部', source: '全部', sort: '最新' };
+let errorFilters = { module: '全部', type: '全部', source: '全部', sort: '最新' };
 let expandedCardId = null;
 let errorsViewMode = 'categories';
 let batchDeleteMode = false;
@@ -1408,7 +1408,7 @@ function renderErrorCategories(el) {
 function getFilteredQuestions() {
   let filtered = [...questions];
   if (errorFilters.module !== '全部') filtered = filtered.filter(q => q.module === errorFilters.module);
-  if (errorFilters.reason !== '全部') filtered = filtered.filter(q => q.errorReasons.includes(errorFilters.reason));
+  if (errorFilters.type !== '全部') filtered = filtered.filter(q => q.type === errorFilters.type);
   if (errorFilters.source !== '全部') filtered = filtered.filter(q => (q.source || '未填来源') === errorFilters.source);
   if (errorFilters.sort === '错误次数最多') filtered.sort((a,b) => b.errorCount - a.errorCount);
   else filtered.sort((a,b) => (b.createDate||'').localeCompare(a.createDate||''));
@@ -1417,7 +1417,15 @@ function getFilteredQuestions() {
 
 function renderErrorList(el) {
   const filtered = getFilteredQuestions();
-  const allReasons = [...new Set(questions.flatMap(q => q.errorReasons))];
+  // 获取当前模块的题型列表
+  let allTypes = [];
+  if (errorFilters.module === '全部') {
+    // 全部模块时，收集所有模块的题型
+    allTypes = [...new Set(questions.map(q => q.type).filter(Boolean))];
+  } else {
+    // 指定模块时，使用该模块的标准题型
+    allTypes = MODULE_TYPES[errorFilters.module] || [...new Set(questions.filter(q => q.module === errorFilters.module).map(q => q.type).filter(Boolean))];
+  }
   const allSources = [...new Set(questions.map(q => q.source || '未填来源').filter(Boolean))];
   const title = errorFilters.module === '全部' ? '全部错题' : errorFilters.module;
   const selCount = Object.keys(batchSelectedIds).length;
@@ -1443,9 +1451,9 @@ function renderErrorList(el) {
     </div>` : `
     <div class="card" style="margin-bottom:12px;padding:10px 12px">
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <select id="filter-reason" class="input-field" style="width:auto;flex:1;min-width:100px;padding:6px 28px 6px 10px;font-size:13px" onchange="errorFilters.reason=this.value;renderErrors()">
+        <select id="filter-type" class="input-field" style="width:auto;flex:1;min-width:100px;padding:6px 28px 6px 10px;font-size:13px" onchange="errorFilters.type=this.value;renderErrors()">
           <option value="全部">全部类型</option>
-          ${allReasons.map(r => `<option value="${r}" ${errorFilters.reason===r?'selected':''}>${r}</option>`).join('')}
+          ${allTypes.map(t => `<option value="${t}" ${errorFilters.type===t?'selected':''}>${t}</option>`).join('')}
         </select>
         <select id="filter-source" class="input-field" style="width:auto;flex:1;min-width:100px;padding:6px 28px 6px 10px;font-size:13px" onchange="errorFilters.source=this.value;renderErrors()">
           <option value="全部">全部来源</option>
@@ -1506,7 +1514,7 @@ function openErrorCategory(m) {
 
 function backToErrorCategories() {
   errorsViewMode = 'categories';
-  errorFilters.reason = '全部';
+  errorFilters.type = '全部';
   errorFilters.source = '全部';
   batchDeleteMode = false;
   batchSelectedIds = {};
@@ -2172,4 +2180,4 @@ function init() {
 init();
 </script>
 </body>
-<!-- build: 0809d --></html>
+<!-- build: 0809e --></html>
