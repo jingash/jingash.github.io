@@ -1463,6 +1463,7 @@ function renderErrorList(el) {
           <option value="最新" ${errorFilters.sort==='最新'?'selected':''}>最新</option>
           <option value="错误次数最多" ${errorFilters.sort==='错误次数最多'?'selected':''}>错误次数最多</option>
         </select>
+        <button class="btn btn-primary btn-sm" onclick="exportForPrint()" style="padding:6px 12px;font-size:13px;white-space:nowrap"><i class="fas fa-print"></i> 导出打印</button>
       </div>
     </div>`}
     <div id="error-cards">
@@ -1470,6 +1471,126 @@ function renderErrorList(el) {
         filtered.map(q => renderErrorCard(q)).join('')}
     </div>
   `;
+}
+
+function exportForPrint() {
+  const filtered = getFilteredQuestions();
+  if (filtered.length === 0) { alert('当前筛选条件下没有错题'); return; }
+  
+  // 按题型分组
+  const grouped = {};
+  filtered.forEach(q => {
+    const t = q.type || '未分类';
+    if (!grouped[t]) grouped[t] = [];
+    grouped[t].push(q);
+  });
+  
+  // 构建筛选条件描述
+  const condParts = [];
+  if (errorFilters.module !== '全部') condParts.push(errorFilters.module);
+  if (errorFilters.type !== '全部') condParts.push(errorFilters.type);
+  if (errorFilters.source !== '全部') condParts.push(errorFilters.source);
+  const condText = condParts.length ? condParts.join(' · ') : '全部错题';
+  
+  // 生成打印HTML
+  let globalIdx = 0;
+  const sectionsHtml = Object.keys(grouped).sort().map(typeName => {
+    const qs = grouped[typeName];
+    const cardsHtml = qs.map(q => {
+      globalIdx++;
+      const hasPhoto = q.photos && q.photos.length > 0;
+      // 题干渲染（处理问句加粗）
+      let qText = q.question || '';
+      if (qText) {
+        const qEscaped = qText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const match = qEscaped.match(/^([\s\S]*?)([\u4e00-\u9fa5A-Za-z0-9][^：:?？]*[：?？])\s*$/);
+        if (match) {
+          qText = match[1].replace(/\n/g,'<br>') + '<br><b style="color:#1a56db">' + match[2] + '</b>';
+        } else {
+          qText = qEscaped.replace(/\n/g,'<br>');
+        }
+      }
+      // 选项
+      const optsHtml = (q.options || []).map(opt => {
+        const isCorrect = q.answer && q.answer.includes(opt.charAt(0));
+        return `<div style="padding:3px 0;${isCorrect?'color:#059669;font-weight:600':''}">${opt.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}${isCorrect?' ✓':''}</div>`;
+      }).join('');
+      // 解析
+      let analysisHtml = '';
+      if (q.analysis) {
+        analysisHtml = q.analysis.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+          .replace(/【([^】]*)】/g, '<br><b style="color:#1a56db">【$1】</b>')
+          .replace(/\n/g, '<br>');
+      }
+      // 错误原因
+      const reasonsHtml = (q.errorReasons || []).filter(r=>r&&r!=='未分类').map(r => 
+        `<span style="display:inline-block;background:#fef2f2;color:#dc2626;padding:1px 6px;border-radius:3px;font-size:11px;margin-right:4px">${r}</span>`
+      ).join('');
+      
+      return `
+      <div style="page-break-inside:avoid;margin-bottom:16px;padding:12px 14px;border:1px solid #d1d5db;border-radius:6px;background:#fafafa">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+          <span style="font-weight:700;font-size:13px;color:#374151">第${globalIdx}题</span>
+          <span style="background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:3px;font-size:11px">${q.module}</span>
+          <span style="background:#e0e7ff;color:#3730a3;padding:1px 6px;border-radius:3px;font-size:11px">${q.type||'未分类'}</span>
+          ${q.source ? `<span style="background:#d1fae5;color:#065f46;padding:1px 6px;border-radius:3px;font-size:11px">${q.source}</span>` : ''}
+          <span style="margin-left:auto;font-size:11px;color:#9ca3af">错误${q.errorCount||1}次</span>
+        </div>
+        ${hasPhoto ? `<div style="margin-bottom:6px;color:#6b7280;font-size:12px">（含${q.photos.length}张照片，请在原系统中查看）</div>` : ''}
+        ${qText ? `<div style="font-size:13px;line-height:1.6;margin-bottom:6px">${qText}</div>` : ''}
+        ${optsHtml ? `<div style="font-size:12.5px;line-height:1.5;margin-bottom:6px;padding-left:4px">${optsHtml}</div>` : ''}
+        <div style="font-size:12px;margin-bottom:4px"><b>正确答案：</b><span style="color:#059669;font-weight:600">${q.answer||'未记录'}</span>
+          ${q.myAnswer ? ` &nbsp;|&nbsp; <b>我的答案：</b><span style="color:#dc2626">${q.myAnswer}</span>` : ''}
+        </div>
+        ${reasonsHtml ? `<div style="margin-bottom:4px">${reasonsHtml}</div>` : ''}
+        ${analysisHtml ? `<div style="font-size:12px;line-height:1.5;color:#374151;border-top:1px dashed #d1d5db;padding-top:6px;margin-top:4px">${analysisHtml}</div>` : ''}
+      </div>`;
+    }).join('');
+    
+    return `
+    <div style="margin-bottom:20px">
+      <h2 style="font-size:15px;font-weight:700;color:#1e40af;border-bottom:2px solid #3b82f6;padding-bottom:4px;margin:0 0 10px">${typeName}（${qs.length}题）</h2>
+      ${cardsHtml}
+    </div>`;
+  }).join('');
+  
+  const printHtml = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>错题打印 - ${condText}</title>
+<style>
+  @page { size: A4; margin: 15mm 12mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "PingFang SC","Microsoft YaHei","Helvetica Neue",Arial,sans-serif; font-size: 13px; color: #1f2937; line-height: 1.5; margin: 0; padding: 20px; max-width: 210mm; margin: 0 auto; }
+  .print-header { text-align: center; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #1e40af; }
+  .print-header h1 { font-size: 20px; margin: 0 0 4px; color: #1e3a8a; }
+  .print-header .meta { font-size: 12px; color: #6b7280; }
+  .print-footer { text-align: center; font-size: 11px; color: #9ca3af; margin-top: 20px; padding-top: 10px; border-top: 1px solid #e5e7eb; }
+  .toolbar { position: fixed; top: 10px; right: 10px; z-index: 999; }
+  .toolbar button { background: #2563eb; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.15); }
+  .toolbar button:hover { background: #1d4ed8; }
+  @media print {
+    .toolbar { display: none; }
+    body { padding: 0; }
+  }
+</style>
+</head>
+<body>
+  <div class="toolbar"><button onclick="window.print()"><i class="fas fa-print"></i> 打印</button></div>
+  <div class="print-header">
+    <h1>行测错题集</h1>
+    <div class="meta">${condText} · 共${filtered.length}题 · 导出时间：${new Date().toLocaleString('zh-CN')}</div>
+  </div>
+  ${sectionsHtml}
+  <div class="print-footer">— 由 AI行测错题管家 生成 —</div>
+</body>
+</html>`;
+  
+  const win = window.open('', '_blank');
+  if (!win) { alert('请允许弹出窗口以导出打印'); return; }
+  win.document.write(printHtml);
+  win.document.close();
 }
 
 function toggleBatchDeleteMode() {
@@ -2180,4 +2301,4 @@ function init() {
 init();
 </script>
 </body>
-<!-- build: 0809e --></html>
+<!-- build: 0809f --></html>
