@@ -811,6 +811,10 @@ function renderSingleForm() {
         </div>
       </div>
       <div style="margin-bottom:14px">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">正确率（%）</label>
+        <input id="inp-accuracy" class="input-field" type="number" min="0" max="100" placeholder="如：65">
+      </div>
+      <div style="margin-bottom:14px">
         <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">错误类型（多选）</label>
         <div class="checkbox-group" id="inp-reasons">
           ${ERROR_REASONS.map(r => `<div class="checkbox-item" onclick="toggleReason(this)"><input type="checkbox" value="${r}"><span>${r}</span></div>`).join('')}
@@ -858,10 +862,11 @@ D. 选项D内容
 
 下一题以"第 2 题：（第 2 页）"开头，
 或用 --- 分隔。
-（题型、错误类型、来源可选填，格式：
+（题型、错误类型、来源、正确率可选填，格式：
 题型：主旨概括
 错误类型：概念理解错误
-来源：2025联考真题）</pre>
+来源：2025联考真题
+正确率：65）</pre>
     </div>
     <div class="card">
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">粘贴错题内容（多题用【题目1】【题目2】依次分隔）</label>
@@ -952,7 +957,7 @@ function parseBatchContent(text) {
         finalLines.push(l);
       }
     });
-    const q = { question: '', optionA: '', optionB: '', optionC: '', optionD: '', myAnswer: '', correctAnswer: '', type: '', source: '', errorReasons: [], analysis: '' };
+    const q = { question: '', optionA: '', optionB: '', optionC: '', optionD: '', myAnswer: '', correctAnswer: '', accuracy: '', type: '', source: '', errorReasons: [], analysis: '' };
     const qLines = [], aLines = [];
     let section = 'question';
     let optSeen = false;
@@ -974,6 +979,7 @@ function parseBatchContent(text) {
       }
       if ((m = line.match(/^(?:【)?(?:我的答案|错选选项|错选项|错选)(?:】)?\s*[:：]?\s*([A-Da-d])/))) { q.myAnswer = m[1].toUpperCase(); section = 'meta'; return; }
       if ((m = line.match(/^(?:【)?正确答案(?:】)?\s*[:：]?\s*([A-Da-d])/))) { q.correctAnswer = m[1].toUpperCase(); section = 'meta'; return; }
+      if ((m = line.match(/^(?:【)?正确率(?:】)?\s*[:：]?\s*(\d+)\s*%?/))) { q.accuracy = m[1]; section = 'meta'; return; }
       if ((m = line.match(/^(?:【)?题型(?:】)?\s*[:：]\s*(.+)$/))) { q.type = m[1].trim(); section = 'meta'; return; }
       if ((m = line.match(/^(?:【)?(?:错题来源|题目来源|试题来源|来源)(?:】)?\s*[:：]?\s*(.+)$/))) { if (!q.source) q.source = m[1].trim(); section = 'meta'; return; }
       if ((m = line.match(/^【考查知识点】\s*[:：]?\s*(.+)$/))) { if (!q.type) q.type = m[1].trim(); section = 'analysis'; aLines.push(line); return; }
@@ -1025,6 +1031,7 @@ function confirmBatchImport() {
       optionA: p.optionA, optionB: p.optionB, optionC: p.optionC, optionD: p.optionD,
       myAnswer: p.myAnswer,
       correctAnswer: p.correctAnswer,
+      accuracy: p.accuracy || '',
       errorReasons: p.errorReasons.length ? p.errorReasons : [],
       analysis: p.analysis,
       notes: '',
@@ -1338,6 +1345,7 @@ function saveNewQuestion() {
     optionD: document.getElementById('inp-optD').value.trim(),
     myAnswer: myAns,
     correctAnswer: correctAns,
+    accuracy: document.getElementById('inp-accuracy').value.trim(),
     errorReasons: reasons,
     analysis: '',
     notes: '',
@@ -1516,11 +1524,11 @@ function exportForPrint() {
       }).join('');
       
       return `
-      <div style="page-break-inside:avoid;margin-bottom:18px;padding:0 0 12px 0;border-bottom:1px solid #e5e7eb">
-        <div style="font-size:14px;line-height:1.8;margin-bottom:6px">
+      <div style="page-break-inside:avoid;margin-bottom:12px;padding:0 0 8px 0;border-bottom:1px solid #e5e7eb">
+        <div style="font-size:13px;line-height:1.5;margin-bottom:4px">
           <span style="font-weight:normal">${globalIdx}. ${qText}</span>
         </div>
-        ${optsHtml ? `<div style="font-size:14px;line-height:1.7">${optsHtml}</div>` : ''}
+        ${optsHtml ? `<div style="font-size:12.5px;line-height:1.4">${optsHtml}</div>` : ''}
       </div>`;
     }).join('');
     
@@ -1536,13 +1544,13 @@ function exportForPrint() {
 <meta charset="UTF-8">
 <title>${moduleTitle}</title>
 <style>
-  @page { size: A4; margin: 25mm 25mm; }
+  @page { size: A4; margin: 20mm 20mm 20mm 20mm; }
   * { box-sizing: border-box; }
-  body { font-family: "SimSun","宋体","PingFang SC","Microsoft YaHei",serif; font-size: 14px; color: #000; line-height: 1.8; margin: 0; padding: 20px; max-width: 210mm; margin: 0 auto; font-weight: normal; }
-  .print-header { text-align: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom:2px solid #000; }
-  .print-header h1 { font-size: 22px; font-weight: normal; margin: 0 0 6px; }
-  .print-header .meta { font-size: 13px; color: #333; font-weight: normal; }
-  .print-header .info { font-size: 12px; color: #666; margin-top: 6px; font-weight: normal; }
+  body { font-family: "SimSun","宋体","PingFang SC","Microsoft YaHei",serif; font-size: 13px; color: #000; line-height: 1.6; margin: 0; padding: 15px; max-width: 210mm; margin: 0 auto; font-weight: normal; }
+  .print-header { text-align: center; margin-bottom: 16px; padding: 12px 0; border-bottom:2px solid #000; }
+  .print-header h1 { font-size: 20px; font-weight: normal; margin: 0 0 8px; }
+  .print-header .meta { font-size: 12px; color: #333; font-weight: normal; margin-bottom: 4px; }
+  .print-header .info { font-size: 11px; color: #666; margin-top: 4px; font-weight: normal; }
   .toolbar { position: fixed; top: 10px; right: 10px; z-index: 999; }
   .toolbar button { background: #2563eb; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.15); }
   .toolbar button:hover { background: #1d4ed8; }
@@ -1641,6 +1649,7 @@ function renderErrorCard(q) {
   return `<div class="card" style="cursor:pointer" onclick="toggleCardExpand('${q.id}')">
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">
       <span class="badge ${getModuleClass(q.module)}">${q.module}</span>
+      ${q.accuracy ? `<span style="font-size:11px;color:#059669;background:rgba(5,150,105,.1);padding:2px 8px;border-radius:10px;font-weight:600">${q.accuracy}%</span>` : ''}
       ${q.type ? `<span style="font-size:11px;color:#1e40af;background:rgba(59,130,246,.12);padding:2px 8px;border-radius:10px;font-weight:600">${q.type}</span>` : ''}
       ${q.errorReasons.map(r => `<span style="font-size:11px;color:var(--accent);background:rgba(249,115,22,.08);padding:2px 8px;border-radius:10px">${r}</span>`).join('')}
       ${hasPhoto ? '<span style="font-size:11px;color:var(--blue)"><i class="fas fa-image"></i></span>' : ''}
@@ -2277,4 +2286,4 @@ function init() {
 init();
 </script>
 </body>
-<!-- build: 0809i --></html>
+<!-- build: 0809j --></html>
