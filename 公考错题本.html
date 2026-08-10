@@ -1,0 +1,2695 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<script>
+!(function(j,a,g){j.__itrace_conf = {bid: 'f43basl8-6nqu7l3w',rel: '0.0.1', spa: true, uid: '', plugins:['jserror','interface','perf','resource','flow','blank']};var b = a.createElement("script");var d = a.getElementsByTagName("script")[0];b.type = "text/javascript";b.crossorigin = true;b.async = true;b.onload = function(){j.__itrace && j.__itrace.setReady()};d.parentNode.insertBefore(b,d);b.src = g})(window, document, "https://g.alicdn.com/woodpeckerx/itrace-next/itrace.iife.js")
+</script>
+
+<!-- 同站请求保留Referer，跨站请求不发送 -->
+<meta name="referrer" content="same-origin">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<title>AI行测错题管家</title>
+<link href="https://cdn.staticfile.net/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Supabase JS SDK（云同步所需） -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/iife.min.js"></script>
+<script>
+tailwind.config={theme:{extend:{colors:{primary:'#0c1929','primary-light':'#162544',accent:'#f97316',success:'#22c55e'}}}}
+</script>
+<style>
+:root{--bg:#f0f4f8;--card:#fff;--primary:#0c1929;--primary-light:#162544;--accent:#f97316;--success:#22c55e;--danger:#ef4444;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;--blue:#3b82f6;--purple:#8b5cf6;--red:#ef4444;--green:#22c55e;--orange:#f97316}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
+.page{display:none;padding:16px 16px 150px;animation:fadeIn .25s ease}
+.page.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+.card{background:var(--card);border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.06);padding:16px;margin-bottom:12px;transition:box-shadow .2s}
+.card:active{box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600;color:#fff;white-space:nowrap}
+.badge-blue{background:var(--blue)}.badge-purple{background:var(--purple)}.badge-red{background:var(--red)}.badge-green{background:var(--green)}.badge-orange{background:var(--orange)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;border:none;cursor:pointer;transition:all .15s}
+.btn:active{transform:scale(.96)}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-light)}
+.btn-accent{background:var(--accent);color:#fff}.btn-accent:hover{background:#ea7a1e}
+.btn-success{background:var(--success);color:#fff}.btn-success:hover{background:#16a34a}
+.btn-danger{background:var(--danger);color:#fff}.btn-danger:hover{background:#dc2626}
+.btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text)}.btn-outline:hover{border-color:var(--primary);color:var(--primary)}
+.btn-sm{padding:6px 14px;font-size:12px;border-radius:8px}
+.input-field{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;outline:none;transition:border-color .2s;background:#fff}
+.input-field:focus{border-color:var(--accent)}
+select.input-field{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M6 8L1 3h10z' fill='%2364748b'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+textarea.input-field{resize:vertical;min-height:80px}
+.checkbox-group{display:flex;flex-wrap:wrap;gap:8px}
+.checkbox-item{display:flex;align-items:center;gap:4px;padding:4px 12px;border:1.5px solid var(--border);border-radius:20px;font-size:13px;cursor:pointer;transition:all .15s;user-select:none}
+.checkbox-item.checked{border-color:var(--accent);background:rgba(249,115,22,.08);color:var(--accent)}
+.checkbox-item input{display:none}
+#bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:100;padding:0 16px calc(14px + env(safe-area-inset-bottom))}
+#bottom-nav .nav-inner{background:#fff;border-radius:999px;display:flex;padding:6px;box-shadow:0 8px 28px rgba(12,25,41,.18),0 2px 8px rgba(12,25,41,.08);gap:4px;max-width:480px;margin:0 auto}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;transition:all .25s;padding:6px 3px;border-radius:999px;white-space:nowrap}
+.nav-icon-wrap{width:32px;height:32px;border-radius:50%;background:#e0f2fe;display:flex;align-items:center;justify-content:center;transition:all .25s}
+.nav-icon-wrap i{font-size:15px;color:#0284c7}
+.nav-item span{font-size:12px;font-weight:600;color:#334155}
+.nav-item.active{background:#0284c7;box-shadow:0 4px 12px rgba(2,132,199,.35)}
+.nav-item.active .nav-icon-wrap{background:rgba(255,255,255,.25)}
+.nav-item.active .nav-icon-wrap i{color:#fff}
+.nav-item.active span{color:#fff}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:flex-end;justify-content:center;animation:fadeIn .2s}
+.modal-content{background:#fff;width:100%;max-width:640px;max-height:90vh;border-radius:20px 20px 0 0;overflow-y:auto;animation:slideUp .3s ease;padding:20px 16px 32px}
+.modal-full{align-items:stretch}.modal-full .modal-content{max-height:100vh;border-radius:0;height:100%}
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--primary);color:#fff;padding:10px 24px;border-radius:10px;font-size:14px;z-index:999;animation:fadeIn .2s;box-shadow:0 4px 20px rgba(0,0,0,.2)}
+.progress-bar{height:8px;border-radius:4px;background:#e2e8f0;overflow:hidden}
+.progress-fill{height:100%;border-radius:4px;transition:width .5s ease}
+.stat-bar{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.stat-bar-label{width:72px;font-size:12px;color:var(--muted);text-align:right;flex-shrink:0}
+.stat-bar-track{flex:1;height:22px;border-radius:6px;background:#e2e8f0;overflow:hidden;position:relative}
+.stat-bar-fill{height:100%;border-radius:6px;transition:width .6s ease;display:flex;align-items:center;padding-left:8px;font-size:11px;color:#fff;font-weight:600;min-width:0}
+.photo-thumb{width:56px;height:56px;border-radius:8px;object-fit:cover;border:1.5px solid var(--border);cursor:pointer}
+.confirm-dialog{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;display:flex;align-items:center;justify-content:center;padding:24px}
+.confirm-box{background:#fff;border-radius:16px;padding:24px;max-width:320px;width:100%;text-align:center;animation:fadeIn .2s}
+.empty-state{text-align:center;padding:48px 16px;color:var(--muted)}
+.empty-state i{font-size:48px;margin-bottom:12px;opacity:.3}
+.empty-state p{font-size:14px}
+.header-bar{background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff;padding:16px;border-radius:0 0 20px 20px;margin:-16px -16px 16px;position:relative;overflow:hidden}
+.header-bar::after{content:'';position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(249,115,22,.12)}
+.header-bar h1{font-size:20px;font-weight:700;margin:0}
+.header-bar p{font-size:13px;opacity:.7;margin:4px 0 0}
+.quick-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+.quick-action{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;border-radius:12px;background:rgba(255,255,255,.12);cursor:pointer;transition:background .15s;font-size:12px;color:#fff}
+.quick-action:active{background:rgba(255,255,255,.2)}
+.quick-action i{font-size:22px}
+.stat-card{display:flex;align-items:center;gap:12px}
+.stat-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff}
+.detail-section{margin-bottom:16px}
+.detail-section h4{font-size:13px;color:var(--muted);margin:0 0 6px;font-weight:600}
+.detail-section p{font-size:14px;line-height:1.7;margin:0}
+.option-item{padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;margin-bottom:8px;font-size:14px;line-height:1.5}
+.option-item.my-wrong{border-color:var(--danger);background:rgba(239,68,68,.06)}
+.option-item.correct{border-color:var(--success);background:rgba(34,197,94,.06)}
+.review-btn-group{display:flex;gap:10px;margin-top:16px}
+.review-btn-group .btn{flex:1}
+@media(min-width:640px){#bottom-nav .nav-inner{max-width:480px}}
+@media(min-width:744px){
+#app{max-width:744px!important}
+.page{padding-left:24px;padding-right:24px}
+#bottom-nav{padding-left:28px;padding-right:28px}
+#bottom-nav .nav-inner{max-width:540px;padding:8px;gap:5px}
+.nav-item{padding:8px 4px;gap:3px}
+.nav-icon-wrap{width:36px;height:36px}
+.nav-icon-wrap i{font-size:17px}
+.nav-item span{font-size:13px}
+}
+</style>
+</head>
+<body>
+<div id="app" class="max-w-[640px] mx-auto min-h-screen relative">
+  <!-- Page: Home -->
+  <div id="page-home" class="page active"></div>
+  <!-- Page: Input -->
+  <div id="page-input" class="page"></div>
+  <!-- Page: Errors -->
+  <div id="page-errors" class="page"></div>
+  <!-- Page: Stats -->
+  <div id="page-stats" class="page"></div>
+  <!-- Page: Settings -->
+  <div id="page-settings" class="page"></div>
+  <!-- Bottom Nav -->
+    <nav id="bottom-nav">
+    <div class="nav-inner">
+      <div class="nav-item active" data-tab="home"><div class="nav-icon-wrap"><i class="fas fa-home"></i></div><span>首页</span></div>
+      <div class="nav-item" data-tab="input"><div class="nav-icon-wrap"><i class="fas fa-plus-circle"></i></div><span>录入</span></div>
+      <div class="nav-item" data-tab="errors"><div class="nav-icon-wrap"><i class="fas fa-book"></i></div><span>错题本</span></div>
+      <div class="nav-item" data-tab="stats"><div class="nav-icon-wrap"><i class="fas fa-chart-bar"></i></div><span>统计</span></div>
+      <div class="nav-item" data-tab="settings"><div class="nav-icon-wrap"><i class="fas fa-cog"></i></div><span>设置</span></div>
+    </div>
+  </nav>
+  <!-- Review Modal -->
+  <div id="review-modal" class="hidden"></div>
+  <!-- Detail Modal -->
+  <div id="detail-modal" class="hidden"></div>
+  <!-- Confirm Dialog -->
+  <div id="confirm-dialog" class="hidden"></div>
+  <!-- Toast -->
+  <div id="toast-el" class="hidden"></div>
+</div>
+
+<script>
+// ==================== CONSTANTS ====================
+const SEED_VERSION = 7;
+const STORAGE_KEY = 'xct_questions';
+const DAILY_KEY = 'xct_daily';
+const SEED_KEY = 'xct_seedLoaded';
+
+const MODULE_COLORS = {
+  '言语理解': 'blue', '判断推理': 'purple', '数量关系': 'red',
+  '资料分析': 'green', '常识判断': 'orange'
+};
+const MODULE_COLOR_HEX = {
+  '言语理解': '#3b82f6', '判断推理': '#8b5cf6', '数量关系': '#ef4444',
+  '资料分析': '#22c55e', '常识判断': '#f97316'
+};
+const MODULE_TYPES = {
+  '言语理解': ['中心理解题','标题添加题','细节判断题','语句填空题','语句排序题','逻辑填空题'],
+  '判断推理': ['图形推理','定义判断','类比推理','逻辑判断'],
+  '数量关系': ['数学运算','数字推理'],
+  '资料分析': ['增长率','增长量','比重','平均数','倍数','综合分析'],
+  '常识判断': ['法律','政治','经济','历史','科技','地理']
+};
+const ERROR_REASONS = ['概念理解错误','审题错误','方法忘记','计算错误','粗心','知识遗忘'];
+const ALL_MODULES = ['言语理解','判断推理','数量关系','资料分析','常识判断'];
+
+// ==================== SEED DATA (22 questions) ====================
+const SEED_DATA = [
+  {
+    id:'seed-1',module:'判断推理',type:'逻辑判断（加强型-因果型）',
+    question:'（2025联考）某研究团队发布了一项关于睡眠习惯、时间与癌症风险的研究。研究分析了近1.5万人，发现睡眠时间短导致癌症风险升高，和睡眠时间为6—8小时的参与者相比，夜间睡眠时间少于6小时的人，患癌风险升高41%，和午睡时间多于60分钟的参与者相比，从不午睡的参与者患癌风险升高60%。以下哪项如果为真，最能加强上述观点？',
+    optionA:'睡眠时间短会损害免疫功能、降低人体对肿瘤细胞的识别和消灭能力',
+    optionB:'人类环境、卫生资源和睡眠习惯的变化，导致癌症发病原因发生了变化',
+    optionC:'夜间睡眠时间短或不午睡的参与者，大多年龄较大且缺少锻炼，健康状况不佳',
+    optionD:'和总睡眠时间为7—8小时的参与者相比，总睡眠时间少于7小时的男性，患癌风险升高69%',
+    myAnswer:'D',correctAnswer:'A',errorReasons:['概念理解错误'],
+    analysis:'观点是"睡眠时间短导致癌症风险升高"，属因果论证。A项解释因果机制：睡眠短→免疫功能受损→识别和消灭肿瘤细胞能力下降，属于"解释因果（有因有果）"，加强力度最强。D项只是补充一组类比调查数据（总睡眠少于7小时的男性风险升高69%），属于数据列举，力度弱于因果解释。B项是他因削弱；C项说明样本本身健康状况不佳，属另有他因，不能加强。',
+    notes:'红笔批注：A项"解释因果，有因有果"；B项"他因削弱"。教训：数据列举类加强不如因果解释类加强。',
+    photos:[],createDate:'2026-08-08',errorCount:1,reviewStatus:'待复习',lastReviewDate:null,isSeed:true
+  },
+  {
+    id:'seed-2',module:'判断推理',type:'逻辑判断（加强型-因果型）',
+    question:'（2026天津）作为一种在全球范围内广泛使用的非生物降解塑料，聚苯乙烯在日常生活中极为常见。为了研究聚苯乙烯对动物的影响，科研人员对斑马鱼进行了试验，发现长期暴露于聚苯乙烯环境中，斑马鱼会表现出视动反应、趋光行为的迟缓，并出现视力下降。这让科研人员认为：长期接触聚苯乙烯会干扰视觉功能、造成动物的视力损伤。以下哪项如果为真，最能支持上述科研人员的结论？',
+    optionA:'试验结果显示，聚苯乙烯浓度越高，斑马鱼的视网膜色素上皮受到的结构性损伤就越显著',
+    optionB:'500nm的聚苯乙烯会影响光传导信号通路、使动物视觉感知失调并影响晶状体发育',
+    optionC:'荧光观察发现，聚苯乙烯在视网膜层积累后、视神经细胞转录因子减少、视力障碍开始出现',
+    optionD:'试验同时评估了80、200、500nm的聚苯乙烯对斑马鱼行为的影响，并测量了它们的游泳距离',
+    myAnswer:'A',correctAnswer:'C',errorReasons:['概念理解错误'],
+    analysis:'结论是因果判断：聚苯乙烯→视力损伤。C项给出完整因果链条：聚苯乙烯在视网膜积累→视神经细胞转录因子减少→视力障碍出现，属于"解释因果"，最直接地证明了因果机制。A项只给出剂量-效应的相关性（浓度越高损伤越显著），相关不等于因果，力度弱于C。B项只谈500nm一种规格，范围偏窄；D项是试验过程描述，属无关项。',
+    notes:'复盘卷此处批改痕迹略有模糊，若当时实际选的是C，可直接标记"已掌握"。',
+    photos:[],createDate:'2026-08-08',errorCount:1,reviewStatus:'待复习',lastReviewDate:null,isSeed:true
+  },
+  {
+    id:'seed-3',module:'判断推理',type:'逻辑判断（加强型-因果型）',
+    question:'（2022辽宁事业单位）在一项实验中，实验对象的一半作为实验组，食用了大量的某种辣椒。而作为对照组的另一半没有吃这种辣椒。结果，实验组的认知能力比对照组差得多。这一结果是由于这种辣椒的一种主要成分——维生素E造成的。以下哪项如果为真，最有助于证明这种辣椒中某些成分造成这一实验结论？',
+    optionA:'上述结论中所提到的维生素E在所有蔬菜中都有，为了保证营养必须摄入一定量这种维生素E',
+    optionB:'实验组中人们所食用的辣椒数量是在政府食品条例规定的安全用量之内的',
+    optionC:'第二次实验时，只给一组食用大量辣椒作为实验组，而不设不食用辣椒的对照组',
+    optionD:'实验前两组实验对象是按认知能力均等划分的',
+    myAnswer:'B',correctAnswer:'D',errorReasons:['方法忘记'],
+    analysis:'要证明"实验结果是由辣椒中某些成分造成的"，必须确保两组之间除了"是否吃辣椒"之外没有其他差异。D项说明实验前两组按认知能力均等划分，属于"排除他因"（排除两组原有差异这一干扰），是实验结论成立的必要前提。B项"在安全用量之内"与证明因果关系无关；A项谈维生素E的普遍性，无关；C项不设对照组的做法反而削弱实验效力。',
+    notes:'红笔批注：D项"排除他因"。教训：实验类加强题优先想"排除他因/对照组是否等价"。',
+    photos:[],createDate:'2026-08-08',errorCount:1,reviewStatus:'待复习',lastReviewDate:null,isSeed:true
+  },
+  {
+    id:'seed-4',module:'判断推理',type:'逻辑判断（加强型-一般型）',
+    question:'（2023江苏事业单位）研究者对278名42岁至60岁的男性进行追踪研究，发现其中献过血的人患冠心病的比例比未献过血的少10%。同期另一项研究也表明：定期适量地献血可以降低血液粘稠度，促进血液循环。研究者认为，适量献血有助于预防冠心病，预防衰老。以下哪项如果为真，最能支持研究人员的观点？',
+    optionA:'人体内的铁元素不超过正常比例，人们患冠心病的风险就不会明显提高',
+    optionB:'氧化是身体老化生病的基础，血液过浓，会直接导致人体的"氧化作用"加快',
+    optionC:'口服抗衰老药物和食物，能够清除血液中的"自由基"而达到抗衰老的效果',
+    optionD:'献血越多，越可以减少血液内的铁元素，从而刺激造血器官保持旺盛造血功能',
+    myAnswer:'A',correctAnswer:'B',errorReasons:['概念理解错误'],
+    analysis:'论据：献血→降低血液粘稠度、促进血液循环；结论：献血→预防冠心病、预防衰老。"血液粘稠度"与"冠心病/衰老"之间缺少联系，需要搭桥。B项建立桥梁：氧化是身体老化生病的基础，血液过浓会加快氧化→献血降低粘稠度就能减缓氧化、预防衰老生病，属于"搭桥"加强。A项谈铁元素与冠心病的关系，与献血、血液粘稠度均无关，属于脑补无关项；C项谈抗衰老药物，话题不一致；D项"献血越多越好"过于绝对且与结论无关。',
+    notes:'红笔批注：A项"脑补无关"，B项"搭桥"。教训：论据与结论话题不一致时优先找搭桥项。',
+    photos:[],createDate:'2026-08-08',errorCount:1,reviewStatus:'待复习',lastReviewDate:null,isSeed:true
+  },
+  {
+    id:'seed-5',module:'判断推理',type:'逻辑判断（加强型-一般型）',
+    question:'（2024事业单位联考）逻辑学主要研究的是如何进行正确推理，它提供给人们如何区分正确推理和错误推理的一般方法。它是基于概念的精确定义和纯粹形式的分析、推理而获得人们进行正确思维所应该遵守的一般规律。它并不是一门自然科学。因此，观察和实验并不能证伪它，当然也不能证明它。以下哪项如果为真，最能支持以上论述？',
+    optionA:'观察和实验只能证伪自然科学',
+    optionB:'自然科学不进行纯粹形式的分析',
+    optionC:'自然科学研究需要以逻辑学为基础',
+    optionD:'自然科学都要接受观察和实验的检验',
+    myAnswer:'D',correctAnswer:'A',errorReasons:['方法忘记'],
+    analysis:'论证结构：逻辑学不是自然科学→观察和实验不能证伪也不能证明逻辑学。要使推理成立，需要搭桥："只有自然科学才能被观察和实验证伪"。A项正是该假言命题（"只能"表必要条件）：能被观察实验证伪→是自然科学；逻辑学不是自然科学→不能被证伪，直接支持论证。D项说自然科学都要接受观察和实验检验，方向反了（自然科学→被检验，推不出"不被检验就不能证伪"），话题不一致。B、C与"能否被证伪"无关。',
+    notes:'红笔批注：A项"只有假言命题"。教训："只有…才…"翻译为后推前，再逆否使用。',
+    photos:[],createDate:'2026-08-08',errorCount:1,reviewStatus:'待复习',lastReviewDate:null,isSeed:true
+  },
+  {
+    id:'seed-6',module:'判断推理',type:'逻辑判断（加强型-一般型）',
+    question:'（2025国考）考古人员发现了近300枚16亿年前的丝状体生物化石，这些丝状体均由巨型细胞组成，直径20—194微米不等。化石中，有些丝状体直径保持不变，细胞呈短柱状至长柱状；有些丝状体整体向一端均匀收缩，细胞呈柱状、桶状或杯状；而有的丝状体仅一端变细，形态呈现了一定的复杂性。考古人员据此认为，这些丝状体很可能属于真核生物。以下各项如果为真，除哪项外均能支持上述观点？',
+    optionA:'这些化石中被发现有类似于现生繁殖细胞——孢子一样的圆形结构，这一结构只出现在真核生物中',
+    optionB:'原核生物细胞的直径一般小于2微米，而真核生物细胞的直径一般在10—100微米之间',
+    optionC:'在目前已知的原核生物中，大多数的丝状体形态都比较简单，只有个别呈现出过渡期形态',
+    optionD:'经比对，该化石中丝状体与一些现生绿藻（一种真核生物）的藻丝体形态、细胞大小分布和繁殖方式等最为接近',
+    myAnswer:'A',correctAnswer:'C',errorReasons:['审题错误'],
+    analysis:'本题是选非题。A项（孢子结构只出现在真核生物中）、B项（细胞直径符合真核生物范围）、D项（与真核生物绿藻最接近）均直接支持化石属于真核生物。C项说"大多数原核生物丝状体形态简单，只有个别呈现过渡期形态"——既然个别原核生物也可能呈现复杂的过渡形态，化石就有可能是那"个别"的原核生物，该项不能支持（反而略有削弱）。复盘批注"眼瞎"：当时没看到"除哪项外"，当成普通加强题做了。',
+    notes:'原答案为根据复盘痕迹推断。教训：选非题先圈出"除/不能/没有"字样再做题。',
+    photos:[],createDate:'2026-08-08',errorCount:1,reviewStatus:'待复习',lastReviewDate:null,isSeed:true
+  },
+  {
+    id:'seed-7',module:'判断推理',type:'逻辑判断（加强型-一般型）',
+    question:'（2020广东选调）有研究指出，智商高的人更容易在某个专业领域取得成绩，而情商高的人，通常有较充实的婚姻和家庭——有良好的人际关系。专家指出，为了孩子的幸福，父母应该更加注重对孩子情商的培养。以下哪项如果为真，最能支持上述专家观点？',
+    optionA:'相比于社会环境因素，遗传因素对智商的影响更大',
+    optionB:'许多成功的专业人士的智商并不是很高，但情商很高',
+    optionC:'一个人的情商水平，与其童年时期接受的教育培养关系密切',
+    optionD:'良好的人际关系和家庭状况比专业成就更能让人获得幸福感',
+    myAnswer:'C',correctAnswer:'D',errorReasons:['概念理解错误'],
+    analysis:'专家观点：为了孩子的幸福→应注重培养情商。论据：情商高→婚姻家庭充实、人际关系良好（智商高→专业成绩）。缺少的环节是"婚姻家庭/人际关系比专业成就更让人幸福"。D项恰好补上这座桥，把"情商高的优势"与"幸福"直接联系起来。C项只说明童年教育影响情商，缺少与智商的对比、也推不出"幸福"这一结论（红笔批注"少了对比"）。A项谈智商的来源，无关；B项是个例，力度弱。',
+    notes:'红笔批注：C项"少了对比"。教训：观点含"幸福"等价值词时，搭桥项往往要建立"比较关系"。',
+    photos:[],createDate:'2026-08-08',errorCount:1,reviewStatus:'待复习',lastReviewDate:null,isSeed:true
+  },
+  {
+    id:'seed-8',module:'判断推理',type:'逻辑判断（加强型-一般型）',
+    question:'（2025山东）人体中需要维持血糖适度平衡。糖尿病患者血糖升高后，胰腺中有细胞分泌胰岛素，以控制血液中血糖维持在平衡范围内。有研究人员发现，有一部分细胞能够先比其他细胞更敏捷地对血糖的升高做出反应，他们称该种类型的细胞为第一细胞。他们认为，第一细胞发生血糖反应之后，其他跟随细胞会紧接着分泌胰岛素，对血糖进行调节。以下哪项能够支持研究人员的观点？',
+    optionA:'第一细胞开始反应之后，其他跟随细胞滞后发生释放胰岛素反应',
+    optionB:'当血糖水平升高时，抑制第一细胞的活性会导致其他跟随细胞无法及时分泌胰岛素',
+    optionC:'即使第一细胞被移除，其他跟随细胞对血糖的反应不变',
+    optionD:'第一细胞的数量远少于其他跟随细胞，但对血糖变化的敏感度显著更高',
+    myAnswer:'A',correctAnswer:'B',errorReasons:['概念理解错误'],
+    analysis:'研究人员观点：第一细胞先反应→带动跟随细胞分泌胰岛素（因果关系）。B项属于"无它不行"（无因无果）：抑制第一细胞→跟随细胞无法及时分泌胰岛素，说明第一细胞是跟随细胞行动的必要条件，是对因果关系的最强验证。A项只是描述"先反应、后跟随"的时间顺序，复述题干现象，时间先后不等于因果。C项是削弱项（移除第一细胞后跟随细胞照常反应）；D项只说明第一细胞的特点，不能证明带动作用。',
+    notes:'红笔批注："无它不行""反面不行了"。教训：验证因果最强方式是"无因则无果"。',
+    photos:[],createDate:'2026-08-08',errorCount:1,reviewStatus:'待复习',lastReviewDate:null,isSeed:true
+  },
+  {
+    id:'seed-9',module:'判断推理',type:'逻辑判断（加强型-一般型）',
+    question:'（2022四川）书报亭曾经是所有城市的标配，承载着几代人的共同记忆，但当下已经快要成为一个历史名词了。近日，《中国青年报》在显著版面刊登了上海中学生的一封信，希望《中国青年报》替青少年呼吁恢复书报亭。一个初中生的来信受到媒体的关注有些让人意外，刊登出来在瞬间点燃了网民的热情也实属罕见。由此可见，恢复书报亭十分必要。以下哪项如果为真，最能支持上述结论？',
+    optionA:'城市书报亭的退出是时代变迁、城市规划、网络媒体发展的必然结果',
+    optionB:'书报亭具有很强的社区服务功能，是社区居民获取信息和知识的重要渠道',
+    optionC:'青少年正处于大量吸收知识、进行探索和思考的阶段，报纸杂志是文化必需品',
+    optionD:'纸质的报纸杂志有着无法替代的优势，它有助于培养青少年的阅读兴趣和能力',
+    myAnswer:'B',correctAnswer:'D',errorReasons:['审题错误'],
+    analysis:'题干论证围绕"青少年"展开：中学生写信＋网民热情→恢复书报亭必要。D项指出现代纸质报纸杂志对培养青少年阅读兴趣和能力有无法替代的优势，与论证主体（青少年）一致，从根本价值上支持了恢复书报亭的必要性。B项谈社区服务功能和社区居民，与论证主体"青少年"不一致，不能代表书报亭对青少年的价值（红笔批注"不能代表书报亭"）。A项是削弱（退出是必然结果）；C项"文化必需品"表述宽泛，未触及不可替代性。',
+    notes:'红笔批注：B项"不能代表书报亭"。教训：加强项的主体必须与题干论证主体一致。',
+    photos:[],createDate:'2026-08-08',errorCount:1,reviewStatus:'待复习',lastReviewDate:null,isSeed:true
+  },
+  {
+    id:'seed-10',module:'判断推理',type:'逻辑判断（加强型-一般型）',
+    question:'（2026国考）S遗址近年来出土了大量与众不同的奇特文物，不少人认定S遗址展现了一个特色鲜明且区域封闭的南部地方文化。然而最新研究发现，在距离S遗址较远的北部Y遗址，出土的青铜器曾大量使用了来自S遗址附近矿床的铅铜矿料，在S遗址文化灭亡后，Y遗址出土的青铜器基本不再含有这种矿料。这说明S遗址不是封闭区域，其所在的古国曾与Y遗址的古国或其他区域存在着交流互动。以下哪项如果为真，没有支持上述结论？',
+    optionA:'S遗址的青铜器制造业在当时非常发达，出土的青铜器含有多种不同的铅铜矿料',
+    optionB:'随着考古发掘的深入，S遗址出土了越来越多带有明显Y遗址文化元素的青铜器',
+    optionC:'在铸造工艺上，S遗址出土的部分文物采用了Y遗址多见的"泥模块铸法"',
+    optionD:'原本流行于东部地区的牙璋、铜牌饰、陶盉等也在位于南部的S遗址中大量出现',
+    myAnswer:'B',correctAnswer:'A',errorReasons:['审题错误'],
+    analysis:'本题是"没有支持"类选非题。结论：S遗址不封闭，与Y遗址或其他区域存在交流互动。B项（S遗址出土带Y文化元素的青铜器）、C项（S遗址文物采用Y遗址多见的泥模块铸法）、D项（东部地区的牙璋等在S遗址大量出现）都直接提供了"外部元素出现在S遗址"的证据，支持交流互动。A项只说明S遗址自身青铜制造业发达、青铜器含多种矿料，反映的是其自身发展水平；矿料多样既可能来自自身或附近矿床，不能直接证明与外部区域的"交流互动"。',
+    notes:'复盘批注"盲人摸象"（看证据片面）。原答案为根据复盘痕迹推断。教训：选非题逐项对照结论主体，找"只谈自身、不涉及交流"的选项。',
+    photos:[],createDate:'2026-08-08',errorCount:1,reviewStatus:'待复习',lastReviewDate:null,isSeed:true
+  },
+  {
+    id:'seed-11',module:'判断推理',type:'逻辑判断（加强型-一般型）',
+    question:'（2020江苏事业单位）作为AI领域目前最成熟的技术，人脸识别正在深入教育行业，在刷脸签到、学员身份查询、校园安防、课堂教学效果检测等诸多场景中逐渐得到应用。有些人脸识别技术甚至可以记录学生上课的行为、表情、专注度等多维度课堂数据，将对人脸的识别上升到"对人的深刻理解"，为课堂教学评估提供强有力辅助资料。当下，人脸识别技术正在飞速发展，但有专家预测，学校会谨慎甚至限制使用人脸识别技术，这项技术不会有较大的校园市场。以下哪项如果为真，最能支持上述专家的预测？',
+    optionA:'学生、老师和家长都高度重视课堂教学效果',
+    optionB:'人脸识别技术的应用涉及侵犯学生的隐私权',
+    optionC:'人脸识别只用于监控而非实质改善教学效果',
+    optionD:'人脸信息的收集与存储目前仍存在安全隐患',
+    myAnswer:'C',correctAnswer:'B',errorReasons:['概念理解错误'],
+    analysis:'预测：学校会谨慎甚至限制使用，不会有较大的校园市场。B项指出人脸识别涉及侵犯学生隐私权——隐私权是法律红线，学校必然谨慎甚至禁用，直接构成"限制使用"的理由，支持力度最强。C项"功能单一"（只用于监控、不改善教学）力度弱：功能单一不等于没有市场，若学校看重监控仍会采用（红笔批注"功能单一"）。A项无关；D项"安全隐患"有一定支持作用，但"目前仍存在"暗示可解决，力度弱于B项的权利侵犯。',
+    notes:'红笔批注：C项"功能单一"。教训：涉及法律/权利红线的选项，加强力度通常大于功能缺陷类选项。',
+    photos:[],createDate:'2026-08-08',errorCount:1,reviewStatus:'待复习',lastReviewDate:null,isSeed:true
+  },
+  {
+    id:'seed-12',module:'判断推理',type:'逻辑判断（加强型-一般型）',
+    question:'（2023四川）当前，智能客服广泛应用于各类场景，给人们带来了诸多便利的同时，也常出现读不懂关键词、回答呆板、答非所问等不够智能的现象，成为很多人消费维权要闯的"第一道关"。其痛点多影响消费体验，也在一定程度上成为阻碍消费需求释放的"拦路虎"。因此，人工客服不能缺位。以下哪项如果为真，最能支持上述结论？',
+    optionA:'智能客服的痛点问题除技术因素外，还在于一些企业过于重视智能化、低成本，忽视了便利化和消费者满意度',
+    optionB:'智能客服的发展受限于底层技术，智能客服的"语义解析"工作属于自然语言处理，是目前人工智能领域最具挑战性的问题',
+    optionC:'一项调查显示，有52.9%的消费者遇到过客服沟通障碍问题，其中71.2%是由于智能客服不够智能、"答非所问"引起的',
+    optionD:'智能客服与人工客服并非互相取代的关系，智能客服需要通过学习人工客服逐步完善，人机协同也能更好地回应消费者诉求',
+    myAnswer:'C',correctAnswer:'D',errorReasons:['概念理解错误'],
+    analysis:'结论：人工客服不能缺位。D项直接说明人工客服为何不可或缺：智能客服需要向人工客服学习才能完善，人机协同才能更好地回应诉求——人工客服是必要组成部分，直接支持结论。B项说明智能客服受底层技术限制、短期难突破，间接支持需要人工客服补位，次之。C项是调查数据，只证明"智能客服有问题"（加强前提），但"智能客服不智能"推不出"人工客服不能缺位"，论证断链。A项谈痛点成因，与结论无关。',
+    notes:'复盘卷此处批改痕迹略有模糊，若当时实际选的是B，可将本题标记"模糊"重点复习。教训：加强结论要选与结论主体直接挂钩的选项，加强前提的数据项力度有限。',
+    photos:[],createDate:'2026-08-08',errorCount:1,reviewStatus:'待复习',lastReviewDate:null,isSeed:true
+  },
+  {
+    id:'seed-13',module:'判断推理',type:'逻辑判断（加强型-一般型）',
+    question:'（2019广东事业单位）据某省卫生防疫部门统计，被狗咬伤后到医疗机构接种狂犬疫苗的人中，仅有1%感染上了狂犬病。但也有些人被狗咬伤后仅是在家自行处理。该省卫生防疫部门据此推测，被狗咬伤的人群中，感染狂犬病的人所占比例高于1%。以下最有力支持这一推测的是：',
+    optionA:'该省的狂犬病预防知识普及工作做得不好',
+    optionB:'该省境内饲养的狗大都没有注射狂犬疫苗',
+    optionC:'感染狂犬病的病例必须上报省级防疫部门',
+    optionD:'及时接种疫苗是预防狂犬病的最有效方法',
+    myAnswer:'C',correctAnswer:'D',errorReasons:['概念理解错误'],
+    analysis:'推测：被狗咬伤人群的整体感染比例＞1%。已知数据只覆盖"到医疗机构接种疫苗的人"（1%），还存在"在家自行处理的人"。要使整体比例高于1%，必须证明在家自行处理者的感染率更高。D项指出及时接种疫苗是预防狂犬病的最有效方法→在家自行处理者没有及时接种、感染率更高→整体必然高于1%，直接支持推测。A项谈知识普及，间接；B项谈狗的疫苗接种情况，不直接指向被咬伤者的感染率；C项病例上报制度与感染比例的高低比较无关。',
+    notes:'红笔标记：题号旁写有正确答案D。教训：比例类推测题，先分清"统计样本"与"整体"，补上样本外群体的情况。',
+    photos:[],createDate:'2026-08-08',errorCount:1,reviewStatus:'待复习',lastReviewDate:null,isSeed:true
+  },
+  {
+    id:'seed-14',module:'言语理解',type:'中心理解题',
+    question:'第 2 题：（第 1 页）\n人口是国家长足发展的根本。我国的人口研究始于20世纪初叶，复苏于20世纪70年代初，到20世纪80年代逐渐建立和完善学科体系，至今已有四十多年的耕耘。然而，当谈及人口现象的解释和人口问题的分析时，很多人仍存在一定的理解偏误，或是将人口学简单等同于人口统计、计划生育，或是对预期寿命、总和生育率等人口学概念一知半解。\n这段文字意在强调：',
+    optionA:'人口变化对国家的重要性',
+    optionB:'人口学研究的历史与演变',
+    optionC:'人口学研究需要与时俱进',
+    optionD:'要加强人口学的常识教育',
+    myAnswer:'C',correctAnswer:'D',errorReasons:['概念理解错误'],
+    analysis:'【考查知识点】对策类文段（单一对策类）\n【行文脉络】背景铺垫（1、2句）+转折引出问题（3句）。文段通过"然而"转折，强调公众对人口学概念存在"理解偏误"和"一知半解"的问题。\n【错选项及原因】错选项：C\n原因分析：作者观点找错。当时被文段开头的"20世纪初、70年代、80年代"等表示时间流演的表述干扰，主观认为文段是在讨论学科的发展，因此选了"与时俱进"。实际没读懂转折词"然而"后的真正用意——作者不是在说研究落后，而是在说公众的"常识"匮乏，对策应指向"教育"而非"研究"。\n【选项分析】A、B两项属于转折前的背景铺垫，是非核心成分。C项"与时俱进"侧重研究本身的进化，而文段反映的是公众"常识缺乏"，属于无中生有。D项针对"理解偏误"提出"常识教育"，是解决问题的针对性对策。\n【导图分析】根据导图"问题提观点"逻辑，当文段中出现消极的问题表述（如"偏误"、"一知半解"）且未给出明确实践对策时，正确答案通常是针对问题本身的针对性对策。',
+    notes:'',
+    photos:[],createDate:'2026-08-08',errorCount:1,reviewStatus:'待复习',lastReviewDate:null,isSeed:true
+  },
+  {
+    id:'seed-15',module:'言语理解',type:'中心理解题',
+    question:'第 3 题：（第 2 页）\n通过吸收和散射太阳辐射，气溶胶粒子能够影响地球和大气系统能量平衡，进而对全球气候系统产生影响。气溶胶粒子可以作为云凝结核或者大气冰核对云微物理结构产生影响，进而改变云的特性（形状、云量、寿命等）来对云的辐射特性和降水产生影响。硫酸盐型气溶胶和黑碳型气溶胶不仅能够明显改变降水强度和分布，而且这两种气溶胶均为吸湿性气溶胶，吸湿性气溶胶的增加可以使大气环流发生很大改变。作为云和降水过程中的重要环节，气溶胶由于其来源复杂，不同区域大气中气溶胶特性差异很大，使得各地云微物理性质和降水等不同，从而对气候产生不同的影响。\n这段文字主要介绍的是：',
+    optionA:'气溶胶对降水量的影响',
+    optionB:'气溶胶的来源及其类型',
+    optionC:'气溶胶在大气中的作用',
+    optionD:'气溶胶的区域特性差异',
+    myAnswer:'A',correctAnswer:'C',errorReasons:['概念理解错误'],
+    analysis:'【考查知识点】概括类文段\n【行文脉络】总-分-总结构。首句提出总观点（影响能量平衡和气候），中间通过并列结构分述其对云、降水、大气环流的具体影响，尾句回扣总结。\n【错选项及原因】错选项：A\n原因分析：没理解文段结构，以偏概全。当时没读懂科普类文段的并列分述逻辑，被文中多次出现的"降水"吸引，误认为这就是核心。实际找错了作者观点，降水只是气溶胶在大气中多项作用的其中之一，C项才是对首句"能量平衡"和中间各项分述的全面概括。\n【选项分析】A项"降水量"仅是分述中的一个侧面，B、D两项也属于局部信息，均属于"表述片面"。C项"在大气中的作用"是最高位阶的共性提炼，能宏观概括气溶胶的整体功能。\n【导图分析】导图指出概括类文段应"概括得尽量全面"。在并列多个影响维度时，需提炼共性，A项属于典型的"以偏概全"。',
+    notes:'',
+    photos:[],createDate:'2026-08-08',errorCount:1,reviewStatus:'待复习',lastReviewDate:null,isSeed:true
+  },
+  {
+    id:'seed-16',module:'言语理解',type:'中心理解题',
+    question:'一些热播电影电视资源还未正式上线，就提前在网络"曝光"流传，让相关片方和平台叫苦不迭。对此，严格的执法利剑，必须始终高悬。只要打击治理的力度不减、决心不停，就能最大限度将不法利益团伙连根拔起。同时，相关片方和视频网站平台，也应当进一步提升技术，强化安全防护。此外，网民观众都应当自觉尊重版权，提升网络文明素养，让热播剧"黑手"逐步失去"市场"需求。',
+    optionA:'严格执法是根除热播剧"黑手"的治本之策',
+    optionB:'惩治热播剧"黑手"应形成多方合力，综合治理',
+    optionC:'科学技术的加持下，热播剧"黑手"问题亟待整治',
+    optionD:'人民群众当以自觉行动抵制盗版行为',
+    myAnswer:'A',correctAnswer:'B',errorReasons:['概念理解错误'],
+    analysis:'【考查知识点】综合性对策类\n【行文脉络】并列结构。通过关联词"对此（政府）"、"同时（企业）"、"此外（个人）"连接了三个层面的对策。\n【选项分析】\nA项只对应文段中"政府执法"这一个并列主体，属于"以偏概全"。\nB项"多方合力，综合治理"提炼了所有对策的共性。\nC项只对应文段中"平台技术防护"这一个并列主体，属于"以偏概全"。\nD项只对应文段中"网民自觉"这一个并列主体，属于"以偏概全"。\n【导图分析】根据导图，并列对策类文段"并列的前后同等重要，要留都留"。若有共性，则应"提取共性"。',
+    notes:'导图分析：并列对策类文段"并列的前后同等重要，要留都留"。若有共性，则应"提取共性"。',
+    photos:[],createDate:'2026-08-08',errorCount:1,reviewStatus:'待复习',lastReviewDate:null,isSeed:true
+  },
+  {
+    id:'seed-17',module:'言语理解',type:'中心理解题',
+    question:'毛泽东同志亲自领导和主持了宪法草案的起草工作，对宪法草案的文字修改，他举例说："把什么什么\'时\'都改为\'的时候\'。讲话一般不说\'我们在讨论宪法时\'，而说\'我们在讨论宪法的时候\'。\'为\'字老百姓不懂，都改成了\'是\'字。什么什么\'规定之\'，\'之\'字在一句话的结尾，只是重复了前面的内容，毫无用处，也都去掉了。"人民领袖为人民，在制定和修改宪法上也得到了充分的体现。',
+    optionA:'力求简单直白',
+    optionB:'力求通俗易懂',
+    optionC:'力求简洁生动',
+    optionD:'力求平实朴素',
+    myAnswer:'A',correctAnswer:'B',errorReasons:['概念理解错误'],
+    analysis:'【考查知识点】结论提观点\n【行文脉络】举例论证（改字例子）+ 结论评价（尾句：体现"为人民"）。\n【选项分析】\nA项"简单直白"侧重形式。\nB项"通俗易懂"更贴合"让老百姓能懂"这一结论核心。例子中将文言、生僻词改为口语，核心目的是让老百姓"不懂"变"懂"。\n【导图分析】导图指出"结论比原因更重要"。尾句明确修改初衷是"为人民"，即让大众能接受，由此推导宪法文字应具备"通俗性"。',
+    notes:'导图分析："结论比原因更重要"。尾句明确修改初衷是"为人民"，即让大众能接受，由此推导宪法文字应具备"通俗性"。教训：近义词辨析要回到文段核心目的。',
+    photos:[],createDate:'2026-08-08',errorCount:1,reviewStatus:'待复习',lastReviewDate:null,isSeed:true
+  },
+  {
+    id:'seed-18',module:'言语理解',type:'中心理解题',
+    question:'目前大多数关于微塑料的毒理学研究使用的是聚苯乙烯珠，这是一种常见的量产材料……但它们与真实环境中的微塑料并不一致。科学家在海水、环境水样和空气中检测到的微塑料，往往是锯齿状、边缘锋利的碎片……具有更多锋利边缘的颗粒，在细胞炎症和氧化应激过程中表现更明显。',
+    optionA:'现有研究低估了微塑料的危害',
+    optionB:'塑料纳米粒子对人的毒性更大',
+    optionC:'塑料垃圾已成为难以承受之重',
+    optionD:'常见塑料餐具安全性值得怀疑',
+    myAnswer:'D',correctAnswer:'A',errorReasons:['审题错误'],
+    analysis:'【考查知识点】对比提观点\n【行文脉络】转折对比结构。目前研究（规整圆球）VS 真实环境（锯齿状/毒性更强）。\n【选项分析】\nA项：文段通过对比强调真实微塑料更毒，说明基于圆球的"现有研究"未能反映真实危害，即"低估了危害"。\nD项"餐具"在文中仅是辅助说明形状差异的例子（非核心成分）。\n【导图分析】导图提示：对比是为了突出其中一方。本题通过"实验"与"真实"的差距，强调了真实情况更严重，从而倒推出结论。',
+    notes:'导图分析：对比是为了突出其中一方。本题通过"实验"与"真实"的差距，强调了真实情况更严重，从而倒推出结论。教训：例子（餐具）不是核心成分，别被例子带偏。',
+    photos:[],createDate:'2026-08-08',errorCount:1,reviewStatus:'待复习',lastReviewDate:null,isSeed:true
+  },
+  {
+    id:'seed-19',module:'言语理解',type:'中心理解题',
+    question:'阿尔茨海默病分为家族性和散发性……而在更普遍的散发性阿尔茨海默病中，有毒蛋白质积累的触发机制尚不清楚。研究人员提出一种假设……结果表明，该系统对清除"缺陷"蛋白质、维持细胞健康具有重要作用。',
+    optionA:'阿尔茨海默病的分型与典型特征',
+    optionB:'大脑中蛋白质清除机制失效的原因',
+    optionC:'基因突变对泛素-蛋白酶体系统的影响',
+    optionD:'散发性阿尔茨海默病致病机制的新发现',
+    myAnswer:'A',correctAnswer:'D',errorReasons:['概念理解错误'],
+    analysis:'【考查知识点】核心成分识别（实验研究类）\n【行文脉络】背景铺垫（第1句）+ 提出假设（2、3句）+ 实验结论（结果表明……）。\n【选项分析】\nA项对应首句背景铺垫，非重点。\nD项"新发现"：文段重心在于研究人员通过实验发现的新机制。\n【导图分析】导图指出：在调查报告、实验资料中，"研究表明/结果表明"之后是重点。',
+    notes:'导图分析：在调查报告、实验资料中，"研究表明/结果表明"之后是重点。教训：背景铺垫句永远不是主旨。',
+    photos:[],createDate:'2026-08-08',errorCount:1,reviewStatus:'待复习',lastReviewDate:null,isSeed:true
+  },
+  {
+    id:'seed-20',module:'言语理解',type:'中心理解题',
+    question:'在历史长河中，敦煌始终以中华传统文明为根基，不断吸纳着来自其他地域和民族的文明成果……这些世家大族带来的中原文化与当地少量原居民所积淀的与西域、中亚千丝万缕的文化因素，共同构成坚实的汉晋敦煌文化土壤。',
+    optionA:'敦煌文化始终传承着中华传统文化的精华',
+    optionB:'敦煌是了解异域文明和文化交融的窗口',
+    optionC:'敦煌文化是各种文明长期交流融汇的结晶',
+    optionD:'敦煌地区向来具有与时俱进的文化基因',
+    myAnswer:'B',correctAnswer:'C',errorReasons:['概念理解错误'],
+    analysis:'【考查知识点】概括类文段（提炼共性）\n【行文脉络】分-总结构。先描述各方文化汇聚敦煌的过程，末句通过"共同构成"进行总结。\n【选项分析】\nB项"窗口"仅强调对外，未体现"共同构成"的本质。\nC项"交流融汇的结晶"完美提炼了中原文化与西域、中亚文化共同构成土壤的深层含义。\n【导图分析】导图要求概括应全面且准确。当文段描述多个主体如何形成一个整体时，需选择体现"融合/结晶"含义的选项。',
+    notes:'导图分析：概括应全面且准确。当文段描述多个主体如何形成一个整体时，需选择体现"融合/结晶"含义的选项。',
+    photos:[],createDate:'2026-08-08',errorCount:1,reviewStatus:'待复习',lastReviewDate:null,isSeed:true
+  },
+  {
+    id:'seed-21',module:'言语理解',type:'细节判断题',
+    question:'居委会"万能章"的现象由来已久，仔细分析对"万能章"的需求，相当一部分从根本上来说源于懒政。很典型的是"只认社区公章不认证件"的银行和公证处……本质上都是在转嫁风险，是缺乏服务意识和责任意识的表现。题目问：这段文字举例是为了说明什么？',
+    optionA:'银行缺乏服务意识',
+    optionB:'居委会对居民生活的重要影响',
+    optionC:'银行没有正确认识自身的职责',
+    optionD:'居委会的"万能章"现象部分是源于懒政',
+    myAnswer:'C',correctAnswer:'D',errorReasons:['概念理解错误'],
+    analysis:'【考查知识点】非核心成分（举例论证）\n【行文脉络】核心观点（第1句）+ 举例论证（银行例子）。\n【选项分析】\nA、C项属于例子本身的内容。\nD项：题目问"举例是为了说明什么"，根据导图，例子是为了证明观点，即首句的"源于懒政"。\n【导图分析】导图明确指出"举例论证本身不是重点，是为了证明前后的观点"。看到"很典型的是"时，目光应迅速回看其支撑的论点。',
+    notes:'导图分析："举例论证本身不是重点，是为了证明前后的观点"。看到"很典型的是"时，目光应迅速回看其支撑的论点。',
+    photos:[],createDate:'2026-08-08',errorCount:1,reviewStatus:'待复习',lastReviewDate:null,isSeed:true
+  },
+  {
+    id:'seed-22',module:'言语理解',type:'中心理解题',
+    question:'数字货币利用大数据与区块链技术……具体来说，大数据技术……极大提高了数据的针对性。区块链技术……降低了监控成本。此类技术革新为中央银行在制定和实施货币政策时提供了强大的数据支撑，使政策更加精准。',
+    optionA:'数字货币使货币政策的制定实施更精准和高效',
+    optionB:'数字货币在金融监管方面具有较大的应用价值',
+    optionC:'大数据与区块链技术有利于推动宏观经济发展',
+    optionD:'大数据与区块链技术为货币流通提供安全保障',
+    myAnswer:'C',correctAnswer:'A',errorReasons:['概念理解错误'],
+    analysis:'【考查知识点】结论提观点\n【行文脉络】分述（技术细节）+ 结论（尾句：此类技术革新……使政策更精准）。\n【选项分析】\nA项紧扣尾句结论，最为精准。\nC项"推动宏观经济发展"范围过大，偏离了文段末尾明确的落脚点"货币政策"。\n【导图分析】导图提示：结论词"使、使得"引导的内容是重点。本题尾句明确了技术革新对"政策精准"的作用。',
+    notes:'导图分析：结论词"使、使得"引导的内容是重点。本题尾句明确了技术革新对"政策精准"的作用。教训：选项范围大于文段落脚点的，排除。',
+    photos:[],createDate:'2026-08-08',errorCount:1,reviewStatus:'待复习',lastReviewDate:null,isSeed:true
+  },
+  {
+    id:'seed-23',module:'言语理解',type:'中心理解题',
+    question:'在生态系统中起着至关重要作用的南极磷虾，是如何度过寒冷、黑暗而漫长的极夜的?科学家发现，当浮游植物因缺少阳光而停止生长时，南极磷虾就会转向捕食中小型浮游动物。储藏在海冰中的微生物——南极冰藻、是南极磷虾在冬天的天然"粮仓"。在没有饵料的情况下，南极磷虾能存活200天左右；在食物极其匮乏时，南极磷虾会逐渐变小，靠消耗体内的脂肪来维持生命。这段文字最有可能用来例证：',
+    optionA:'南极磷虾在极端环境中有特殊能力',
+    optionB:'特别的环境会孕育出特别的生命体',
+    optionC:'南极冰藻在生态系统中有重要作用',
+    optionD:'生物具有应对特殊环境的生存本领',
+    myAnswer:'A',correctAnswer:'D',errorReasons:['概念理解错误'],
+    analysis:'【考查知识点】中心理解题-核心成分识别（例证类/由点及面）\n【行文脉络】设问引出话题（南极磷虾如何度过极夜）+具体举例说明（捕食转向、利用冰藻、缩小体型等生存本领）。\n【错选项及原因】错选项：A 原因分析：没理解例证目的，陷入"就事论事"的陷阱。当时看到全文都在详细描述南极磷虾的生存细节，就下意识选了A。实际作者观点找错，题目问的是"用来例证什么"，根据导图逻辑，例子本身（南极磷虾）是为了证明一个更宏观的普适道理。A项只是例子本身，而D项才是该例子要支撑的宏观观点——生物应对环境的本领。\n【导图分析】导图指出："举例论证本身不是重点，是为了证明前后的观点"。在例证类题型中，要学会"由点及面"，从具体物种（磷虾）上升到普遍规律（生物）。',
+    notes:'',
+    photos:[],createDate:'2026-08-08',errorCount:1,reviewStatus:'待复习',lastReviewDate:null,isSeed:true
+  }
+];
+
+// ==================== SUPABASE CONFIG ====================
+// 已预置你的 Supabase 项目信息，打开即用。
+// 如需更换项目，在「设置 → 云同步」里修改即可。
+const SB_CONFIG_KEY = 'xct_sb_config';       // {url, anonKey, deviceId, deviceName, autoSync}
+const SB_LAST_SYNC_KEY = 'xct_sb_last_sync'; // 上次成功同步的 ISO 时间戳
+const SB_PUSH_DELAY = 1200;                  // 本地写入后延迟推送的毫秒数（防抖合并）
+const SB_TABLE = 'questions';                // 远端表名
+const SB_DEFAULT_URL = 'https://lcdvvctvkdppsefblcbd.supabase.co';
+const SB_DEFAULT_KEY = 'sb_publishable_gt5u4HLbplkyW-Y8lyCIjg_055NRBMx';
+let sbClient = null;                         // Supabase 客户端实例
+let sbPushTimer = null;                      // 防抖推送定时器
+let sbSyncing = false;                       // 是否正在同步中（防止重入）
+
+// ==================== STATE ====================
+let questions = [];
+let currentTab = 'home';
+let reviewQueue = [];
+let reviewIndex = 0;
+let reviewResults = [];
+let reviewSelected = null;
+let reviewSubmitted = false;
+let inputPhotos = [];
+let inputMode = 'single';
+let batchModule = '';
+let batchText = '';
+let batchParsed = null;
+let errorFilters = { module: '全部', type: '全部', source: '全部', sort: '最新' };
+let expandedCardId = null;
+let errorsViewMode = 'categories';
+let batchDeleteMode = false;
+let batchSelectedIds = {};
+// 云同步运行时状态
+let sbConfig = null;        // 当前生效的配置对象
+let sbOnline = false;       // 客户端是否已成功初始化
+
+// ==================== DATA MANAGEMENT ====================
+function loadQuestions() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    questions = raw ? JSON.parse(raw) : [];
+  } catch(e) { questions = []; }
+  // 本地加载完成后，异步从远端拉取并合并（不阻塞渲染）
+  if (sbOnline) sbPullQuiet();
+}
+
+function saveQuestions() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(questions)); } catch(e) {}
+  // 本地写入成功后，防抖推送到远端
+  if (sbOnline && sbConfig && sbConfig.autoSync) sbSchedulePush();
+}
+
+function loadDailyStats() {
+  try {
+    const raw = localStorage.getItem(DAILY_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch(e) { return {}; }
+}
+
+function saveDailyStats(stats) {
+  try { localStorage.setItem(DAILY_KEY, JSON.stringify(stats)); } catch(e) {}
+}
+
+// ==================== SUPABASE SYNC ====================
+// 设计思路：
+// 1. 本地 localStorage 仍是唯一真源，保证离线可用、秒开。
+// 2. 每台设备绑定一个 deviceId，远端表以 (device_id, question_id) 为业务键。
+// 3. saveQuestions 触发防抖推送（合并短时间内的多次写入）。
+// 4. loadQuestions 后异步拉取远端，按 id 去重合并（远端覆盖本地同 id，本地新增保留）。
+// 5. 合并后回写本地并刷新当前页。
+
+function sbGetConfig() {
+  try {
+    const raw = localStorage.getItem(SB_CONFIG_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  // 回退到内置默认值
+  if (SB_DEFAULT_URL && SB_DEFAULT_KEY) {
+    return { url: SB_DEFAULT_URL, anonKey: SB_DEFAULT_KEY, autoSync: true };
+  }
+  return null;
+}
+
+function sbSaveConfig(cfg) {
+  localStorage.setItem(SB_CONFIG_KEY, JSON.stringify(cfg));
+  sbConfig = cfg;
+}
+
+// 读取或创建本机 deviceId / deviceName
+function sbEnsureDevice() {
+  const cfg = sbGetConfig() || {};
+  if (!cfg.deviceId) {
+    cfg.deviceId = 'dev_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+  }
+  if (!cfg.deviceName) {
+    const ua = (navigator.userAgent.match(/(iPhone|iPad|Android|Windows|Mac|Linux)/i) || ['设备'])[0];
+    cfg.deviceName = ua + '-' + cfg.deviceId.slice(-4);
+  }
+  if (cfg.autoSync === undefined) cfg.autoSync = true;
+  sbSaveConfig(cfg);
+  return cfg;
+}
+
+// 用用户填入的 url/anonKey 初始化客户端
+function sbInitClient() {
+  sbClient = null;
+  sbOnline = false;
+  if (!sbConfig || !sbConfig.url || !sbConfig.anonKey) return false;
+  try {
+    if (!window.supabase || !window.supabase.createClient) return false;
+    sbClient = window.supabase.createClient(sbConfig.url, sbConfig.anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    });
+    sbOnline = true;
+    return true;
+  } catch(e) {
+    console.error('Supabase 初始化失败', e);
+    return false;
+  }
+}
+
+// 应用启动时的自动连接
+function sbAutoConnect() {
+  sbConfig = sbGetConfig();
+  if (sbConfig && sbConfig.url && sbConfig.anonKey) {
+    sbEnsureDevice(); // 补全 deviceId/deviceName
+    sbInitClient();
+  }
+}
+
+// 防抖推送：短时间多次 saveQuestions 只触发一次远端写入
+function sbSchedulePush() {
+  if (sbPushTimer) clearTimeout(sbPushTimer);
+  sbPushTimer = setTimeout(() => { sbPushTimer = null; sbPushQuiet(); }, SB_PUSH_DELAY);
+}
+
+// 静默推送（不弹 toast，失败只 console）
+async function sbPushQuiet() {
+  if (!sbOnline || sbSyncing) return;
+  sbSyncing = true;
+  try {
+    const cfg = sbConfig;
+    // 本机设备只推送自己的记录，避免覆盖其他设备数据
+    const rows = questions.map(q => ({
+      device_id: cfg.deviceId,
+      device_name: cfg.deviceName,
+      question_id: q.id,
+      data: q,
+      updated_at: new Date().toISOString()
+    }));
+    if (rows.length === 0) {
+      // 没有数据也要清掉本机在远端的残留
+      const { error } = await sbClient.from(SB_TABLE).delete().eq('device_id', cfg.deviceId);
+      if (error) throw error;
+    } else {
+      // upsert：以 (device_id, question_id) 复合主键冲突时更新
+      const { error } = await sbClient
+        .from(SB_TABLE)
+        .upsert(rows, { onConflict: 'device_id,question_id' });
+      if (error) throw error;
+    }
+    localStorage.setItem(SB_LAST_SYNC_KEY, new Date().toISOString());
+  } catch(e) {
+    console.warn('推送远端失败（将在下次重试）', e);
+  } finally {
+    sbSyncing = false;
+  }
+}
+
+// 静默拉取并合并
+async function sbPullQuiet() {
+  if (!sbOnline || sbSyncing) return;
+  sbSyncing = true;
+  try {
+    const { data, error } = await sbClient
+      .from(SB_TABLE)
+      .select('device_id,device_name,question_id,data,updated_at');
+    if (error) throw error;
+    if (!data) return;
+    const merged = sbMergeRemote(data);
+    // 合并结果有变化才回写
+    if (merged.changed) {
+      questions = merged.list;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(questions));
+      localStorage.setItem(SB_LAST_SYNC_KEY, new Date().toISOString());
+      // 刷新当前页
+      if (typeof renderErrors === 'function' && currentTab === 'errors') renderErrors();
+      if (typeof renderHome === 'function' && currentTab === 'home') renderHome();
+      if (typeof renderStats === 'function' && currentTab === 'stats') renderStats();
+    }
+  } catch(e) {
+    console.warn('拉取远端失败', e);
+  } finally {
+    sbSyncing = false;
+  }
+}
+
+// 合并远端数据到本地：以 question.id 去重，远端较新的覆盖本地
+function sbMergeRemote(remoteRows) {
+  const localMap = {};
+  questions.forEach(q => { localMap[q.id] = q; });
+  let changed = false;
+  remoteRows.forEach(row => {
+    if (!row || !row.data || !row.question_id) return;
+    const rq = row.data;
+    if (!rq.id) rq.id = row.question_id;
+    const local = localMap[rq.id];
+    if (!local) {
+      // 本地没有，直接加入
+      questions.push(rq);
+      localMap[rq.id] = rq;
+      changed = true;
+    } else {
+      // 都有：比较 updated_at / createDate 判断新旧
+      const localTs = sbParseTs(local.lastReviewDate || local.createDate);
+      const remoteTs = sbParseTs(row.updated_at || rq.lastReviewDate || rq.createDate);
+      if (remoteTs > localTs) {
+        // 远端较新，覆盖（但保留本地较新的复习状态）
+        const idx = questions.findIndex(q => q.id === rq.id);
+        if (idx >= 0) {
+          questions[idx] = Object.assign({}, local, rq);
+          changed = true;
+        }
+      }
+    }
+  });
+  return { list: questions, changed };
+}
+
+function sbParseTs(s) {
+  if (!s) return 0;
+  const t = Date.parse(s);
+  return isNaN(t) ? 0 : t;
+}
+
+// 手动「上传全部」：把本地全量推到远端（覆盖本机名下所有记录）
+async function sbUploadAll() {
+  if (!sbOnline) { showToast('请先连接 Supabase'); return; }
+  if (sbSyncing) { showToast('正在同步中，请稍候'); return; }
+  showToast('正在上传…');
+  sbSyncing = true;
+  try {
+    const cfg = sbConfig;
+    // 先清掉本机名下旧记录，再全量插入，保证一致
+    const { error: delErr } = await sbClient.from(SB_TABLE).delete().eq('device_id', cfg.deviceId);
+    if (delErr) throw delErr;
+    if (questions.length > 0) {
+      const rows = questions.map(q => ({
+        device_id: cfg.deviceId,
+        device_name: cfg.deviceName,
+        question_id: q.id,
+        data: q,
+        updated_at: new Date().toISOString()
+      }));
+      const { error: upErr } = await sbClient.from(SB_TABLE).upsert(rows, { onConflict: 'device_id,question_id' });
+      if (upErr) throw upErr;
+    }
+    localStorage.setItem(SB_LAST_SYNC_KEY, new Date().toISOString());
+    showToast('已上传 ' + questions.length + ' 道错题到云端');
+    if (typeof renderSettings === 'function') renderSettings();
+  } catch(e) {
+    console.error(e);
+    showToast('上传失败：' + (e.message || '未知错误'));
+  } finally {
+    sbSyncing = false;
+  }
+}
+
+// 手动「从云端拉取」：合并远端到本地（不删除本地独有数据）
+async function sbPullAll() {
+  if (!sbOnline) { showToast('请先连接 Supabase'); return; }
+  if (sbSyncing) { showToast('正在同步中，请稍候'); return; }
+  showToast('正在从云端拉取…');
+  sbSyncing = true;
+  try {
+    const { data, error } = await sbClient
+      .from(SB_TABLE)
+      .select('device_id,device_name,question_id,data,updated_at');
+    if (error) throw error;
+    const before = questions.length;
+    const merged = sbMergeRemote(data || []);
+    if (merged.changed) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(questions));
+      localStorage.setItem(SB_LAST_SYNC_KEY, new Date().toISOString());
+    }
+    const after = questions.length;
+    showToast('同步完成，本地 ' + after + ' 道（新增 ' + (after - before) + '）');
+    // 刷新所有可能受影响的页面
+    if (typeof renderSettings === 'function') renderSettings();
+    if (currentTab === 'errors') renderErrors();
+    if (currentTab === 'home') renderHome();
+    if (currentTab === 'stats') renderStats();
+  } catch(e) {
+    console.error(e);
+    showToast('拉取失败：' + (e.message || '未知错误'));
+  } finally {
+    sbSyncing = false;
+  }
+}
+
+// 断开连接（只清本地配置，不删远端数据）
+function sbDisconnect() {
+  showConfirm('断开后本机将不再自动同步，但云端数据保留。确定断开吗？', () => {
+    sbClient = null;
+    sbOnline = false;
+    sbConfig = null;
+    localStorage.removeItem(SB_CONFIG_KEY);
+    localStorage.removeItem(SB_LAST_SYNC_KEY);
+    showToast('已断开云同步');
+    renderSettings();
+  });
+}
+
+// 用户点击「连接」
+async function sbConnect() {
+  const url = (document.getElementById('sb-url').value || '').trim();
+  const anonKey = (document.getElementById('sb-key').value || '').trim();
+  const devName = (document.getElementById('sb-devname').value || '').trim();
+  if (!url || !anonKey) { showToast('请填写 URL 和 anon key'); return; }
+  if (!url.startsWith('https://') || url.indexOf('supabase.co') < 0) {
+    showToast('URL 格式看起来不对，应以 https:// 开头'); return;
+  }
+  showToast('正在连接…');
+  // 先存配置，再初始化客户端并测试
+  const cfg = sbGetConfig() || {};
+  cfg.url = url;
+  cfg.anonKey = anonKey;
+  if (devName) cfg.deviceName = devName;
+  if (!cfg.deviceId) cfg.deviceId = 'dev_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+  if (!cfg.deviceName) cfg.deviceName = (navigator.userAgent.match(/(iPhone|iPad|Android|Windows|Mac|Linux)/i) || ['设备'])[0] + '-' + cfg.deviceId.slice(-4);
+  if (cfg.autoSync === undefined) cfg.autoSync = true;
+  sbSaveConfig(cfg);
+  if (!sbInitClient()) { showToast('Supabase SDK 未加载，请检查网络'); return; }
+  // 测试连接：尝试一次最小查询
+  try {
+    const { error } = await sbClient.from(SB_TABLE).select('question_id').limit(1);
+    if (error) {
+      // 常见：表不存在 / RLS 未配置
+      const msg = (error.message || '') + (error.hint ? '（' + error.hint + '）' : '');
+      showToast('连接失败：' + msg);
+      sbClient = null; sbOnline = false;
+      return;
+    }
+    showToast('连接成功！开始首次同步');
+    // 连接成功后立即拉取一次，再推送本地
+    await sbPullAll();
+    if (cfg.autoSync) sbPushQuiet();
+    renderSettings();
+  } catch(e) {
+    console.error(e);
+    showToast('连接异常：' + (e.message || '未知错误'));
+    sbClient = null; sbOnline = false;
+  }
+}
+
+// 切换自动同步开关
+function toggleAutoSync(on) {
+  const cfg = sbGetConfig() || {};
+  cfg.autoSync = on;
+  sbSaveConfig(cfg);
+  showToast(on ? '已开启自动同步' : '已关闭自动同步');
+}
+
+// 上次同步时间友好显示
+function sbLastSyncText() {
+  const ts = localStorage.getItem(SB_LAST_SYNC_KEY);
+  if (!ts) return '从未同步';
+  const d = new Date(ts);
+  const diff = Date.now() - d.getTime();
+  if (diff < 60000) return '刚刚';
+  if (diff < 3600000) return Math.floor(diff / 60000) + ' 分钟前';
+  if (diff < 86400000) return Math.floor(diff / 3600000) + ' 小时前';
+  return d.toLocaleString('zh-CN');
+}
+
+// 返回建表 SQL（供用户复制到 Supabase SQL Editor 执行）
+function sbSqlSchema() {
+  return `create table if not exists questions (
+  device_id    text not null,
+  device_name  text,
+  question_id  text not null,
+  data         jsonb not null,
+  updated_at   timestamptz default now(),
+  primary key (device_id, question_id)
+);
+-- 允许匿名访问（anon key 即可读写自己的数据）
+alter table questions enable row level security;
+create policy "anon all" on questions
+  for all using (true) with check (true);`;
+}
+
+function updateDailyStat(key, amount) {
+  const stats = loadDailyStats();
+  const today = new Date().toISOString().slice(0,10);
+  if (!stats[today]) stats[today] = { newErrors: 0, reviews: 0 };
+  stats[today][key] = (stats[today][key] || 0) + amount;
+  saveDailyStats(stats);
+}
+
+function loadSeedData() {
+  // 应用户要求：清除全部内置错题（seed- 编号），只保留用户自己录入/批量上传的错题（q_ 编号）
+  const before = questions.length;
+  questions = questions.filter(q => !(q.id && String(q.id).indexOf('seed-') === 0));
+  if (questions.length !== before) saveQuestions();
+  localStorage.setItem(SEED_KEY, String(SEED_VERSION));
+}
+
+function backfillTypes() {
+  // 对已导入但题型为空的错题，从解析里的【考查知识点】自动提取题型，让标签能显示
+  // 但言语理解题不走这个逻辑，直接走 classifyVerbalTypes 统一分类到6个标准题型
+  let changed = false;
+  questions.forEach(q => {
+    if (q.module === '言语理解') return; // 言语理解题跳过，由 classifyVerbalTypes 处理
+    // 清理题型开头误带的冒号/空白
+    if (q.type && /^[:：\s]/.test(q.type)) {
+      const cleaned = q.type.replace(/^[:：\s]+/, '');
+      if (cleaned !== q.type) { q.type = cleaned; changed = true; }
+    }
+    if (!q.type && q.analysis) {
+      const m = q.analysis.match(/【考查知识点】\s*[:：]?\s*([^\n]+)/);
+      if (m && m[1].trim()) { q.type = m[1].trim(); changed = true; }
+    }
+  });
+  if (changed) saveQuestions();
+}
+
+// 旧题型名归一化到新6类
+function normalizeVerbalType(type) {
+  if (!type) return '';
+  const t = String(type).trim();
+  if (t === '标题填入题') return '标题添加题';
+  if (t === '接语选择题') return '中心理解题';
+  if (t === '实词填空' || t === '成语填空' || t === '实词与成语综合填空') return '逻辑填空题';
+  return t;
+}
+
+// 按题干/解析里的关键词把非标准题型归到6类
+function classifyVerbalType(q) {
+  const text = (q.type || '') + ' ' + (q.analysis || '') + ' ' + (q.question || '');
+  if (/标题/.test(text)) return '标题添加题';
+  if (/语句排序|排序|语序|排列顺序/.test(text)) return '语句排序题';
+  if (/语句填空|填入横线|划横线|横线处|填入画横线/.test(text)) return '语句填空题';
+  if (/逻辑填空|成语填空|实词填空|成语|实词/.test(text)) return '逻辑填空题';
+  if (/细节判断|细节|非核心成分|举例论证|例证/.test(text)) return '细节判断题';
+  return '中心理解题';
+}
+
+// 把言语理解错题统一归类到6个标准题型，便于筛选
+function classifyVerbalTypes() {
+  const VERBAL_TYPES = MODULE_TYPES['言语理解'] || [];
+  let changed = false;
+  questions.forEach(q => {
+    if (q.module !== '言语理解') return;
+    // 先归一化旧题型名
+    const normalized = normalizeVerbalType(q.type);
+    if (normalized !== q.type) { q.type = normalized; changed = true; }
+    // 如果题型不是6个标准类型之一（或为空），直接分类到6类
+    if (!q.type || !VERBAL_TYPES.includes(q.type)) {
+      const classified = classifyVerbalType(q);
+      if (classified && classified !== q.type) { q.type = classified; changed = true; }
+    }
+  });
+  if (changed) saveQuestions();
+}
+
+function getModuleClass(mod) {
+  return 'badge-' + (MODULE_COLORS[mod] || 'blue');
+}
+
+function formatAnalysis(text) {
+  if (!text) return '';
+  const escaped = String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return escaped.replace(/【([^】]*)】/g, '<strong>【$1】</strong>');
+}
+
+function escHtml(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// 渲染题干：把末尾的问句（以：或？结尾）另起一行并加粗
+function renderQuestionText(qtext) {
+  if (!qtext) return '';
+  const m = qtext.match(/(?:^|[。\n])([^。：？\n]*[：:？?])\s*$/);
+  if (m && m[1] && m[1].trim().length > 2) {
+    const questionPart = m[1].trim();
+    const body = qtext.slice(0, m.index).replace(/[。\s\n]+$/, '');
+    const bodyHtml = escHtml(body).replace(/\n/g, '<br>');
+    return bodyHtml + (body ? '<br>' : '') + '<b style="color:var(--primary)">' + escHtml(questionPart) + '</b>';
+  }
+  return escHtml(qtext).replace(/\n/g, '<br>');
+}
+
+function genId() {
+  return 'q_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+}
+
+// ==================== TOAST ====================
+function showToast(msg) {
+  const el = document.getElementById('toast-el');
+  el.textContent = msg;
+  el.className = 'toast';
+  setTimeout(() => { el.className = 'hidden'; }, 2200);
+}
+
+// ==================== CONFIRM DIALOG ====================
+function showConfirm(msg, onYes) {
+  const el = document.getElementById('confirm-dialog');
+  el.innerHTML = `<div class="confirm-dialog"><div class="confirm-box"><p style="font-size:15px;line-height:1.6;margin:0 0 20px">${msg}</p><div style="display:flex;gap:10px"><button class="btn btn-outline" style="flex:1" onclick="closeConfirm()">取消</button><button class="btn btn-danger" style="flex:1" id="confirm-yes-btn">确定</button></div></div></div>`;
+  el.className = '';
+  document.getElementById('confirm-yes-btn').onclick = () => { closeConfirm(); onYes(); };
+}
+
+function closeConfirm() {
+  document.getElementById('confirm-dialog').className = 'hidden';
+}
+
+// ==================== NAVIGATION ====================
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + tab).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => {
+    n.classList.toggle('active', n.dataset.tab === tab);
+  });
+  renderPage(tab);
+}
+
+function renderPage(tab) {
+  switch(tab) {
+    case 'home': renderHome(); break;
+    case 'input': renderInput(); break;
+    case 'errors': renderErrors(); break;
+    case 'stats': renderStats(); break;
+    case 'settings': renderSettings(); break;
+  }
+}
+
+// ==================== HOME PAGE ====================
+function renderHome() {
+  const el = document.getElementById('page-home');
+  const total = questions.length;
+  const todayStr = new Date().toISOString().slice(0,10);
+  const toReview = questions.filter(q => q.reviewStatus === '待复习' || q.reviewStatus === '模糊').length;
+
+  // Module mastery
+  const moduleStats = {};
+  ALL_MODULES.forEach(m => {
+    const mq = questions.filter(q => q.module === m);
+    const mastered = mq.filter(q => q.reviewStatus === '已掌握').length;
+    moduleStats[m] = { total: mq.length, mastered, rate: mq.length ? mastered / mq.length : -1 };
+  });
+
+  // Weak modules TOP3
+  const weakModules = ALL_MODULES
+    .filter(m => moduleStats[m].total > 0 && moduleStats[m].rate < 1)
+    .sort((a, b) => moduleStats[a].rate - moduleStats[b].rate)
+    .slice(0, 3);
+
+  // High-frequency error knowledge points TOP5
+  const typeCount = {};
+  questions.forEach(q => {
+    const key = q.type || '未分类';
+    typeCount[key] = (typeCount[key] || 0) + q.errorCount;
+  });
+  const topTypes = Object.entries(typeCount).sort((a,b) => b[1] - a[1]).slice(0, 5);
+
+  let moduleListHTML = ALL_MODULES.map(m => {
+    const s = moduleStats[m];
+    const rateStr = s.total === 0 ? '--' : Math.round(s.rate * 100) + '%';
+    const barW = s.total === 0 ? 0 : Math.round(s.rate * 100);
+    return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <span class="badge ${getModuleClass(m)}" style="width:72px;text-align:center;font-size:11px">${m}</span>
+      <div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:${barW}%;background:${MODULE_COLOR_HEX[m]}"></div></div>
+      <span style="font-size:13px;font-weight:600;width:40px;text-align:right">${rateStr}</span>
+    </div>`;
+  }).join('');
+
+  let weakHTML = weakModules.length ? weakModules.map((m, i) => {
+    const s = moduleStats[m];
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span style="width:20px;height:20px;border-radius:50%;background:${i===0?'var(--danger)':i===1?'var(--accent)':'var(--orange)'};color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">${i+1}</span>
+      <span style="font-size:14px">${m}</span>
+      <span style="font-size:12px;color:var(--muted);margin-left:auto">掌握率 ${Math.round(s.rate*100)}%</span>
+    </div>`;
+  }).join('') : '<p style="font-size:13px;color:var(--muted)">暂无薄弱模块，继续保持</p>';
+
+  let topTypesHTML = topTypes.length ? topTypes.map((t, i) => {
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span style="width:20px;height:20px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">${i+1}</span>
+      <span style="font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t[0]}</span>
+      <span style="font-size:12px;color:var(--accent);font-weight:600">${t[1]}次</span>
+    </div>`;
+  }).join('') : '<p style="font-size:13px;color:var(--muted)">暂无数据</p>';
+
+  el.innerHTML = `
+    <div class="header-bar">
+      <h1>AI行测错题管家</h1>
+      <p>公考备考，错题不再错</p>
+      <div class="quick-actions">
+        <div class="quick-action" onclick="switchTab('input')"><i class="fas fa-pen"></i>录入错题</div>
+        <div class="quick-action" onclick="startReview()"><i class="fas fa-redo"></i>开始复习</div>
+        <div class="quick-action" onclick="switchTab('stats')"><i class="fas fa-chart-pie"></i>查看报告</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div class="card" style="margin:0">
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--accent)"><i class="fas fa-book-open"></i></div>
+          <div><div style="font-size:24px;font-weight:800">${total}</div><div style="font-size:12px;color:var(--muted)">累计错题</div></div>
+        </div>
+      </div>
+      <div class="card" style="margin:0">
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--success)"><i class="fas fa-clock"></i></div>
+          <div><div style="font-size:24px;font-weight:800">${toReview}</div><div style="font-size:12px;color:var(--muted)">今日待复习</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <h3 style="font-size:15px;font-weight:700;margin:0">各模块掌握率</h3>
+        <span style="font-size:11px;color:var(--muted)">掌握率=已消化错题占比</span>
+      </div>
+      ${moduleListHTML}
+    </div>
+    <div class="card">
+      <h3 style="font-size:15px;font-weight:700;margin:0 0 10px">薄弱模块 TOP3</h3>
+      ${weakHTML}
+    </div>
+    <div class="card">
+      <h3 style="font-size:15px;font-weight:700;margin:0 0 10px">高频错误知识点 TOP5</h3>
+      ${topTypesHTML}
+    </div>
+  `;
+}
+
+// ==================== INPUT PAGE ====================
+function renderInput() {
+  const el = document.getElementById('page-input');
+  inputPhotos = [];
+  batchModule = '';
+  batchText = '';
+  batchParsed = null;
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h2 style="font-size:18px;font-weight:700;margin:0">录入错题</h2>
+      <button class="btn ${inputMode==='batch'?'btn-primary':'btn-outline'} btn-sm" onclick="toggleInputMode()">
+        <i class="fas fa-${inputMode==='batch'?'pen':'list'}"></i> ${inputMode==='batch'?'切换单条录入':'切换批量录入'}
+      </button>
+    </div>
+    ${inputMode==='batch' ? renderBatchForm() : renderSingleForm()}
+    <div id="batch-preview" style="margin-top:14px"></div>
+  `;
+  if (inputMode === 'single') updateSubTypes();
+}
+
+function toggleInputMode() {
+  inputMode = inputMode === 'single' ? 'batch' : 'single';
+  batchParsed = null;
+  renderInput();
+}
+
+function renderSingleForm() {
+  return `<div class="card">
+      <div style="margin-bottom:14px">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">模块 <span style="color:var(--danger)">*</span></label>
+        <select id="inp-module" class="input-field" onchange="updateSubTypes()">
+          <option value="">请选择模块</option>
+          ${ALL_MODULES.map(m => `<option value="${m}">${m}</option>`).join('')}
+        </select>
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">题型</label>
+        <select id="inp-type" class="input-field">
+          <option value="">请先选择模块</option>
+        </select>
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">题目来源（可选）</label>
+        <input id="inp-source" class="input-field" placeholder="如：2025联考真题 / 粉笔5000题 / 某模考卷">
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">题干（文字或照片） <span style="color:var(--danger)">*</span></label>
+        <textarea id="inp-question" class="input-field" rows="4" placeholder="输入题干文字；若用照片当题干，此处可不填"></textarea>
+        <div style="margin-top:8px">
+          <input type="file" accept="image/*" capture="environment" id="inp-photoInput" style="display:none" onchange="handlePhotoUpload(this)">
+          <button class="btn btn-outline btn-sm" onclick="document.getElementById('inp-photoInput').click()"><i class="fas fa-camera"></i> 添加题干照片</button>
+          <p style="font-size:11px;color:var(--muted);margin:6px 0 0">题干可输入文字、也可放照片（二选一或都要）；照片同时留底原图</p>
+          <div id="inp-photoPreview" style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"></div>
+        </div>
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">选项A</label>
+        <input id="inp-optA" class="input-field" placeholder="选项A内容">
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">选项B</label>
+        <input id="inp-optB" class="input-field" placeholder="选项B内容">
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">选项C</label>
+        <input id="inp-optC" class="input-field" placeholder="选项C内容">
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">选项D</label>
+        <input id="inp-optD" class="input-field" placeholder="选项D内容">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div>
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">我的答案 <span style="color:var(--danger)">*</span></label>
+          <select id="inp-myAns" class="input-field">
+            <option value="">选择</option><option>A</option><option>B</option><option>C</option><option>D</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">正确答案 <span style="color:var(--danger)">*</span></label>
+          <select id="inp-correctAns" class="input-field">
+            <option value="">选择</option><option>A</option><option>B</option><option>C</option><option>D</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">正确率（%）</label>
+        <input id="inp-accuracy" class="input-field" type="number" min="0" max="100" placeholder="如：65">
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">错误类型（多选）</label>
+        <div class="checkbox-group" id="inp-reasons">
+          ${ERROR_REASONS.map(r => `<div class="checkbox-item" onclick="toggleReason(this)"><input type="checkbox" value="${r}"><span>${r}</span></div>`).join('')}
+        </div>
+      </div>
+      <button class="btn btn-accent" style="width:100%" onclick="saveNewQuestion()"><i class="fas fa-save"></i> 保存错题</button>
+    </div>`;
+}
+
+function renderBatchForm() {
+  return `
+    <div class="card" style="margin-bottom:12px">
+      <div style="margin-bottom:12px">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">本批错题所属模块 <span style="color:var(--danger)">*</span></label>
+        <select id="batch-module" class="input-field">
+          <option value="">请选择模块</option>
+          ${ALL_MODULES.map(m => `<option value="${m}" ${batchModule===m?'selected':''}>${m}</option>`).join('')}
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:13px;font-weight:600">统一模板（照这个格式粘贴）</span>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-outline btn-sm" onclick="toggleBatchTemplate()"><i class="fas fa-chevron-down" id="batch-template-icon" style="font-size:11px"></i> <span id="batch-template-label">展开模板</span></button>
+          <button class="btn btn-outline btn-sm" onclick="copyBatchTemplate()"><i class="fas fa-copy"></i> 复制</button>
+        </div>
+      </div>
+      <pre id="batch-template" style="display:none;font-size:11.5px;background:var(--bg);padding:10px;border-radius:8px;line-height:1.7;margin:10px 0 0;white-space:pre-wrap;color:var(--muted)">第 1 题：（第 1 页）
+这里写题干内容……
+这段文字意在强调：
+
+【选项】
+A. 选项A内容
+B. 选项B内容
+C. 选项C内容
+D. 选项D内容
+
+【考查知识点】……
+【行文脉络】……
+【核心观点】……
+【正确答案】D
+【错选项及原因】
+错选项：B
+原因分析：……
+【选项分析】……
+【导图分析】……
+
+下一题以"第 2 题：（第 2 页）"开头，
+或用 --- 分隔。
+（以下可选填）
+题型：中心理解题
+错误类型：概念理解错误
+来源：2025联考真题
+正确率：65</pre>
+    </div>
+    <div class="card">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">粘贴错题内容（多题用【题目1】【题目2】依次分隔）</label>
+      <textarea id="batch-text" class="input-field" rows="12" placeholder="按上方模板粘贴，可一次粘贴多道题">${batchText}</textarea>
+      <button class="btn btn-primary" style="width:100%;margin-top:10px" onclick="parseBatchText()"><i class="fas fa-magic"></i> 解析并预览</button>
+    </div>`;
+}
+
+function toggleBatchTemplate() {
+  const pre = document.getElementById('batch-template');
+  const label = document.getElementById('batch-template-label');
+  const icon = document.getElementById('batch-template-icon');
+  if (!pre) return;
+  const open = pre.style.display === 'none';
+  pre.style.display = open ? 'block' : 'none';
+  if (icon) icon.className = open ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
+  if (label) label.textContent = open ? '收起模板' : '展开模板';
+}
+
+function copyBatchTemplate() {
+  const tpl = `第 1 题：（第 1 页）
+这里写题干内容……
+这段文字意在强调：
+
+【选项】
+A. 选项A内容
+B. 选项B内容
+C. 选项C内容
+D. 选项D内容
+
+【考查知识点】……
+【行文脉络】……
+【正确答案】D
+【错选项及原因】
+错选项：B
+原因分析：……
+【选项分析】……
+【导图分析】……
+来源：2025联考真题`;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(tpl).then(() => showToast('模板已复制')).catch(() => fallbackCopy(tpl));
+  } else fallbackCopy(tpl);
+}
+
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text; document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); showToast('模板已复制'); } catch(e) { showToast('复制失败，请手动长按模板复制'); }
+  document.body.removeChild(ta);
+}
+
+function parseBatchContent(text) {
+  let norm = text.replace(/\*\*/g, '');
+  norm = norm.replace(/^#{1,6}[ \t]*/gm, '');
+  norm = norm.replace(/(?:^|\n)\s*第\s*(\d+)\s*题\s*[：:]/g, '\n【题目$1】\n第 $1 题：');
+  const parts = norm.split(/\n\s*-{3,}\s*\n/);
+  const blocks = [];
+  parts.forEach(part => {
+    part.split(/【题目\d*】/).map(b => b.trim()).filter(b => b).forEach(b => blocks.push(b));
+  });
+  const LABEL_ONLY = /^(?:【)?(?:我的答案|错选选项|错选|正确答案|题型|错误原因|错误类型|解析)(?:】)?\s*[:：]?\s*$/;
+  const results = [];
+  blocks.forEach(block => {
+    const rawLines = block.split('\n');
+    const lines = [];
+    for (let i = 0; i < rawLines.length; i++) {
+      const t = rawLines[i].trim();
+      if (LABEL_ONLY.test(t)) {
+        let j = i + 1;
+        while (j < rawLines.length && !rawLines[j].trim()) j++;
+        if (j < rawLines.length && !LABEL_ONLY.test(rawLines[j].trim())) {
+          lines.push(t + '：' + rawLines[j].trim());
+          i = j;
+          continue;
+        }
+      }
+      lines.push(rawLines[i]);
+    }
+    // 展开单行并列选项：一行里同时出现 A. B. C. D. 时拆成多行
+    const finalLines = [];
+    lines.forEach(l => {
+      const t = l.trim();
+      const stripped = t.replace(/^(?:【)?选项(?:】)?\s*/, '');
+      const markerCount = (stripped.match(/(?:^|\s)(?:A|B|C|D)\s*[.、．:：]/g) || []).length;
+      if (markerCount >= 2) {
+        stripped.split(/(?=(?:A|B|C|D)\s*[.、．:：])/).map(s => s.trim()).filter(s => s).forEach(s => finalLines.push(s));
+      } else {
+        finalLines.push(l);
+      }
+    });
+    const q = { question: '', optionA: '', optionB: '', optionC: '', optionD: '', myAnswer: '', correctAnswer: '', accuracy: '', type: '', source: '', errorReasons: [], analysis: '' };
+    const qLines = [], aLines = [];
+    let section = 'question';
+    let optSeen = false;
+    finalLines.forEach(raw => {
+      const line = raw.trim();
+      if (!line) return;
+      if (/^(?:【)?选项(?:】)?$/.test(line)) return;
+      let m;
+      if (!q.optionA && (m = line.match(/^(?:选项A|A)\s*[.、．:：]\s*(.+)$/))) { q.optionA = m[1].trim(); optSeen = true; return; }
+      if (!q.optionB && (m = line.match(/^(?:选项B|B)\s*[.、．:：]\s*(.+)$/))) { q.optionB = m[1].trim(); optSeen = true; return; }
+      if (!q.optionC && (m = line.match(/^(?:选项C|C)\s*[.、．:：]\s*(.+)$/))) { q.optionC = m[1].trim(); optSeen = true; return; }
+      if (!q.optionD && (m = line.match(/^(?:选项D|D)\s*[.、．:：]\s*(.+)$/))) { q.optionD = m[1].trim(); optSeen = true; return; }
+      if ((m = line.match(/^(?:【)?错选项及原因(?:】)?/))) {
+        const lm = line.match(/错选项\s*[:：]\s*([A-Da-d])/);
+        if (lm && !q.myAnswer) q.myAnswer = lm[1].toUpperCase();
+        section = 'analysis';
+        aLines.push(line);
+        return;
+      }
+      if ((m = line.match(/^(?:【)?(?:我的答案|错选选项|错选项|错选)(?:】)?\s*[:：]?\s*([A-Da-d])/))) { q.myAnswer = m[1].toUpperCase(); section = 'meta'; return; }
+      if ((m = line.match(/^(?:【)?正确答案(?:】)?\s*[:：]?\s*([A-Da-d])/))) { q.correctAnswer = m[1].toUpperCase(); section = 'meta'; return; }
+      if ((m = line.match(/^(?:【)?正确率(?:】)?\s*[:：]?\s*(\d+)\s*%?/))) { q.accuracy = m[1]; section = 'meta'; return; }
+      if ((m = line.match(/^(?:【)?题型(?:】)?\s*[:：]\s*(.+)$/))) { q.type = m[1].trim(); section = 'meta'; return; }
+      if ((m = line.match(/^(?:【)?(?:错题来源|题目来源|试题来源|来源)(?:】)?\s*[:：]?\s*(.+)$/))) { if (!q.source) q.source = m[1].trim(); section = 'meta'; return; }
+      if ((m = line.match(/^【考查知识点】\s*[:：]?\s*(.+)$/))) { if (!q.type) q.type = m[1].trim(); section = 'analysis'; aLines.push(line); return; }
+      if ((m = line.match(/^【核心观点】\s*[:：]?\s*(.+)$/))) { section = 'analysis'; aLines.push(line); return; }
+      if ((m = line.match(/^(?:【)?错误(?:原因|类型)(?:】)?\s*[:：]\s*(.+)$/))) { q.errorReasons = m[1].split(/[、,，\s]+/).filter(Boolean); section = 'meta'; return; }
+      if ((m = line.match(/^(?:【)?解析(?:】)?\s*[:：]?\s*(.*)$/))) { section = 'analysis'; if (m[1].trim()) aLines.push(m[1].trim()); return; }
+      if (section === 'analysis') { aLines.push(line); return; }
+      if (optSeen) { aLines.push(line); return; }
+      qLines.push(line);
+    });
+    q.question = qLines.join('\n').trim();
+    q.analysis = aLines.join('\n').trim();
+    if (q.question && q.myAnswer && q.correctAnswer) results.push(q);
+  });
+  return results;
+}
+
+function parseBatchText() {
+  batchModule = document.getElementById('batch-module').value;
+  batchText = document.getElementById('batch-text').value;
+  const pv = document.getElementById('batch-preview');
+  if (!batchModule) { showToast('请先选择本批错题的模块'); return; }
+  if (!batchText.trim()) { showToast('请粘贴错题内容'); return; }
+  batchParsed = parseBatchContent(batchText);
+  if (!batchParsed.length) {
+    pv.innerHTML = '<div class="card"><p style="color:var(--danger);font-size:13px;margin:0">没有解析出有效题目。请检查：每道题以【题目1】开头，且包含题干、我的答案、正确答案三项。</p></div>';
+    return;
+  }
+  pv.innerHTML = `
+    <div class="card">
+      <p style="font-size:14px;font-weight:700;margin:0 0 10px"><i class="fas fa-check-circle" style="color:var(--success)"></i> 解析成功 ${batchParsed.length} 道题</p>
+      ${batchParsed.map((q,i) => `<div style="padding:8px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5">
+        <span style="color:var(--muted)">第${i+1}题</span> ${q.question.slice(0,30)}${q.question.length>30?'…':''}
+        <span style="margin-left:6px;white-space:nowrap">我答<b style="color:var(--danger)">${q.myAnswer}</b> → 正确<b style="color:var(--success)">${q.correctAnswer}</b></span>
+      </div>`).join('')}
+      <button class="btn btn-success" style="width:100%;margin-top:12px" onclick="confirmBatchImport()"><i class="fas fa-file-import"></i> 确认导入 ${batchParsed.length} 道错题</button>
+    </div>`;
+}
+
+function confirmBatchImport() {
+  if (!batchParsed || !batchParsed.length) return;
+  const todayStr = new Date().toISOString().slice(0,10);
+  batchParsed.forEach(p => {
+    questions.push({
+      id: genId(),
+      module: batchModule,
+      type: p.type || '',
+      source: p.source || '',
+      question: p.question,
+      optionA: p.optionA, optionB: p.optionB, optionC: p.optionC, optionD: p.optionD,
+      myAnswer: p.myAnswer,
+      correctAnswer: p.correctAnswer,
+      accuracy: p.accuracy || '',
+      errorReasons: p.errorReasons.length ? p.errorReasons : [],
+      analysis: p.analysis,
+      notes: '',
+      photos: [],
+      createDate: todayStr,
+      errorCount: 1,
+      reviewStatus: '待复习',
+      lastReviewDate: null,
+      isSeed: false
+    });
+  });
+  const added = batchParsed.length;
+  saveQuestions();
+  classifyVerbalTypes();
+  updateDailyStat('newErrors', added);
+  showToast(`成功导入 ${added} 道错题`);
+  batchParsed = null; batchText = '';
+  errorsViewMode = 'categories';
+  switchTab('errors');
+}
+
+function updateSubTypes() {
+  const mod = document.getElementById('inp-module').value;
+  const sel = document.getElementById('inp-type');
+  sel.innerHTML = '<option value="">请选择题型</option>';
+  if (mod && MODULE_TYPES[mod]) {
+    MODULE_TYPES[mod].forEach(t => {
+      sel.innerHTML += `<option value="${t}">${t}</option>`;
+    });
+  }
+}
+
+function toggleReason(el) {
+  el.classList.toggle('checked');
+  el.querySelector('input').checked = el.classList.contains('checked');
+}
+
+function handlePhotoUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (inputPhotos.length >= 3) { showToast('最多上传3张图片'); return; }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      let w = img.width, h = img.height;
+      const maxSide = 1000;
+      if (w > maxSide || h > maxSide) {
+        if (w > h) { h = Math.round(h * maxSide / w); w = maxSide; }
+        else { w = Math.round(w * maxSide / h); h = maxSide; }
+      }
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      const base64 = canvas.toDataURL('image/jpeg', 0.7);
+      cropTarget = 'input';
+      openCropModal(base64);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+let cropState = null;
+let cropDrag = null;
+let cropTarget = null;
+let editDraft = null;
+
+function captureEditDraft() {
+  const g = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+  return {
+    module: g('edit-module'), type: g('edit-type'), source: g('edit-source'), accuracy: g('edit-accuracy'), question: g('edit-question'),
+    optA: g('edit-optA'), optB: g('edit-optB'), optC: g('edit-optC'), optD: g('edit-optD'),
+    myAns: g('edit-myAns'), correctAns: g('edit-correctAns'), analysis: g('edit-analysis'),
+    reasons: [...document.querySelectorAll('#edit-reasons .checkbox-item.checked input')].map(i => i.value)
+  };
+}
+
+function restoreEditDraft() {
+  if (!editDraft) return;
+  const d = editDraft;
+  const s = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  s('edit-module', d.module); updateEditType(); s('edit-type', d.type);
+  s('edit-source', d.source); s('edit-accuracy', d.accuracy);
+  s('edit-question', d.question);
+  s('edit-optA', d.optA); s('edit-optB', d.optB); s('edit-optC', d.optC); s('edit-optD', d.optD);
+  s('edit-myAns', d.myAns); s('edit-correctAns', d.correctAns); s('edit-analysis', d.analysis);
+  document.querySelectorAll('#edit-reasons .checkbox-item').forEach(item => {
+    const inp = item.querySelector('input');
+    const checked = d.reasons.includes(inp.value);
+    item.classList.toggle('checked', checked);
+    inp.checked = checked;
+  });
+}
+
+function handleEditPhotoUpload(input, qid) {
+  const file = input.files[0];
+  if (!file) return;
+  const q = questions.find(x => x.id === qid);
+  if (!q) { input.value = ''; return; }
+  if (q.photos.length >= 3) { showToast('最多3张照片'); input.value = ''; return; }
+  editDraft = captureEditDraft();
+  cropTarget = { mode: 'edit', id: qid };
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      let w = img.width, h = img.height;
+      const maxSide = 1000;
+      if (w > maxSide || h > maxSide) {
+        if (w > h) { h = Math.round(h * maxSide / w); w = maxSide; }
+        else { w = Math.round(w * maxSide / h); h = maxSide; }
+      }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      openCropModal(canvas.toDataURL('image/jpeg', 0.7));
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+function refreshEditPhotos(qid) {
+  const q = questions.find(x => x.id === qid);
+  const container = document.getElementById('edit-photoPreview');
+  if (!q || !container) return;
+  container.innerHTML = q.photos.map((p,i)=>`<div style="position:relative;display:inline-block"><img src="${p}" style="width:84px;height:84px;object-fit:cover;border-radius:8px;display:block" onclick="previewPhoto('${p}')"><button onclick="removeEditPhoto('${qid}',${i})" style="position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;background:var(--danger);color:#fff;border:2px solid #fff;font-size:13px;line-height:18px;cursor:pointer;padding:0">×</button></div>`).join('') || '<span style="font-size:12px;color:var(--muted)">暂无照片</span>';
+}
+
+function removeEditPhoto(qid, idx) {
+  const q = questions.find(x => x.id === qid);
+  if (!q) return;
+  q.photos.splice(idx, 1);
+  saveQuestions();
+  refreshEditPhotos(qid);
+  showToast('照片已删除');
+}
+
+function openCropModal(baseSrc) {
+  const el = document.getElementById('detail-modal');
+  el.innerHTML = `<div class="modal-overlay" style="align-items:center" onclick="if(event.target===this)cancelCrop()">
+    <div class="modal-content" style="max-width:600px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <h3 style="font-size:16px;font-weight:700;margin:0"><i class="fas fa-crop-alt" style="color:var(--primary);margin-right:6px"></i>裁剪照片</h3>
+        <button class="btn btn-outline btn-sm" onclick="cancelCrop()"><i class="fas fa-times"></i></button>
+      </div>
+      <div id="crop-stage" style="margin:0 auto;position:relative;user-select:none;touch-action:none;line-height:0"></div>
+      <p style="font-size:12px;color:var(--muted);margin:10px 0 0;line-height:1.5">拖动选框调整位置，拖动右下角蓝色圆点调整裁剪范围；不裁剪直接点"确定"即保留整图。</p>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn btn-outline btn-sm" style="flex:1" onclick="cancelCrop()">取消</button>
+        <button class="btn btn-outline btn-sm" style="flex:1" onclick="resetCrop()"><i class="fas fa-expand"></i> 重置</button>
+        <button class="btn btn-primary btn-sm" style="flex:1" onclick="confirmCrop()"><i class="fas fa-check"></i> 确定</button>
+      </div>
+    </div>
+  </div>`;
+  el.className = '';
+  const img = new Image();
+  img.onload = function() { setupCropStage(img, baseSrc); };
+  img.src = baseSrc;
+}
+
+function setupCropStage(img, baseSrc) {
+  const stage = document.getElementById('crop-stage');
+  const maxW = Math.min(window.innerWidth - 80, 560);
+  const maxH = Math.min(window.innerHeight * 0.52, 460);
+  let dw = img.naturalWidth, dh = img.naturalHeight;
+  const ratio = Math.min(maxW / dw, maxH / dh, 1);
+  dw = Math.round(dw * ratio); dh = Math.round(dh * ratio);
+  stage.style.width = dw + 'px';
+  stage.style.height = dh + 'px';
+  stage.innerHTML = `<img src="${baseSrc}" style="width:${dw}px;height:${dh}px;display:block;pointer-events:none;border-radius:6px">
+    <div id="crop-box" style="position:absolute;border:2px solid #0284c7;box-shadow:0 0 0 9999px rgba(0,0,0,.45);cursor:move;box-sizing:border-box;border-radius:4px;touch-action:none">
+      <div id="crop-handle" style="position:absolute;right:-11px;bottom:-11px;width:22px;height:22px;background:#0284c7;border:2px solid #fff;border-radius:50%;cursor:nwse-resize;touch-action:none;box-shadow:0 1px 4px rgba(0,0,0,.3)"></div>
+    </div>`;
+  cropState = { natW: img.naturalWidth, natH: img.naturalHeight, dispW: dw, dispH: dh, crop: { x: 0, y: 0, w: dw, h: dh }, src: baseSrc };
+  positionCropBox();
+  const box = document.getElementById('crop-box');
+  const handle = document.getElementById('crop-handle');
+  box.addEventListener('pointerdown', e => startCropDrag(e, 'move'));
+  handle.addEventListener('pointerdown', e => { e.stopPropagation(); startCropDrag(e, 'resize'); });
+}
+
+function startCropDrag(e, mode) {
+  e.preventDefault();
+  cropDrag = { mode, startX: e.clientX, startY: e.clientY, orig: { ...cropState.crop } };
+  const move = ev => doCropDrag(ev);
+  const up = () => { cropDrag = null; window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+  window.addEventListener('pointermove', move);
+  window.addEventListener('pointerup', up);
+}
+
+function doCropDrag(e) {
+  if (!cropDrag || !cropState) return;
+  const { mode, startX, startY, orig } = cropDrag;
+  const dx = e.clientX - startX, dy = e.clientY - startY;
+  const c = cropState.crop;
+  const minSize = 30;
+  if (mode === 'move') {
+    c.x = Math.max(0, Math.min(orig.x + dx, cropState.dispW - c.w));
+    c.y = Math.max(0, Math.min(orig.y + dy, cropState.dispH - c.h));
+  } else {
+    c.w = Math.max(minSize, Math.min(orig.w + dx, cropState.dispW - c.x));
+    c.h = Math.max(minSize, Math.min(orig.h + dy, cropState.dispH - c.y));
+  }
+  positionCropBox();
+}
+
+function positionCropBox() {
+  const box = document.getElementById('crop-box');
+  if (!box || !cropState) return;
+  const c = cropState.crop;
+  box.style.left = c.x + 'px';
+  box.style.top = c.y + 'px';
+  box.style.width = c.w + 'px';
+  box.style.height = c.h + 'px';
+}
+
+function resetCrop() {
+  if (!cropState) return;
+  cropState.crop = { x: 0, y: 0, w: cropState.dispW, h: cropState.dispH };
+  positionCropBox();
+}
+
+function cancelCrop() {
+  const fromEdit = cropTarget && cropTarget.mode === 'edit';
+  const qid = fromEdit ? cropTarget.id : null;
+  cropState = null; cropTarget = null;
+  closeDetail();
+  if (fromEdit) { editQuestion(qid); setTimeout(restoreEditDraft, 0); }
+}
+
+function confirmCrop() {
+  if (!cropState) return;
+  const { natW, natH, dispW, dispH, crop, src } = cropState;
+  const sx = crop.x / dispW * natW;
+  const sy = crop.y / dispH * natH;
+  const sw = crop.w / dispW * natW;
+  const sh = crop.h / dispH * natH;
+  const target = cropTarget;
+  const img = new Image();
+  img.onload = function() {
+    let cw = Math.round(sw), ch = Math.round(sh);
+    const maxSide = 1000;
+    if (cw > maxSide || ch > maxSide) {
+      const r = Math.min(maxSide / cw, maxSide / ch);
+      cw = Math.round(cw * r); ch = Math.round(ch * r);
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = cw; canvas.height = ch;
+    canvas.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch);
+    const base64 = canvas.toDataURL('image/jpeg', 0.7);
+    cropState = null;
+    if (target && target.mode === 'edit') {
+      const q = questions.find(x => x.id === target.id);
+      if (q && q.photos.length < 3) { q.photos.push(base64); saveQuestions(); }
+      cropTarget = null;
+      closeDetail();
+      editQuestion(target.id);
+      setTimeout(restoreEditDraft, 0);
+      showToast('照片已添加');
+    } else {
+      inputPhotos.push(base64);
+      renderPhotoPreview();
+      cropTarget = null;
+      closeDetail();
+      showToast('照片已添加');
+    }
+  };
+  img.src = src;
+}
+
+function renderPhotoPreview() {
+  const container = document.getElementById('inp-photoPreview');
+  if (!container) return;
+  container.innerHTML = inputPhotos.map((p, i) =>
+    `<div style="position:relative;display:inline-block">
+      <img src="${p}" class="photo-thumb">
+      <span onclick="removePhoto(${i})" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--danger);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;line-height:1">&times;</span>
+    </div>`
+  ).join('');
+}
+
+function removePhoto(idx) {
+  inputPhotos.splice(idx, 1);
+  renderPhotoPreview();
+}
+
+function saveNewQuestion() {
+  const question = document.getElementById('inp-question').value.trim();
+  const myAns = document.getElementById('inp-myAns').value;
+  const correctAns = document.getElementById('inp-correctAns').value;
+  if (!question && inputPhotos.length === 0) { showToast('请输入题干文字或添加题干照片'); return; }
+  if (!myAns) { showToast('请选择我的答案'); return; }
+  if (!correctAns) { showToast('请选择正确答案'); return; }
+
+  const reasons = [];
+  document.querySelectorAll('#inp-reasons .checkbox-item.checked input').forEach(inp => reasons.push(inp.value));
+
+  const newQ = {
+    id: genId(),
+    module: document.getElementById('inp-module').value,
+    type: document.getElementById('inp-type').value,
+    source: document.getElementById('inp-source').value.trim(),
+    question,
+    optionA: document.getElementById('inp-optA').value.trim(),
+    optionB: document.getElementById('inp-optB').value.trim(),
+    optionC: document.getElementById('inp-optC').value.trim(),
+    optionD: document.getElementById('inp-optD').value.trim(),
+    myAnswer: myAns,
+    correctAnswer: correctAns,
+    accuracy: document.getElementById('inp-accuracy').value.trim(),
+    errorReasons: reasons,
+    analysis: '',
+    notes: '',
+    photos: [...inputPhotos],
+    createDate: new Date().toISOString().slice(0,10),
+    errorCount: 1,
+    reviewStatus: '待复习',
+    lastReviewDate: null,
+    isSeed: false
+  };
+  questions.push(newQ);
+  saveQuestions();
+  updateDailyStat('newErrors', 1);
+  showToast('保存成功');
+  renderInput();
+}
+
+// ==================== ERRORS PAGE ====================
+function renderErrors() {
+  const el = document.getElementById('page-errors');
+  if (errorsViewMode === 'categories') { renderErrorCategories(el); return; }
+  renderErrorList(el);
+}
+
+function renderErrorCategories(el) {
+  const MODULE_ICONS = {'言语理解':'fa-language','判断推理':'fa-puzzle-piece','数量关系':'fa-calculator','资料分析':'fa-chart-line','常识判断':'fa-lightbulb'};
+  const COLOR_VARS = {blue:'var(--blue)',purple:'var(--purple)',red:'var(--red)',green:'var(--green)',orange:'var(--orange)'};
+  const BG_MAP = {blue:'rgba(59,130,246,.12)',purple:'rgba(139,92,246,.12)',red:'rgba(239,68,68,.12)',green:'rgba(34,197,94,.12)',orange:'rgba(249,115,22,.12)'};
+  const cards = ALL_MODULES.map(m => {
+    const mq = questions.filter(q => q.module === m);
+    const mastered = mq.filter(q => q.reviewStatus === '已掌握').length;
+    const toReview = mq.length - mastered;
+    const rate = mq.length ? Math.round(mastered / mq.length * 100) : 0;
+    const ck = MODULE_COLORS[m] || 'blue';
+    const color = COLOR_VARS[ck];
+    const icon = MODULE_ICONS[m] || 'fa-book';
+    return `<div class="card" onclick="openErrorCategory('${m}')" style="cursor:pointer;margin:0;padding:16px;border-left:4px solid ${color}">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div style="width:40px;height:40px;border-radius:12px;background:${BG_MAP[ck]};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="fas ${icon}" style="color:${color};font-size:18px"></i>
+        </div>
+        <div style="min-width:0">
+          <div style="font-size:15px;font-weight:700">${m}</div>
+          <div style="font-size:12px;color:var(--muted)">${mq.length} 道错题</div>
+        </div>
+        <i class="fas fa-chevron-right" style="color:var(--muted);margin-left:auto;font-size:12px"></i>
+      </div>
+      <div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden;margin-bottom:8px">
+        <div style="height:100%;width:${rate}%;background:${color};border-radius:3px;transition:width .3s"></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted)">已掌握 ${mastered} · 待复习 ${toReview} · ${rate}%</div>
+    </div>`;
+  }).join('');
+  const totalMastered = questions.filter(q => q.reviewStatus === '已掌握').length;
+  el.innerHTML = `
+    <h2 style="font-size:18px;font-weight:700;margin:0 0 4px">错题本</h2>
+    <p style="font-size:13px;color:var(--muted);margin:0 0 14px">共 ${questions.length} 道错题 · 已掌握 ${totalMastered} 道，点击卡片进入对应模块</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">${cards}</div>
+    <div class="card" onclick="openErrorCategory('全部')" style="cursor:pointer;margin-top:12px;padding:14px 16px;display:flex;align-items:center;gap:10px">
+      <i class="fas fa-layer-group" style="color:var(--primary);font-size:16px"></i>
+      <span style="font-size:14px;font-weight:600">全部错题</span>
+      <span style="font-size:12px;color:var(--muted)">${questions.length} 道</span>
+      <i class="fas fa-chevron-right" style="color:var(--muted);margin-left:auto;font-size:12px"></i>
+    </div>
+  `;
+}
+
+function getFilteredQuestions() {
+  let filtered = [...questions];
+  if (errorFilters.module !== '全部') filtered = filtered.filter(q => q.module === errorFilters.module);
+  if (errorFilters.type !== '全部') filtered = filtered.filter(q => q.type === errorFilters.type);
+  if (errorFilters.source !== '全部') filtered = filtered.filter(q => (q.source || '未填来源') === errorFilters.source);
+  if (errorFilters.sort === '错误次数最多') filtered.sort((a,b) => b.errorCount - a.errorCount);
+  else filtered.sort((a,b) => (b.createDate||'').localeCompare(a.createDate||''));
+  return filtered;
+}
+
+function renderErrorList(el) {
+  const filtered = getFilteredQuestions();
+  // 获取当前模块的题型列表
+  let allTypes = [];
+  if (errorFilters.module === '全部') {
+    // 全部模块时，收集所有模块的题型
+    allTypes = [...new Set(questions.map(q => q.type).filter(Boolean))];
+  } else {
+    // 指定模块时，使用该模块的标准题型
+    allTypes = MODULE_TYPES[errorFilters.module] || [...new Set(questions.filter(q => q.module === errorFilters.module).map(q => q.type).filter(Boolean))];
+  }
+  const allSources = [...new Set(questions.map(q => q.source || '未填来源').filter(Boolean))];
+  const title = errorFilters.module === '全部' ? '全部错题' : errorFilters.module;
+  const selCount = Object.keys(batchSelectedIds).length;
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <button class="btn btn-outline btn-sm" onclick="backToErrorCategories()" style="padding:8px 12px"><i class="fas fa-arrow-left"></i></button>
+      <h2 style="font-size:18px;font-weight:700;margin:0">${title}</h2>
+      <span style="font-size:12px;color:var(--muted)">${filtered.length} 道</span>
+      <button class="btn ${batchDeleteMode?'btn-danger':'btn-outline'} btn-sm" style="margin-left:auto" onclick="toggleBatchDeleteMode()">
+        <i class="fas fa-${batchDeleteMode?'times':'trash-alt'}"></i> ${batchDeleteMode?'退出批量':'批量删除'}
+      </button>
+    </div>
+    ${batchDeleteMode ? `
+    <div class="card" style="margin-bottom:12px;padding:10px 12px;background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.25)">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:700;color:var(--danger)">已选 ${selCount} 道</span>
+        <button class="btn btn-outline btn-sm" onclick="batchSelectAll()">全选</button>
+        <button class="btn btn-outline btn-sm" onclick="batchSelectedIds={};renderErrors()">清空选择</button>
+        <button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="batchDeleteSelected()"><i class="fas fa-trash"></i> 删除选中${selCount?'('+selCount+')':''}</button>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin:8px 0 0">点击卡片即可勾选要删除的错题</p>
+    </div>` : `
+    <div class="card" style="margin-bottom:12px;padding:10px 12px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <select id="filter-type" class="input-field" style="width:auto;flex:1;min-width:100px;padding:6px 28px 6px 10px;font-size:13px" onchange="errorFilters.type=this.value;renderErrors()">
+          <option value="全部">全部类型</option>
+          ${allTypes.map(t => `<option value="${t}" ${errorFilters.type===t?'selected':''}>${t}</option>`).join('')}
+        </select>
+        <select id="filter-source" class="input-field" style="width:auto;flex:1;min-width:100px;padding:6px 28px 6px 10px;font-size:13px" onchange="errorFilters.source=this.value;renderErrors()">
+          <option value="全部">全部来源</option>
+          ${allSources.map(s => `<option value="${s}" ${errorFilters.source===s?'selected':''}>${s}</option>`).join('')}
+        </select>
+        <select class="input-field" style="width:auto;flex:1;min-width:100px;padding:6px 28px 6px 10px;font-size:13px" onchange="errorFilters.sort=this.value;renderErrors()">
+          <option value="最新" ${errorFilters.sort==='最新'?'selected':''}>最新</option>
+          <option value="错误次数最多" ${errorFilters.sort==='错误次数最多'?'selected':''}>错误次数最多</option>
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="exportForPrint()" style="padding:6px 12px;font-size:13px;white-space:nowrap"><i class="fas fa-print"></i> 导出打印</button>
+      </div>
+    </div>`}
+    <div id="error-cards">
+      ${filtered.length === 0 ? '<div class="empty-state"><i class="fas fa-inbox"></i><p>暂无符合条件的错题</p></div>' :
+        filtered.map(q => renderErrorCard(q)).join('')}
+    </div>
+  `;
+}
+
+function exportForPrint() {
+  const filtered = getFilteredQuestions();
+  if (filtered.length === 0) { alert('当前筛选条件下没有错题'); return; }
+  
+  // 按题型分组
+  const grouped = {};
+  filtered.forEach(q => {
+    const t = q.type || '未分类';
+    if (!grouped[t]) grouped[t] = [];
+    grouped[t].push(q);
+  });
+  
+  // 构建标题和筛选条件描述
+  const moduleTitle = errorFilters.module !== '全部' ? errorFilters.module + '错题练习' : '行测错题练习';
+  const condParts = [];
+  if (errorFilters.type !== '全部') condParts.push(errorFilters.type);
+  const condText = condParts.length ? condParts.join(' · ') : '';
+  
+  // 生成打印HTML（试卷风格：只保留题干+问题+选项）
+  let globalIdx = 0;
+  const sectionsHtml = Object.keys(grouped).sort().map(typeName => {
+    const qs = grouped[typeName];
+    const cardsHtml = qs.map(q => {
+      globalIdx++;
+      // 题干渲染：去掉原题号（如"第2题：（第1页）"），处理问句换行
+      let qText = q.question || '';
+      if (qText) {
+        // 去掉开头的原题号（如"第2题：（第1页）"或"第3题：（第2页）"）
+        qText = qText.replace(/^第\s*\d+\s*题\s*[：:]\s*（[^）]*）\s*/, '');
+        const qEscaped = qText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        qText = qEscaped.replace(/\n/g,'<br>');
+      }
+      // 选项：从 optionA/B/C/D 读取
+      const opts = [];
+      if (q.optionA) opts.push('A. ' + q.optionA);
+      if (q.optionB) opts.push('B. ' + q.optionB);
+      if (q.optionC) opts.push('C. ' + q.optionC);
+      if (q.optionD) opts.push('D. ' + q.optionD);
+      const optsHtml = opts.map(opt => {
+        return `<div style="padding:2px 0 2px 16px">${opt.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}</div>`;
+      }).join('');
+      
+      return `
+      <div style="page-break-inside:avoid;margin-bottom:12px;padding:0 0 8px 0;border-bottom:1px solid #e5e7eb">
+        <div style="font-size:13px;line-height:1.5;margin-bottom:4px">
+          <span style="font-weight:normal">${globalIdx}. ${qText}</span>
+        </div>
+        ${optsHtml ? `<div style="font-size:12.5px;line-height:1.4">${optsHtml}</div>` : ''}
+      </div>`;
+    }).join('');
+    
+    return `
+    <div style="margin-bottom:24px">
+      ${cardsHtml}
+    </div>`;
+  }).join('');
+  
+  const printHtml = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>${moduleTitle}</title>
+<style>
+  @page { size: A4; margin: 20mm 20mm 20mm 20mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "SimSun","宋体","PingFang SC","Microsoft YaHei",serif; font-size: 13px; color: #000; line-height: 1.6; margin: 0; padding: 15px; max-width: 210mm; margin: 0 auto; font-weight: normal; }
+  .print-header { text-align: center; margin-bottom: 16px; padding: 12px 0; border-bottom:2px solid #000; }
+  .print-header h1 { font-size: 20px; font-weight: normal; margin: 0 0 8px; }
+  .print-header .meta { font-size: 12px; color: #333; font-weight: normal; margin-bottom: 4px; }
+  .print-header .info { font-size: 11px; color: #666; margin-top: 4px; font-weight: normal; }
+  .toolbar { position: fixed; top: 10px; right: 10px; z-index: 999; }
+  .toolbar button { background: #2563eb; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.15); }
+  .toolbar button:hover { background: #1d4ed8; }
+  @media print {
+    .toolbar { display: none; }
+    body { padding: 0; }
+  }
+</style>
+</head>
+<body>
+  <div class="toolbar"><button onclick="window.print()">打印</button></div>
+  <div class="print-header">
+    <h1>${moduleTitle}</h1>
+    ${condText ? `<div class="meta">${condText}</div>` : ''}
+    <div class="info">共${filtered.length}题 &nbsp;|&nbsp; ${new Date().toLocaleDateString('zh-CN')}</div>
+  </div>
+  ${sectionsHtml}
+</body>
+</html>`;
+  
+  const win = window.open('', '_blank');
+  if (!win) { alert('请允许弹出窗口以导出打印'); return; }
+  win.document.write(printHtml);
+  win.document.close();
+}
+
+function toggleBatchDeleteMode() {
+  batchDeleteMode = !batchDeleteMode;
+  batchSelectedIds = {};
+  expandedCardId = null;
+  renderErrors();
+}
+
+function toggleBatchSelect(id) {
+  if (batchSelectedIds[id]) delete batchSelectedIds[id];
+  else batchSelectedIds[id] = true;
+  renderErrors();
+}
+
+function batchSelectAll() {
+  getFilteredQuestions().forEach(q => batchSelectedIds[q.id] = true);
+  renderErrors();
+}
+
+function batchDeleteSelected() {
+  const ids = Object.keys(batchSelectedIds);
+  if (!ids.length) { showToast('请先点击卡片勾选要删除的错题'); return; }
+  showConfirm(`确定删除选中的 ${ids.length} 道错题吗？删除后无法恢复。`, () => {
+    questions = questions.filter(q => !batchSelectedIds[q.id]);
+    saveQuestions();
+    batchSelectedIds = {};
+    batchDeleteMode = false;
+    expandedCardId = null;
+    renderErrors();
+    showToast(`已删除 ${ids.length} 道错题`);
+  });
+}
+
+function openErrorCategory(m) {
+  errorsViewMode = 'list';
+  errorFilters.module = m;
+  batchDeleteMode = false;
+  batchSelectedIds = {};
+  renderErrors();
+}
+
+function backToErrorCategories() {
+  errorsViewMode = 'categories';
+  errorFilters.type = '全部';
+  errorFilters.source = '全部';
+  batchDeleteMode = false;
+  batchSelectedIds = {};
+  renderErrors();
+}
+
+function renderErrorCard(q) {
+  if (batchDeleteMode) {
+    const sel = !!batchSelectedIds[q.id];
+    const qText = q.question.length > 40 ? q.question.slice(0, 40) + '…' : q.question;
+    return `<div class="card" style="cursor:pointer;padding:12px;${sel?'box-shadow:0 0 0 2px var(--danger)':''}" onclick="toggleBatchSelect('${q.id}')">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:24px;height:24px;border-radius:50%;border:2px solid ${sel?'var(--danger)':'var(--border)'};background:${sel?'var(--danger)':'#fff'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          ${sel?'<i class="fas fa-check" style="color:#fff;font-size:13px"></i>':''}
+        </div>
+        <div style="flex:1;min-width:0">
+          ${q.question ? `<p style="font-size:13px;line-height:1.5;margin:0 0 4px">${qText}</p>` : (q.photos && q.photos.length ? `<p style="font-size:13px;color:var(--muted);margin:0 0 4px"><i class="fas fa-image"></i> 图片题</p>` : '')}
+          <div style="font-size:12px;color:var(--muted)">我答<b style="color:var(--danger)">${q.myAnswer}</b> → 正确<b style="color:var(--success)">${q.correctAnswer}</b> · ${q.reviewStatus}</div>
+        </div>
+      </div>
+    </div>`;
+  }
+  const isExpanded = expandedCardId === q.id;
+  const statusColor = q.reviewStatus === '已掌握' ? 'var(--success)' : q.reviewStatus === '模糊' ? 'var(--accent)' : 'var(--muted)';
+  const hasPhoto = q.photos && q.photos.length > 0;
+
+  return `<div class="card" style="cursor:pointer" onclick="toggleCardExpand('${q.id}')">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+      ${q.accuracy ? `<span style="font-size:11px;color:#059669;background:rgba(5,150,105,.1);padding:2px 8px;border-radius:10px;font-weight:600">${q.accuracy}%</span>` : ''}
+      ${q.type ? `<span style="font-size:11px;color:#1e40af;background:rgba(59,130,246,.12);padding:2px 8px;border-radius:10px;font-weight:600">${q.type}</span>` : ''}
+      ${q.source ? `<span style="font-size:11px;color:#0f766e;background:rgba(20,184,166,.1);padding:2px 8px;border-radius:10px"><i class="fas fa-book-open" style="margin-right:3px;font-size:10px"></i>${q.source}</span>` : ''}
+      <span style="font-size:11px;color:${statusColor};margin-left:auto;font-weight:600">${q.reviewStatus}</span>
+    </div>
+    ${hasPhoto ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${q.photos.map(p => `<img src="${p}" style="height:${isExpanded?'160px':'110px'};width:auto;max-width:${q.photos.length>1?'48%':'100%'};object-fit:cover;border-radius:8px;display:block" onclick="event.stopPropagation();previewPhoto('${p}')">`).join('')}</div>` : ''}
+    ${q.question ? `<p style="font-size:14px;line-height:1.7;margin:0 0 8px">${renderQuestionText(q.question)}</p>` : (!hasPhoto ? '<p style="font-size:14px;color:var(--muted);margin:0 0 8px">（无题干内容）</p>' : '')}
+    ${!isExpanded ? `<div style="display:flex;align-items:center;font-size:12px;color:var(--muted)"><span>错误${q.errorCount}次 · 点击查看选项与解析</span><i class="fas fa-chevron-down" style="margin-left:auto;color:var(--primary);font-size:11px"></i></div>` : ''}
+    ${isExpanded ? `
+      <div style="margin-top:4px;border-top:1px solid var(--border);padding-top:12px">
+        <div style="display:flex;align-items:center;gap:12px;font-size:13px;margin-bottom:10px">
+          <span>我的答案：<b style="color:var(--danger)">${q.myAnswer}</b></span>
+          <span>正确答案：<b style="color:var(--success)">${q.correctAnswer}</b></span>
+          <span style="margin-left:auto;font-size:12px;color:var(--muted)">错误${q.errorCount}次</span>
+        </div>
+        ${q.optionA ? `<div class="option-item ${q.myAnswer==='A'?'my-wrong':''} ${q.correctAnswer==='A'?'correct':''}">A. ${q.optionA}</div>` : ''}
+        ${q.optionB ? `<div class="option-item ${q.myAnswer==='B'?'my-wrong':''} ${q.correctAnswer==='B'?'correct':''}">B. ${q.optionB}</div>` : ''}
+        ${q.optionC ? `<div class="option-item ${q.myAnswer==='C'?'my-wrong':''} ${q.correctAnswer==='C'?'correct':''}">C. ${q.optionC}</div>` : ''}
+        ${q.optionD ? `<div class="option-item ${q.myAnswer==='D'?'my-wrong':''} ${q.correctAnswer==='D'?'correct':''}">D. ${q.optionD}</div>` : ''}
+        ${q.analysis ? `<div class="detail-section"><h4>解析</h4><p style="white-space:pre-line">${formatAnalysis(q.analysis)}</p></div>` : ''}
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <button class="btn btn-success btn-sm" onclick="event.stopPropagation();markMastered('${q.id}')"><i class="fas fa-check"></i> 标记掌握</button>
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();editQuestion('${q.id}')"><i class="fas fa-pen"></i> 编辑</button>
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();viewDetail('${q.id}')"><i class="fas fa-eye"></i> 详情</button>
+          <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="event.stopPropagation();deleteQuestion('${q.id}')"><i class="fas fa-trash"></i> 删除</button>
+        </div>
+      </div>
+    ` : ''}
+  </div>`;
+}
+
+function toggleCardExpand(id) {
+  expandedCardId = expandedCardId === id ? null : id;
+  renderErrors();
+}
+
+function markMastered(id) {
+  const q = questions.find(q => q.id === id);
+  if (q) { q.reviewStatus = '已掌握'; saveQuestions(); renderErrors(); showToast('已标记为掌握'); }
+}
+
+function deleteQuestion(id) {
+  showConfirm('确定要删除这道错题吗？删除后无法恢复。', () => {
+    questions = questions.filter(q => q.id !== id);
+    saveQuestions();
+    expandedCardId = null;
+    renderErrors();
+    showToast('已删除');
+  });
+}
+
+function viewDetail(id) {
+  const q = questions.find(q => q.id === id);
+  if (!q) return;
+  const el = document.getElementById('detail-modal');
+  el.innerHTML = `<div class="modal-overlay modal-full" onclick="if(event.target===this)closeDetail()">
+    <div class="modal-content">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <h3 style="font-size:16px;font-weight:700;margin:0">错题详情</h3>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-outline btn-sm" onclick="editQuestion('${q.id}')"><i class="fas fa-pen"></i> 编辑</button>
+          <button class="btn btn-outline btn-sm" onclick="closeDetail()"><i class="fas fa-times"></i></button>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+        <span class="badge ${getModuleClass(q.module)}">${q.module}</span>
+        ${q.type ? `<span style="font-size:11px;color:#1e40af;background:rgba(59,130,246,.12);padding:2px 8px;border-radius:10px;font-weight:600">${q.type}</span>` : ''}
+        ${q.errorReasons.map(r=>`<span style="font-size:11px;color:var(--accent);background:rgba(249,115,22,.08);padding:2px 8px;border-radius:10px">${r}</span>`).join('')}
+        ${q.source ? `<span style="font-size:11px;color:#0f766e;background:rgba(20,184,166,.1);padding:2px 8px;border-radius:10px"><i class="fas fa-book-open" style="margin-right:3px;font-size:10px"></i>${q.source}</span>` : ''}
+      </div>
+      <div class="detail-section"><h4>题干</h4>${(q.photos && q.photos.length) ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:${q.question?'10px':'0'}">${q.photos.map(p=>`<img src="${p}" style="height:150px;width:auto;max-width:${q.photos.length>1?'48%':'100%'};object-fit:cover;border-radius:8px" onclick="previewPhoto('${p}')">`).join('')}</div>` : ''}${q.question ? `<p style="line-height:1.7">${renderQuestionText(q.question)}</p>` : ''}</div>
+      ${q.optionA?`<div class="option-item ${q.myAnswer==='A'?'my-wrong':''} ${q.correctAnswer==='A'?'correct':''}">A. ${q.optionA}</div>`:''}
+      ${q.optionB?`<div class="option-item ${q.myAnswer==='B'?'my-wrong':''} ${q.correctAnswer==='B'?'correct':''}">B. ${q.optionB}</div>`:''}
+      ${q.optionC?`<div class="option-item ${q.myAnswer==='C'?'my-wrong':''} ${q.correctAnswer==='C'?'correct':''}">C. ${q.optionC}</div>`:''}
+      ${q.optionD?`<div class="option-item ${q.myAnswer==='D'?'my-wrong':''} ${q.correctAnswer==='D'?'correct':''}">D. ${q.optionD}</div>`:''}
+      <div style="display:flex;gap:16px;margin:12px 0;font-size:14px">
+        <span>我的答案：<b style="color:var(--danger)">${q.myAnswer}</b></span>
+        <span>正确答案：<b style="color:var(--success)">${q.correctAnswer}</b></span>
+      </div>
+      ${q.analysis?`<div class="detail-section"><h4>解析</h4><p style="white-space:pre-line">${formatAnalysis(q.analysis)}</p></div>`:''}
+      <div style="font-size:12px;color:var(--muted);margin-top:12px">
+        创建日期：${q.createDate} | 错误次数：${q.errorCount} | 状态：${q.reviewStatus}
+      </div>
+    </div>
+  </div>`;
+  el.className = '';
+}
+
+function closeDetail() {
+  document.getElementById('detail-modal').className = 'hidden';
+}
+
+function editQuestion(id) {
+  const q = questions.find(x => x.id === id);
+  if (!q) return;
+  const el = document.getElementById('detail-modal');
+  const stdTypes = MODULE_TYPES[q.module] || [];
+  const hasCustomType = q.type && !stdTypes.includes(q.type);
+  const typeOptions = `<option value="">未选择题型</option>` + (hasCustomType ? `<option value="${q.type.replace(/"/g,'&quot;')}" selected>${q.type}</option>` : '') + stdTypes.map(t => `<option value="${t}" ${t===q.type?'selected':''}>${t}</option>`).join('');
+  el.innerHTML = `<div class="modal-overlay modal-full" onclick="if(event.target===this)closeDetail()">
+    <div class="modal-content">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <h3 style="font-size:16px;font-weight:700;margin:0">编辑错题</h3>
+        <button class="btn btn-outline btn-sm" onclick="closeDetail()"><i class="fas fa-times"></i></button>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:12px">
+        <div style="flex:1">
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">模块</label>
+          <select id="edit-module" class="input-field" onchange="updateEditType()">
+            ${ALL_MODULES.map(m => `<option value="${m}" ${m===q.module?'selected':''}>${m}</option>`).join('')}
+          </select>
+        </div>
+        <div style="flex:1">
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">题型</label>
+          <select id="edit-type" class="input-field">${typeOptions}</select>
+        </div>
+      </div>
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">题目来源（可选）</label>
+      <input id="edit-source" class="input-field" value="${(q.source||'').replace(/"/g,'&quot;')}" placeholder="如：2025联考真题 / 粉笔5000题" style="margin-bottom:12px">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">正确率（%）</label>
+      <input id="edit-accuracy" class="input-field" type="number" min="0" max="100" value="${q.accuracy||''}" placeholder="如：65" style="margin-bottom:12px">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">题干</label>
+      <textarea id="edit-question" class="input-field" rows="4" style="margin-bottom:12px">${q.question}</textarea>
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">题干照片（最多3张，可增删）</label>
+      <div id="edit-photoPreview" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+        ${q.photos.map((p,i)=>`<div style="position:relative;display:inline-block"><img src="${p}" style="width:84px;height:84px;object-fit:cover;border-radius:8px;display:block" onclick="previewPhoto('${p}')"><button onclick="removeEditPhoto('${q.id}',${i})" style="position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;background:var(--danger);color:#fff;border:2px solid #fff;font-size:13px;line-height:18px;cursor:pointer;padding:0">×</button></div>`).join('') || '<span style="font-size:12px;color:var(--muted)">暂无照片</span>'}
+      </div>
+      <input type="file" id="edit-photoInput" accept="image/*" capture="environment" style="display:none" onchange="handleEditPhotoUpload(this,'${q.id}')">
+      <button class="btn btn-outline btn-sm" style="margin-bottom:12px" onclick="document.getElementById('edit-photoInput').click()"><i class="fas fa-camera"></i> 添加照片</button>
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">选项A</label>
+      <input id="edit-optA" class="input-field" value="${(q.optionA||'').replace(/"/g,'&quot;')}" style="margin-bottom:8px">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">选项B</label>
+      <input id="edit-optB" class="input-field" value="${(q.optionB||'').replace(/"/g,'&quot;')}" style="margin-bottom:8px">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">选项C</label>
+      <input id="edit-optC" class="input-field" value="${(q.optionC||'').replace(/"/g,'&quot;')}" style="margin-bottom:8px">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">选项D</label>
+      <input id="edit-optD" class="input-field" value="${(q.optionD||'').replace(/"/g,'&quot;')}" style="margin-bottom:12px">
+      <div style="display:flex;gap:10px;margin-bottom:12px">
+        <div style="flex:1">
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">我的答案</label>
+          <select id="edit-myAns" class="input-field">
+            ${['A','B','C','D'].map(o => `<option ${o===q.myAnswer?'selected':''}>${o}</option>`).join('')}
+          </select>
+        </div>
+        <div style="flex:1">
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">正确答案</label>
+          <select id="edit-correctAns" class="input-field">
+            ${['A','B','C','D'].map(o => `<option ${o===q.correctAnswer?'selected':''}>${o}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">错误类型（多选）</label>
+      <div class="checkbox-group" id="edit-reasons" style="margin-bottom:12px">
+        ${ERROR_REASONS.map(r => `<div class="checkbox-item ${q.errorReasons.includes(r)?'checked':''}" onclick="toggleReason(this)"><input type="checkbox" value="${r}" ${q.errorReasons.includes(r)?'checked':''}><span>${r}</span></div>`).join('')}
+      </div>
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">解析</label>
+      <textarea id="edit-analysis" class="input-field" rows="6" style="margin-bottom:16px">${q.analysis||''}</textarea>
+      <button class="btn btn-primary" style="width:100%" onclick="saveEdit('${q.id}')"><i class="fas fa-save"></i> 保存修改</button>
+    </div>
+  </div>`;
+  el.className = '';
+}
+
+function updateEditType() {
+  const mod = document.getElementById('edit-module').value;
+  const sel = document.getElementById('edit-type');
+  const cur = sel.value;
+  const stdTypes = MODULE_TYPES[mod] || [];
+  const keepCustom = cur && !stdTypes.includes(cur);
+  sel.innerHTML = `<option value="">未选择题型</option>` + (keepCustom ? `<option value="${cur.replace(/"/g,'&quot;')}" selected>${cur}</option>` : '') + stdTypes.map(t => `<option value="${t}" ${t===cur?'selected':''}>${t}</option>`).join('');
+}
+
+function saveEdit(id) {
+  const q = questions.find(x => x.id === id);
+  if (!q) return;
+  const question = document.getElementById('edit-question').value.trim();
+  if (!question) { showToast('题干不能为空'); return; }
+  q.module = document.getElementById('edit-module').value;
+  q.type = document.getElementById('edit-type').value;
+  q.source = document.getElementById('edit-source').value.trim();
+  q.accuracy = document.getElementById('edit-accuracy').value.trim();
+  q.question = question;
+  q.optionA = document.getElementById('edit-optA').value.trim();
+  q.optionB = document.getElementById('edit-optB').value.trim();
+  q.optionC = document.getElementById('edit-optC').value.trim();
+  q.optionD = document.getElementById('edit-optD').value.trim();
+  q.myAnswer = document.getElementById('edit-myAns').value;
+  q.correctAnswer = document.getElementById('edit-correctAns').value;
+  const reasons = [];
+  document.querySelectorAll('#edit-reasons .checkbox-item.checked input').forEach(inp => reasons.push(inp.value));
+  q.errorReasons = reasons;
+  q.analysis = document.getElementById('edit-analysis').value;
+  saveQuestions();
+  showToast('已保存修改');
+  closeDetail();
+  expandedCardId = null;
+  renderErrors();
+}
+
+function previewPhoto(base64) {
+  const el = document.getElementById('detail-modal');
+  el.innerHTML = `<div class="modal-overlay" style="align-items:center;cursor:pointer" onclick="closeDetail()">
+    <img src="${base64}" style="max-width:95%;max-height:90vh;border-radius:8px;box-shadow:0 4px 30px rgba(0,0,0,.4)">
+  </div>`;
+  el.className = '';
+}
+
+// ==================== REVIEW ====================
+function startReview() {
+  reviewQueue = questions.filter(q => q.reviewStatus === '待复习' || q.reviewStatus === '模糊')
+    .sort((a,b) => {
+      if (b.errorCount !== a.errorCount) return b.errorCount - a.errorCount;
+      const aDate = a.lastReviewDate || '0000-00-00';
+      const bDate = b.lastReviewDate || '0000-00-00';
+      return aDate.localeCompare(bDate);
+    });
+  reviewIndex = 0;
+  reviewResults = [];
+
+  if (reviewQueue.length === 0) {
+    showToast('暂无待复习的错题，继续保持！');
+    return;
+  }
+  showReviewQuestion();
+}
+
+function showReviewQuestion() {
+  if (reviewIndex >= reviewQueue.length) { endReview(); return; }
+  reviewSelected = null;
+  reviewSubmitted = false;
+  const q = reviewQueue[reviewIndex];
+  const el = document.getElementById('review-modal');
+  const hasPhoto = q.photos && q.photos.length > 0;
+  el.innerHTML = `<div class="modal-overlay modal-full" style="align-items:stretch">
+    <div class="modal-content" style="padding-top:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <h3 style="font-size:16px;font-weight:700;margin:0">复习模式 <span style="font-size:13px;color:var(--muted);font-weight:400">${reviewIndex+1}/${reviewQueue.length}</span></h3>
+        <button class="btn btn-outline btn-sm" onclick="endReview()"><i class="fas fa-times"></i> 退出</button>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+        <span class="badge ${getModuleClass(q.module)}">${q.module}</span>
+        ${q.type ? `<span style="font-size:11px;color:#1e40af;background:rgba(59,130,246,.12);padding:2px 8px;border-radius:10px;font-weight:600">${q.type}</span>` : ''}
+      </div>
+      <div class="detail-section"><h4>题干</h4>${q.question ? `<p style="line-height:1.7">${renderQuestionText(q.question)}</p>` : ''}${(!q.question && q.photos && q.photos.length) ? `<img src="${q.photos[0]}" style="max-width:100%;max-height:340px;border-radius:8px" onclick="previewPhoto('${q.photos[0]}')">` : ''}</div>
+      ${q.optionA?`<div id="review-opt-A" class="option-item" style="cursor:pointer" onclick="selectReviewOption('A')">A. ${q.optionA}</div>`:''}
+      ${q.optionB?`<div id="review-opt-B" class="option-item" style="cursor:pointer" onclick="selectReviewOption('B')">B. ${q.optionB}</div>`:''}
+      ${q.optionC?`<div id="review-opt-C" class="option-item" style="cursor:pointer" onclick="selectReviewOption('C')">C. ${q.optionC}</div>`:''}
+      ${q.optionD?`<div id="review-opt-D" class="option-item" style="cursor:pointer" onclick="selectReviewOption('D')">D. ${q.optionD}</div>`:''}
+      <div id="review-answer-area" style="margin-top:16px;text-align:center">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:10px">先选出你的答案，再提交查看对错与解析</p>
+        <button id="review-submit-btn" class="btn btn-accent" style="opacity:.5;pointer-events:none" onclick="submitReviewAnswer()"><i class="fas fa-paper-plane"></i> 提交答案</button>
+      </div>
+      ${hasPhoto ? `<div style="margin-top:12px"><button class="btn btn-outline btn-sm" onclick="toggleReviewPhoto()"><i class="fas fa-image"></i> 查看照片</button><div id="review-photos" class="hidden" style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">${q.photos.map(p=>`<img src="${p}" class="photo-thumb" onclick="previewPhoto('${p}')">`).join('')}</div></div>` : ''}
+    </div>
+  </div>`;
+  el.className = '';
+}
+
+function toggleReviewPhoto() {
+  const el = document.getElementById('review-photos');
+  if (el) el.classList.toggle('hidden');
+}
+
+function selectReviewOption(L) {
+  if (reviewSubmitted) return;
+  reviewSelected = L;
+  ['A','B','C','D'].forEach(x => {
+    const el = document.getElementById('review-opt-' + x);
+    if (!el) return;
+    if (x === L) { el.style.borderColor = 'var(--accent)'; el.style.background = 'rgba(249,115,22,.08)'; el.style.fontWeight = '600'; }
+    else { el.style.borderColor = ''; el.style.background = ''; el.style.fontWeight = ''; }
+  });
+  const btn = document.getElementById('review-submit-btn');
+  if (btn) { btn.style.opacity = '1'; btn.style.pointerEvents = 'auto'; }
+}
+
+function submitReviewAnswer() {
+  if (!reviewSelected || reviewSubmitted) return;
+  reviewSubmitted = true;
+  const q = reviewQueue[reviewIndex];
+  const correct = reviewSelected === q.correctAnswer;
+  ['A','B','C','D'].forEach(x => {
+    const el = document.getElementById('review-opt-' + x);
+    if (!el) return;
+    el.setAttribute('onclick', '');
+    el.style.cursor = 'default';
+    if (x === q.correctAnswer) { el.style.borderColor = 'var(--success)'; el.style.background = 'rgba(34,197,94,.1)'; el.style.fontWeight = '600'; }
+    else if (x === reviewSelected) { el.style.borderColor = 'var(--danger)'; el.style.background = 'rgba(239,68,68,.08)'; el.style.fontWeight = '600'; }
+    else { el.style.borderColor = ''; el.style.background = ''; el.style.fontWeight = ''; }
+  });
+  const area = document.getElementById('review-answer-area');
+  area.innerHTML = `
+    <div style="background:${correct ? 'rgba(34,197,94,.08)' : 'rgba(239,68,68,.06)'};border-radius:12px;padding:16px;margin-top:4px;text-align:left">
+      <div style="font-size:16px;font-weight:700;margin-bottom:10px;color:${correct ? 'var(--success)' : 'var(--danger)'}">
+        <i class="fas fa-${correct ? 'check-circle' : 'times-circle'}"></i> ${correct ? '回答正确！' : '回答错误'}
+      </div>
+      <div style="display:flex;gap:16px;margin-bottom:8px;font-size:14px">
+        <span>你的答案：<b style="color:${correct ? 'var(--success)' : 'var(--danger)'}">${reviewSelected}</b></span>
+        <span>正确答案：<b style="color:var(--success)">${q.correctAnswer}</b></span>
+      </div>
+      ${q.analysis ? `<div style="font-size:13px;color:var(--muted);line-height:1.7;margin:8px 0 0;white-space:pre-line;border-top:1px dashed var(--border);padding-top:10px">${formatAnalysis(q.analysis)}</div>` : ''}
+    </div>
+    ${correct ? `
+      <button class="btn btn-success" style="width:100%;margin-top:14px" onclick="reviewMark('已掌握')"><i class="fas fa-check"></i> 答对了，标记已掌握</button>
+    ` : `
+      <p style="font-size:13px;color:var(--muted);margin:14px 0 10px">这道题没答对，怎么安排？</p>
+      <div class="review-btn-group" style="margin-top:0">
+        <button class="btn btn-danger" onclick="reviewMark('还是不会')"><i class="fas fa-redo"></i> 还是不会（本轮重做）</button>
+        <button class="btn btn-accent" onclick="reviewMark('模糊')"><i class="fas fa-question"></i> 有点模糊（下轮再复）</button>
+      </div>
+    `}
+  `;
+}
+
+function reviewMark(status) {
+  const q = reviewQueue[reviewIndex];
+  const real = questions.find(item => item.id === q.id);
+  if (real) {
+    if (status === '还是不会') {
+      real.errorCount += 1;
+      real.reviewStatus = '待复习';
+    } else if (status === '模糊') {
+      real.reviewStatus = '模糊';
+    } else {
+      real.reviewStatus = '已掌握';
+    }
+    real.lastReviewDate = new Date().toISOString().slice(0,10);
+    saveQuestions();
+    updateDailyStat('reviews', 1);
+  }
+  reviewResults.push({ id: q.id, status });
+  if (status === '还是不会') reviewQueue.push(q);
+  reviewIndex++;
+  showReviewQuestion();
+}
+
+function endReview() {
+  const el = document.getElementById('review-modal');
+  const total = reviewResults.length;
+  const mastered = reviewResults.filter(r => r.status === '已掌握').length;
+  const weak = reviewResults.filter(r => r.status === '还是不会').length;
+  const fuzzy = reviewResults.filter(r => r.status === '模糊').length;
+
+  if (total === 0) { el.className = 'hidden'; return; }
+
+  el.innerHTML = `<div class="modal-overlay" style="align-items:center" onclick="if(event.target===this){closeReviewModal()}">
+    <div class="modal-content" style="border-radius:20px;max-height:80vh;text-align:center" onclick="event.stopPropagation()">
+      <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--success));margin:0 auto 16px;display:flex;align-items:center;justify-content:center">
+        <i class="fas fa-trophy" style="font-size:28px;color:#fff"></i>
+      </div>
+      <h3 style="font-size:18px;font-weight:700;margin:0 0 16px">复习报告</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px">
+        <div style="background:var(--bg);border-radius:12px;padding:12px">
+          <div style="font-size:24px;font-weight:800;color:var(--primary)">${total}</div>
+          <div style="font-size:12px;color:var(--muted)">复习总数</div>
+        </div>
+        <div style="background:rgba(34,197,94,.08);border-radius:12px;padding:12px">
+          <div style="font-size:24px;font-weight:800;color:var(--success)">${mastered}</div>
+          <div style="font-size:12px;color:var(--success)">已掌握</div>
+        </div>
+        <div style="background:rgba(239,68,68,.08);border-radius:12px;padding:12px">
+          <div style="font-size:24px;font-weight:800;color:var(--danger)">${weak + fuzzy}</div>
+          <div style="font-size:12px;color:var(--danger)">仍需加强</div>
+        </div>
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="closeReviewModal()">完成</button>
+    </div>
+  </div>`;
+}
+
+function closeReviewModal() {
+  document.getElementById('review-modal').className = 'hidden';
+  reviewResults = [];
+  renderPage(currentTab);
+}
+
+// ==================== STATS PAGE ====================
+function renderStats() {
+  const el = document.getElementById('page-stats');
+
+  // Module mastery bar chart
+  const moduleStats = {};
+  ALL_MODULES.forEach(m => {
+    const mq = questions.filter(q => q.module === m);
+    const mastered = mq.filter(q => q.reviewStatus === '已掌握').length;
+    moduleStats[m] = { total: mq.length, mastered, rate: mq.length ? mastered / mq.length : 0 };
+  });
+
+  const maxCount = Math.max(...ALL_MODULES.map(m => moduleStats[m].total), 1);
+
+  let masteryBarsHTML = ALL_MODULES.map(m => {
+    const s = moduleStats[m];
+    const pct = Math.round(s.rate * 100);
+    return `<div class="stat-bar">
+      <div class="stat-bar-label">${m}</div>
+      <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${s.total?pct:0}%;background:${MODULE_COLOR_HEX[m]}">${s.total?pct+'%':''}</div></div>
+      <span style="font-size:12px;color:var(--muted);width:40px;text-align:right">${s.mastered}/${s.total}</span>
+    </div>`;
+  }).join('');
+
+  // Module error count distribution
+  let distBarsHTML = ALL_MODULES.map(m => {
+    const s = moduleStats[m];
+    const w = maxCount ? Math.round(s.total / maxCount * 100) : 0;
+    return `<div class="stat-bar">
+      <div class="stat-bar-label">${m}</div>
+      <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${w}%;background:${MODULE_COLOR_HEX[m]}">${s.total||''}</div></div>
+    </div>`;
+  }).join('');
+
+  // Error reason analysis
+  const reasonCount = {};
+  ERROR_REASONS.forEach(r => reasonCount[r] = 0);
+  questions.forEach(q => q.errorReasons.forEach(r => { if (reasonCount[r] !== undefined) reasonCount[r]++; }));
+  const maxReason = Math.max(...Object.values(reasonCount), 1);
+  const reasonColors = ['#3b82f6','#8b5cf6','#ef4444','#22c55e','#f97316','#06b6d4'];
+  let reasonBarsHTML = ERROR_REASONS.map((r, i) => {
+    const c = reasonCount[r];
+    const w = Math.round(c / maxReason * 100);
+    return `<div class="stat-bar">
+      <div class="stat-bar-label" style="width:96px;font-size:11px">${r}</div>
+      <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${w}%;background:${reasonColors[i]}">${c||''}</div></div>
+    </div>`;
+  }).join('');
+
+  // Recent 7 days
+  const dailyStats = loadDailyStats();
+  const today = new Date();
+  let daysHTML = '';
+  const dayData = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0,10);
+    const ds = dailyStats[key] || { newErrors: 0, reviews: 0 };
+    dayData.push({ date: key.slice(5), newErrors: ds.newErrors, reviews: ds.reviews });
+  }
+  const maxDay = Math.max(...dayData.map(d => Math.max(d.newErrors, d.reviews)), 1);
+  daysHTML = dayData.map(d => {
+    const nH = Math.round(d.newErrors / maxDay * 100);
+    const rH = Math.round(d.reviews / maxDay * 100);
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span style="width:36px;font-size:11px;color:var(--muted);text-align:right">${d.date}</span>
+      <div style="flex:1;display:flex;gap:4px;align-items:center">
+        <div style="width:45%;height:16px;border-radius:4px;background:#e2e8f0;overflow:hidden"><div style="height:100%;width:${nH}%;background:var(--accent);border-radius:4px;transition:width .5s"></div></div>
+        <div style="width:45%;height:16px;border-radius:4px;background:#e2e8f0;overflow:hidden"><div style="height:100%;width:${rH}%;background:var(--success);border-radius:4px;transition:width .5s"></div></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Weak knowledge points
+  const typeStats = {};
+  questions.forEach(q => {
+    const key = q.type || '未分类';
+    if (!typeStats[key]) typeStats[key] = { count: 0, module: q.module };
+    typeStats[key].count += q.errorCount;
+  });
+  const weakTypes = Object.entries(typeStats).sort((a,b) => b[1].count - a[1].count).slice(0, 5);
+  const suggestions = ['建议重点复习该题型，梳理解题框架','建议整理该题型常见陷阱','建议做专项练习巩固方法','建议回顾笔记中的解题步骤','建议对比相似题型找规律'];
+  let weakTypesHTML = weakTypes.length ? weakTypes.map((t, i) =>
+    `<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px">
+      <span style="width:22px;height:22px;border-radius:50%;background:${i<2?'var(--danger)':'var(--accent)'};color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px">${i+1}</span>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:600">${t[0]}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">累计错误${t[1].count}次 · ${suggestions[i]||suggestions[4]}</div>
+      </div>
+    </div>`
+  ).join('') : '<p style="font-size:13px;color:var(--muted)">暂无数据</p>';
+
+  el.innerHTML = `
+    <h2 style="font-size:18px;font-weight:700;margin:0 0 16px">统计分析</h2>
+    <div class="card">
+      <h3 style="font-size:15px;font-weight:700;margin:0 0 12px">各模块掌握率</h3>
+      ${masteryBarsHTML}
+    </div>
+    <div class="card">
+      <h3 style="font-size:15px;font-weight:700;margin:0 0 12px">各模块错题数量分布</h3>
+      ${distBarsHTML}
+    </div>
+    <div class="card">
+      <h3 style="font-size:15px;font-weight:700;margin:0 0 12px">失分来源分析</h3>
+      ${reasonBarsHTML}
+    </div>
+    <div class="card">
+      <h3 style="font-size:15px;font-weight:700;margin:0 0 12px">最近7天趋势</h3>
+      <div style="display:flex;gap:16px;margin-bottom:10px;font-size:12px">
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:2px;background:var(--accent)"></span>新增错题</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;border-radius:2px;background:var(--success)"></span>复习数量</span>
+      </div>
+      ${daysHTML}
+    </div>
+    <div class="card">
+      <h3 style="font-size:15px;font-weight:700;margin:0 0 12px">薄弱知识点排行</h3>
+      ${weakTypesHTML}
+    </div>
+  `;
+}
+
+// ==================== SETTINGS PAGE ====================
+function renderSettings() {
+  const el = document.getElementById('page-settings');
+  el.innerHTML = `
+    <h2 style="font-size:18px;font-weight:700;margin:0 0 16px">设置</h2>
+    <div class="card">
+      <h3 style="font-size:15px;font-weight:700;margin:0 0 4px"><i class="fas fa-cloud" style="color:var(--blue);margin-right:6px"></i>云同步（Supabase）</h3>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 12px;line-height:1.6">连接自己的 Supabase 项目后，错题可在多设备间自动同步。数据保存在你自己的 Supabase 数据库里，本工具不托管任何数据。</p>
+      ${sbOnline ? `
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:13px">
+          <span style="color:#16a34a;font-weight:600"><i class="fas fa-check-circle"></i> 已连接</span>
+          <span style="color:var(--muted);margin-left:6px">${sbConfig ? sbConfig.deviceName : ''}</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <span style="font-size:13px;color:var(--muted)">自动同步</span>
+          <label style="position:relative;display:inline-block;width:44px;height:24px">
+            <input type="checkbox" id="sb-autosync-toggle" ${sbConfig && sbConfig.autoSync ? 'checked' : ''} onchange="toggleAutoSync(this.checked)" style="opacity:0;width:0;height:0">
+            <span style="position:absolute;inset:0;background:${sbConfig && sbConfig.autoSync ? '#22c55e' : '#cbd5e1'};border-radius:999px;transition:.2s;cursor:pointer"></span>
+            <span style="position:absolute;top:2px;left:${sbConfig && sbConfig.autoSync ? '22px' : '2px'};width:20px;height:20px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)"></span>
+          </label>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">上次同步：${sbLastSyncText()}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="sbPullAll()"><i class="fas fa-cloud-download-alt"></i> 从云端拉取</button>
+          <button class="btn btn-accent btn-sm" onclick="sbUploadAll()"><i class="fas fa-cloud-upload-alt"></i> 上传到云端</button>
+          <button class="btn btn-outline btn-sm" onclick="sbDisconnect()"><i class="fas fa-unlink"></i> 断开</button>
+        </div>
+      ` : `
+        <div style="margin-bottom:10px">
+          <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:4px">Project URL</label>
+          <input id="sb-url" class="input-field" placeholder="https://xxxx.supabase.co" style="font-size:13px">
+        </div>
+        <div style="margin-bottom:10px">
+          <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:4px">anon public key</label>
+          <input id="sb-key" class="input-field" placeholder="eyJhbGci..." style="font-size:13px">
+        </div>
+        <div style="margin-bottom:12px">
+          <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:4px">设备名称（可选）</label>
+          <input id="sb-devname" class="input-field" placeholder="我的iPhone" style="font-size:13px">
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="sbConnect()"><i class="fas fa-link"></i> 连接 Supabase</button>
+        <details style="margin-top:12px;font-size:12px;color:var(--muted);line-height:1.7">
+          <summary style="cursor:pointer;color:var(--blue)">如何配置？点击查看详细步骤</summary>
+          <div style="padding:10px 4px">
+            <p style="margin:0 0 6px"><b>1.</b> 注册并登录 <a href="https://supabase.com" target="_blank" style="color:var(--blue)">supabase.com</a>（免费额度足够个人使用）</p>
+            <p style="margin:0 0 6px"><b>2.</b> 新建一个项目，记下 <b>Project URL</b> 和 <b>anon public key</b><br>（Project Settings → API）</p>
+            <p style="margin:0 0 6px"><b>3.</b> 在 SQL Editor 中执行下方建表语句（复制即可）：</p>
+            <pre style="background:#0c1929;color:#e2e8f0;padding:10px;border-radius:8px;overflow-x:auto;font-size:11px;margin:6px 0">${sbSqlSchema()}</pre>
+            <p style="margin:0 0 6px"><b>4.</b> 把 URL 和 anon key 填入上方输入框，点「连接」即可。</p>
+            <p style="margin:0;color:var(--muted)">每台设备只需配置一次，之后自动同步。</p>
+          </div>
+        </details>
+      `}
+    </div>
+    <div class="card">
+      <h3 style="font-size:15px;font-weight:700;margin:0 0 12px">数据导出</h3>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 10px">导出所有错题数据为JSON文本，可复制备份</p>
+      <button class="btn btn-primary btn-sm" onclick="exportData()"><i class="fas fa-download"></i> 导出数据</button>
+      <div id="export-area" class="hidden" style="margin-top:10px">
+        <textarea id="export-text" class="input-field" rows="6" readonly style="font-size:12px;font-family:monospace"></textarea>
+        <button class="btn btn-outline btn-sm" style="margin-top:6px" onclick="copyExport()"><i class="fas fa-copy"></i> 复制到剪贴板</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="font-size:15px;font-weight:700;margin:0 0 12px">数据导入</h3>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 10px">粘贴JSON文本导入错题数据</p>
+      <textarea id="import-text" class="input-field" rows="4" placeholder="在此粘贴JSON数据" style="font-size:12px;font-family:monospace"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+        <select id="import-mode" class="input-field" style="width:auto;padding:6px 28px 6px 10px;font-size:13px">
+          <option value="merge">合并（保留现有数据）</option>
+          <option value="overwrite">覆盖（替换所有数据）</option>
+        </select>
+        <button class="btn btn-accent btn-sm" onclick="importData()"><i class="fas fa-upload"></i> 导入</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="font-size:15px;font-weight:700;margin:0 0 12px">清空数据</h3>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 10px">删除你自己录入的全部错题（不含任何内置题，系统已不带内置错题）</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-danger btn-sm" onclick="clearAllData()"><i class="fas fa-trash-alt"></i> 清空所有错题</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="font-size:15px;font-weight:700;margin:0 0 12px">关于</h3>
+      <div style="font-size:13px;color:var(--muted);line-height:1.8">
+        <p style="margin:0"><b>AI行测错题管家</b> v1.0</p>
+        <p style="margin:0">面向公考备考人群的错题管理工具</p>
+        <p style="margin:0">当前错题总数：${questions.length}</p>
+        <p style="margin:0">所有数据默认存储在本地浏览器中，可连接 Supabase 实现多设备云同步</p>
+      </div>
+    </div>
+  `;
+}
+
+function exportData() {
+  const area = document.getElementById('export-area');
+  const text = document.getElementById('export-text');
+  area.classList.remove('hidden');
+  text.value = JSON.stringify(questions, null, 2);
+}
+
+function copyExport() {
+  const text = document.getElementById('export-text');
+  text.select();
+  navigator.clipboard.writeText(text.value).then(() => showToast('已复制到剪贴板')).catch(() => {
+    document.execCommand('copy');
+    showToast('已复制');
+  });
+}
+
+function importData() {
+  const text = document.getElementById('import-text').value.trim();
+  const mode = document.getElementById('import-mode').value;
+  if (!text) { showToast('请粘贴JSON数据'); return; }
+  try {
+    const data = JSON.parse(text);
+    if (!Array.isArray(data)) throw new Error('格式错误');
+    if (mode === 'overwrite') {
+      showConfirm('覆盖模式将替换所有现有数据，确定继续吗？', () => {
+        questions = data;
+        saveQuestions();
+        showToast('导入成功（覆盖模式）');
+        renderSettings();
+      });
+    } else {
+      const existingPrefixes = questions.map(q => q.question.slice(0, 20));
+      let added = 0;
+      data.forEach(q => {
+        if (!existingPrefixes.includes(q.question.slice(0, 20))) {
+          questions.push(q);
+          added++;
+        }
+      });
+      saveQuestions();
+      showToast(`导入成功，新增${added}道错题`);
+      renderSettings();
+    }
+  } catch(e) {
+    showToast('JSON格式错误，请检查数据');
+  }
+}
+
+function clearAllData() {
+  showConfirm('确定清空吗？你自己录入的全部错题都会被删除（系统无内置错题，删了就没了）。', () => {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(DAILY_KEY);
+    questions = [];
+    saveQuestions();
+    localStorage.setItem(SEED_KEY, String(SEED_VERSION));
+    // 若已连接云同步，同步清空远端本机数据
+    if (sbOnline) sbPushQuiet();
+    showToast('错题已全部清空');
+    renderSettings();
+  });
+}
+
+function restoreSeedData() {
+  let added = 0;
+  SEED_DATA.forEach(sq => {
+    const prefix = sq.question.slice(0, 20);
+    const dup = questions.some(q => q.question.slice(0, 20) === prefix);
+    if (!dup) { questions.push({...sq, photos: [], errorReasons: [...sq.errorReasons]}); added++; }
+  });
+  localStorage.setItem(SEED_KEY, String(SEED_VERSION));
+  saveQuestions();
+  showToast(added ? `已恢复 ${added} 道内置错题` : '内置错题都已存在，无需恢复');
+  renderSettings();
+}
+
+// ==================== INIT ====================
+function init() {
+  loadQuestions();
+  loadSeedData();
+  backfillTypes();
+  classifyVerbalTypes();
+  // 自动连接已配置的 Supabase（不阻塞渲染）
+  try { sbAutoConnect(); } catch(e) { console.warn(e); }
+
+  // Nav event
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const tab = item.dataset.tab;
+      switchTab(tab);
+    });
+  });
+
+  // Show home page by default
+  switchTab('home');
+}
+
+init();
+</script>
+</body>
+<!-- build: 0809k --></html>
