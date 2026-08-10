@@ -12,6 +12,7 @@
 <title>AI行测错题管家</title>
 <link href="https://cdn.staticfile.net/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 tailwind.config={theme:{extend:{colors:{primary:'#0c1929','primary-light':'#162544',accent:'#f97316',success:'#22c55e'}}}}
 </script>
@@ -157,6 +158,134 @@ const MODULE_TYPES = {
 };
 const ERROR_REASONS = ['概念理解错误','审题错误','方法忘记','计算错误','粗心','知识遗忘'];
 const ALL_MODULES = ['言语理解','判断推理','数量关系','资料分析','常识判断'];
+
+// ==================== SUPABASE CONFIG ====================
+const SUPABASE_URL = 'https://lcdvvctvkdppsefblcbd.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZHZ2Y3R2a2RwcHNlZmJsY2JkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzMDQ4NjEsImV4cCI6MjEwMTg4MDg2MX0.3hCiTrRORBLtn1l0b4ldrOOaDdJxK33a1fLPOFsRF3k';
+let sb = null;
+let sbUserId = null;
+let sbSyncing = false;
+let sbSyncStatus = 'offline'; // offline | syncing | synced | error
+let sbLastSync = null;
+
+// camelCase ↔ snake_case 转换
+function qToRow(q) {
+  return {
+    id: q.id, module: q.module||'', type: q.type||'', source: q.source||'',
+    question: q.question||'', option_a: q.optionA||'', option_b: q.optionB||'',
+    option_c: q.optionC||'', option_d: q.optionD||'', my_answer: q.myAnswer||'',
+    correct_answer: q.correctAnswer||'', accuracy: q.accuracy||'',
+    error_reasons: q.errorReasons||[], analysis: q.analysis||'', notes: q.notes||'',
+    photos: q.photos||[], create_date: q.createDate||'', error_count: q.errorCount||1,
+    review_status: q.reviewStatus||'待复习', last_review_date: q.lastReviewDate||null,
+    is_seed: !!q.isSeed
+  };
+}
+function rowToQ(r) {
+  return {
+    id: r.id, module: r.module||'', type: r.type||'', source: r.source||'',
+    question: r.question||'', optionA: r.option_a||'', optionB: r.option_b||'',
+    optionC: r.option_c||'', optionD: r.option_d||'', myAnswer: r.my_answer||'',
+    correctAnswer: r.correct_answer||'', accuracy: r.accuracy||'',
+    errorReasons: r.error_reasons||[], analysis: r.analysis||'', notes: r.notes||'',
+    photos: r.photos||[], createDate: r.create_date||'', errorCount: r.error_count||1,
+    reviewStatus: r.review_status||'待复习', lastReviewDate: r.last_review_date||null,
+    isSeed: !!r.is_seed
+  };
+}
+
+// 上传本地数据到云端
+async function sbSyncToCloud() {
+  if (!sb || !sbUserId || sbSyncing) return;
+  sbSyncing = true;
+  sbSyncStatus = 'syncing';
+  updateSyncIndicator();
+  try {
+    for (const q of questions) {
+      const row = qToRow(q);
+      row.user_id = sbUserId;
+      const { error } = await sb.from('questions').upsert(row, { onConflict: 'id' });
+      if (error) console.warn('Supabase upsert error:', error.message);
+    }
+    sbSyncStatus = 'synced';
+    sbLastSync = Date.now();
+    localStorage.setItem('xct_sb_last_sync', String(sbLastSync));
+  } catch(e) {
+    sbSyncStatus = 'error';
+    console.warn('Supabase sync error:', e.message);
+  }
+  sbSyncing = false;
+  updateSyncIndicator();
+}
+
+// 从云端拉取数据
+async function sbSyncFromCloud() {
+  if (!sb || !sbUserId) return;
+  sbSyncing = true;
+  sbSyncStatus = 'syncing';
+  updateSyncIndicator();
+  try {
+    const { data, error } = await sb.from('questions').select('*').eq('user_id', sbUserId);
+    if (error) throw error;
+    if (data && data.length > 0) {
+      const cloudQs = data.map(rowToQ);
+      // 合并策略：以 id 为键，云端覆盖本地
+      const localMap = {};
+      questions.forEach(q => { localMap[q.id] = q; });
+      cloudQs.forEach(q => { localMap[q.id] = q; });
+      questions = Object.values(localMap);
+      saveQuestionsLocal();
+    }
+    sbSyncStatus = 'synced';
+    sbLastSync = Date.now();
+    localStorage.setItem('xct_sb_last_sync', String(sbLastSync));
+  } catch(e) {
+    sbSyncStatus = 'error';
+    console.warn('Supabase pull error:', e.message);
+  }
+  sbSyncing = false;
+  updateSyncIndicator();
+}
+
+// 仅保存到 localStorage（不触发云同步）
+function saveQuestionsLocal() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(questions)); } catch(e) {}
+}
+
+// 防抖的云同步（保存时调用）
+let _syncTimer = null;
+function sbSyncDebounced() {
+  if (_syncTimer) clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(() => sbSyncToCloud(), 2000);
+}
+
+// 更新同步状态指示器
+function updateSyncIndicator() {
+  const el = document.getElementById('sync-indicator');
+  if (!el) return;
+  const icons = { offline: 'fa-cloud', syncing: 'fa-cloud-arrow-up', synced: 'fa-cloud-check', error: 'fa-cloud-exclamation' };
+  const colors = { offline: '#9ca3af', syncing: '#f59e0b', synced: '#22c55e', error: '#ef4444' };
+  const tips = { offline: '未连接', syncing: '同步中…', synced: '已同步', error: '同步失败' };
+  el.innerHTML = `<i class="fas ${icons[sbSyncStatus]||icons.offline}" style="color:${colors[sbSyncStatus]||colors.offline};font-size:14px"></i>`;
+  el.title = tips[sbSyncStatus] || '';
+}
+
+// 匿名登录 + 初始化同步
+async function sbInit() {
+  try {
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const { data, error } = await sb.auth.signInAnonymously();
+    if (error) throw error;
+    sbUserId = data.user.id;
+    // 先拉云端数据，再上传本地数据
+    await sbSyncFromCloud();
+    await sbSyncToCloud();
+  } catch(e) {
+    sbSyncStatus = 'error';
+    console.warn('Supabase init error:', e.message);
+    updateSyncIndicator();
+  }
+}
 
 // ==================== SEED DATA (22 questions) ====================
 const SEED_DATA = [
@@ -467,6 +596,7 @@ function loadQuestions() {
 
 function saveQuestions() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(questions)); } catch(e) {}
+  if (sb && sbUserId) sbSyncDebounced();
 }
 
 function loadDailyStats() {
@@ -686,7 +816,7 @@ function renderHome() {
   el.innerHTML = `
     <div class="header-bar">
       <h1>AI行测错题管家</h1>
-      <p>公考备考，错题不再错</p>
+      <p>公考备考，错题不再错 <span id="sync-indicator" style="margin-left:6px;cursor:help" title="未连接"><i class="fas fa-cloud" style="color:#9ca3af;font-size:14px"></i></span></p>
       <div class="quick-actions">
         <div class="quick-action" onclick="switchTab('input')"><i class="fas fa-pen"></i>录入错题</div>
         <div class="quick-action" onclick="startReview()"><i class="fas fa-redo"></i>开始复习</div>
@@ -2284,9 +2414,17 @@ function init() {
 
   // Show home page by default
   switchTab('home');
+
+  // Supabase 云同步初始化
+  sbInit().then(() => {
+    // 云端数据拉取后可能需要重新渲染
+    renderHome();
+    if (errorsViewMode === 'list') renderErrors();
+    updateSyncIndicator();
+  });
 }
 
 init();
 </script>
 </body>
-<!-- build: 0809k --></html>
+<!-- build: 0810a --></html>
