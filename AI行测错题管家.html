@@ -268,6 +268,21 @@ function updateSyncIndicator() {
   const tips = { offline: '未连接', syncing: '同步中…', synced: '已同步', error: '同步失败' };
   el.innerHTML = `<i class="fas ${icons[sbSyncStatus]||icons.offline}" style="color:${colors[sbSyncStatus]||colors.offline};font-size:14px"></i>`;
   el.title = tips[sbSyncStatus] || '';
+  // 同步更新设置页面的状态
+  const badge = document.getElementById('sb-status-badge');
+  if (badge) {
+    badge.textContent = tips[sbSyncStatus] || tips.offline;
+    badge.style.background = colors[sbSyncStatus] || colors.offline;
+  }
+  const detail = document.getElementById('sb-status-detail');
+  if (detail) {
+    detail.textContent = tips[sbSyncStatus] || tips.offline;
+    detail.style.color = colors[sbSyncStatus] || colors.offline;
+  }
+  const lastSyncEl = document.getElementById('sb-last-sync');
+  if (lastSyncEl && sbLastSync) {
+    lastSyncEl.textContent = new Date(sbLastSync).toLocaleString('zh-CN');
+  }
 }
 
 // 匿名登录 + 初始化同步
@@ -285,6 +300,30 @@ async function sbInit() {
     console.warn('Supabase init error:', e.message);
     updateSyncIndicator();
   }
+}
+
+async function sbManualSync(mode) {
+  if (sbSyncing) { showToast('同步进行中，请稍后再试'); return; }
+  if (!sb || !sbUserId) {
+    showToast('云同步未连接，正在重新初始化…');
+    await sbInit();
+    if (!sb || !sbUserId) { showToast('云同步连接失败，请检查网络后重试'); return; }
+  }
+  if (mode === 'push') {
+    await sbSyncToCloud();
+    if (sbSyncStatus === 'synced') showToast(`上传成功，共 ${questions.length} 道错题已同步到云端`);
+    else showToast('上传失败：' + (sbSyncStatus === 'error' ? '网络或服务异常' : '未知错误'));
+  } else {
+    await sbSyncFromCloud();
+    if (sbSyncStatus === 'synced') {
+      showToast(`拉取成功，本地共 ${questions.length} 道错题`);
+      renderHome();
+      if (errorsViewMode === 'list') renderErrors();
+    } else {
+      showToast('拉取失败：' + (sbSyncStatus === 'error' ? '网络或服务异常' : '未知错误'));
+    }
+  }
+  if (document.getElementById('page-settings').innerHTML) renderSettings();
 }
 
 // ==================== SEED DATA (22 questions) ====================
@@ -2282,8 +2321,32 @@ function renderStats() {
 // ==================== SETTINGS PAGE ====================
 function renderSettings() {
   const el = document.getElementById('page-settings');
+  const syncStatusText = {offline:'未连接',syncing:'同步中…',synced:'已同步',error:'同步失败'};
+  const syncStatusColor = {offline:'var(--muted)',syncing:'var(--accent)',synced:'var(--success)',error:'var(--danger)'};
+  const lastSyncText = sbLastSync ? new Date(sbLastSync).toLocaleString('zh-CN') : '暂无';
   el.innerHTML = `
     <h2 style="font-size:18px;font-weight:700;margin:0 0 16px">设置</h2>
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <i class="fas fa-cloud-arrow-up" style="font-size:18px;color:var(--primary)"></i>
+        <h3 style="font-size:15px;font-weight:700;margin:0">云同步</h3>
+        <span id="sb-status-badge" style="margin-left:auto;font-size:12px;font-weight:600;padding:3px 10px;border-radius:12px;color:#fff;background:${syncStatusColor[sbSyncStatus]||syncStatusColor.offline}">${syncStatusText[sbSyncStatus]||syncStatusText.offline}</span>
+      </div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.9;margin-bottom:14px">
+        <p style="margin:0">错题数据自动同步到云端，换设备也能看到同一份数据</p>
+        <div style="background:var(--bg);border-radius:8px;padding:10px 14px;margin-top:8px">
+          <div style="display:flex;justify-content:space-between;padding:4px 0"><span>同步状态</span><span id="sb-status-detail" style="color:${syncStatusColor[sbSyncStatus]||syncStatusColor.offline};font-weight:600">${syncStatusText[sbSyncStatus]||syncStatusText.offline}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0"><span>上次同步</span><span id="sb-last-sync">${lastSyncText}</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0"><span>本地错题数</span><span>${questions.length} 道</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0"><span>登录方式</span><span>匿名登录</span></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" onclick="sbManualSync('push')"><i class="fas fa-cloud-arrow-up"></i> 上传到云端</button>
+        <button class="btn btn-outline btn-sm" onclick="sbManualSync('pull')"><i class="fas fa-cloud-arrow-down"></i> 从云端拉取</button>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin:10px 0 0;line-height:1.6">每次录入/编辑/删除错题后会自动上传。打开页面时会自动拉取云端数据并与本地合并。也可点击上方按钮手动同步。</p>
+    </div>
     <div class="card">
       <h3 style="font-size:15px;font-weight:700;margin:0 0 12px">数据导出</h3>
       <p style="font-size:13px;color:var(--muted);margin:0 0 10px">导出所有错题数据为JSON文本，可复制备份</p>
@@ -2427,4 +2490,4 @@ function init() {
 init();
 </script>
 </body>
-<!-- build: 0810a --></html>
+<!-- build: 0810b --></html>
