@@ -2110,6 +2110,27 @@ function renderErrorList(el) {
   const allSources = [...new Set(questions.map(q => q.source || '未填来源').filter(Boolean))];
   const title = errorFilters.module === '全部' ? '全部错题' : errorFilters.module;
   const selCount = Object.keys(batchSelectedIds).length;
+  
+  // 按材料组分组渲染
+  const materialGroups = {};
+  const standaloneQuestions = [];
+  filtered.forEach(q => {
+    if (q.materialId) {
+      if (!materialGroups[q.materialId]) materialGroups[q.materialId] = [];
+      materialGroups[q.materialId].push(q);
+    } else {
+      standaloneQuestions.push(q);
+    }
+  });
+  
+  // 生成渲染内容：先渲染材料组，再渲染独立题
+  let cardsHtml = '';
+  Object.keys(materialGroups).forEach(mid => {
+    cardsHtml += renderMaterialGroup(materialGroups[mid]);
+  });
+  standaloneQuestions.forEach(q => {
+    cardsHtml += renderErrorCard(q);
+  });
 
   el.innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
@@ -2126,6 +2147,7 @@ function renderErrorList(el) {
         <span style="font-size:13px;font-weight:700;color:var(--danger)">已选 ${selCount} 道</span>
         <button class="btn btn-outline btn-sm" onclick="batchSelectAll()">全选</button>
         <button class="btn btn-outline btn-sm" onclick="batchSelectedIds={};renderErrors()">清空选择</button>
+        ${errorFilters.module === '资料分析' ? `<button class="btn btn-primary btn-sm" onclick="batchGroupSelected()"><i class="fas fa-layer-group"></i> 分组为材料组</button>` : ''}
         <button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="batchDeleteSelected()"><i class="fas fa-trash"></i> 删除选中${selCount?'('+selCount+')':''}</button>
       </div>
       <p style="font-size:11px;color:var(--muted);margin:8px 0 0">点击卡片即可勾选要删除的错题</p>
@@ -2151,10 +2173,76 @@ function renderErrorList(el) {
       </div>
     </div>`}
     <div id="error-cards">
-      ${filtered.length === 0 ? '<div class="empty-state"><i class="fas fa-inbox"></i><p>暂无符合条件的错题</p></div>' :
-        filtered.map(q => renderErrorCard(q)).join('')}
+      ${filtered.length === 0 ? '<div class="empty-state"><i class="fas fa-inbox"></i><p>暂无符合条件的错题</p></div>' : cardsHtml}
     </div>
   `;
+}
+
+function renderMaterialGroup(groupQuestions) {
+  if (!groupQuestions.length) return '';
+  const first = groupQuestions[0];
+  const materialText = first.materialText || '';
+  const materialChartText = first.materialChartText || '';
+  const materialChartPhotos = first.materialChartPhotos || [];
+  const masteredCount = groupQuestions.filter(q => q.reviewStatus === '已掌握').length;
+  const total = groupQuestions.length;
+  const isExpanded = expandedCardId && groupQuestions.some(q => q.id === expandedCardId);
+  
+  let materialDisplay = '';
+  if (materialChartPhotos.length > 0) {
+    materialDisplay = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+      ${materialChartPhotos.map(p => `<img src="${p}" style="max-width:100%;max-height:200px;border-radius:6px" onclick="previewPhoto('${p}')">`).join('')}
+    </div>`;
+  } else if (materialChartText) {
+    materialDisplay = `<div class="chart-box" style="font-size:12px;line-height:1.6;margin-bottom:8px">${renderChartHtml(materialChartText)}</div>`;
+  } else if (materialText) {
+    materialDisplay = `<div style="background:#f8f9fa;padding:10px;border-radius:6px;font-size:12px;line-height:1.6;margin-bottom:8px;white-space:pre-wrap">${escHtml(materialText.slice(0, 200))}${materialText.length > 200 ? '...' : ''}</div>`;
+  }
+  
+  const subQuestionsHtml = groupQuestions.map((q, idx) => {
+    const isSubExpanded = expandedCardId === q.id;
+    return `<div style="padding:8px 0;${idx < groupQuestions.length - 1 ? 'border-bottom:1px solid var(--border)' : ''}">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;cursor:pointer" onclick="toggleCardExpand('${q.id}')">
+        <span style="font-size:11px;color:var(--muted);font-weight:600">小题${idx + 1}</span>
+        ${q.accuracy ? `<span style="font-size:10px;color:#059669;background:rgba(5,150,105,.1);padding:1px 6px;border-radius:8px;font-weight:600">${q.accuracy}%</span>` : ''}
+        ${q.type ? `<span style="font-size:10px;color:#1e40af;background:rgba(59,130,246,.12);padding:1px 6px;border-radius:8px;font-weight:600">${q.type}</span>` : ''}
+        <span style="font-size:12px;color:var(--muted);margin-left:auto">${q.reviewStatus === '已掌握' ? '✓' : q.reviewStatus === '模糊' ? '?' : '○'}</span>
+        <i class="fas fa-chevron-${isSubExpanded ? 'up' : 'down'}" style="color:var(--muted);font-size:10px"></i>
+      </div>
+      <div style="font-size:13px;line-height:1.5;margin-bottom:6px">${q.question.slice(0, 60)}${q.question.length > 60 ? '...' : ''}</div>
+      ${isSubExpanded ? `
+        <div style="display:flex;gap:6px;margin-bottom:6px">
+          <span style="font-size:11px">我答<b style="color:var(--danger)">${q.myAnswer}</b></span>
+          <span style="font-size:11px">正确<b style="color:var(--success)">${q.correctAnswer}</b></span>
+        </div>
+        ${q.optionA ? `<div class="option-item ${q.myAnswer==='A'?'my-wrong':''} ${q.correctAnswer==='A'?'correct':''}">A. ${renderMathInText(q.optionA)}</div>` : ''}
+        ${q.optionB ? `<div class="option-item ${q.myAnswer==='B'?'my-wrong':''} ${q.correctAnswer==='B'?'correct':''}">B. ${renderMathInText(q.optionB)}</div>` : ''}
+        ${q.optionC ? `<div class="option-item ${q.myAnswer==='C'?'my-wrong':''} ${q.correctAnswer==='C'?'correct':''}">C. ${renderMathInText(q.optionC)}</div>` : ''}
+        ${q.optionD ? `<div class="option-item ${q.myAnswer==='D'?'my-wrong':''} ${q.correctAnswer==='D'?'correct':''}">D. ${renderMathInText(q.optionD)}</div>` : ''}
+        ${q.analysis ? `<div class="detail-section" style="margin-top:8px"><h4>解析</h4><p style="white-space:pre-line">${formatAnalysis(q.analysis)}</p></div>` : ''}
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();editQuestion('${q.id}')"><i class="fas fa-pen"></i> 编辑</button>
+          <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="event.stopPropagation();deleteQuestion('${q.id}')"><i class="fas fa-trash"></i> 删除</button>
+        </div>
+      ` : ''}
+    </div>`;
+  }).join('');
+  
+  return `<div class="card" style="border-left:4px solid var(--blue);margin-bottom:12px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <div style="width:32px;height:32px;border-radius:10px;background:rgba(59,130,246,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <i class="fas fa-layer-group" style="color:var(--blue);font-size:14px"></i>
+      </div>
+      <div style="min-width:0;flex:1">
+        <div style="font-size:13px;font-weight:700">材料组（${total}题）</div>
+        <div style="font-size:11px;color:var(--muted)">已掌握 ${masteredCount} · 待复习 ${total - masteredCount}</div>
+      </div>
+    </div>
+    ${materialDisplay}
+    <div style="margin-top:12px">
+      ${subQuestionsHtml}
+    </div>
+  </div>`;
 }
 
 function exportForPrint() {
@@ -2289,6 +2377,42 @@ function batchDeleteSelected() {
     expandedCardId = null;
     renderErrors();
     showToast(`已删除 ${ids.length} 道错题`);
+  });
+}
+
+function batchGroupSelected() {
+  const ids = Object.keys(batchSelectedIds);
+  if (!ids.length) { showToast('请先点击卡片勾选要分组的错题'); return; }
+  if (ids.length < 2) { showToast('至少选择2道题才能分组'); return; }
+  
+  const selectedQuestions = questions.filter(q => batchSelectedIds[q.id]);
+  const nonDataAnalysis = selectedQuestions.filter(q => q.module !== '资料分析');
+  
+  if (nonDataAnalysis.length > 0) {
+    showToast('只能对资料分析模块的题目进行分组');
+    return;
+  }
+  
+  showConfirm(`确定将选中的 ${ids.length} 道题分组为同一个材料组吗？`, () => {
+    const newMaterialId = 'mg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+    
+    selectedQuestions.forEach(q => {
+      q.materialId = newMaterialId;
+    });
+    
+    saveQuestions();
+    batchSelectedIds = {};
+    batchDeleteMode = false;
+    expandedCardId = null;
+    renderErrors();
+    showToast(`已将 ${ids.length} 道题分组为材料组`);
+    
+    // 提示用户编辑材料内容
+    setTimeout(() => {
+      showConfirm('是否现在编辑材料组的材料文字和图表？', () => {
+        editQuestion(selectedQuestions[0].id);
+      });
+    }, 500);
   });
 }
 
@@ -2468,6 +2592,19 @@ function editQuestion(id) {
       <button class="btn btn-outline btn-sm" style="margin-bottom:12px" onclick="document.getElementById('edit-photoInput').click()"><i class="fas fa-camera"></i> 添加照片</button>
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">图表 / 表格数据（可选，资料分析推荐）</label>
       <textarea id="edit-chart" class="input-field" rows="3" style="margin-bottom:12px" placeholder="表格文字直接粘贴（Excel 复制的、| 分隔的都行），或贴图片链接">${q.chart||''}</textarea>
+      ${q.module === '资料分析' ? `
+      <div style="background:#f8f9fa;border-radius:8px;padding:12px;margin-bottom:12px">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:8px">
+          <i class="fas fa-layer-group" style="color:var(--primary);margin-right:4px"></i>材料组设置（资料分析专用）
+        </label>
+        <p style="font-size:11px;color:var(--muted);margin:0 0 8px">材料组用于将多道小题关联到同一段材料（题干背景文字/图表）</p>
+        <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">材料文字（多题共用的背景材料）</label>
+        <textarea id="edit-material-text" class="input-field" rows="4" style="margin-bottom:8px;font-size:13px" placeholder="粘贴资料分析的背景材料文字（多题共用）">${q.materialText||''}</textarea>
+        <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">材料图表数据（可选）</label>
+        <textarea id="edit-material-chart" class="input-field" rows="3" style="margin-bottom:8px;font-size:13px" placeholder="表格数据：每行用 | 分隔列，或直接粘贴 Excel 表格">${q.materialChartText||''}</textarea>
+        ${q.materialId ? `<div style="font-size:11px;color:var(--muted);margin-top:4px">材料组ID: ${q.materialId}（同组其他题会自动同步）</div>` : ''}
+      </div>
+      ` : ''}
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">选项A</label>
       <input id="edit-optA" class="input-field" value="${(q.optionA||'').replace(/"/g,'&quot;')}" style="margin-bottom:8px">
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">选项B</label>
@@ -2532,6 +2669,38 @@ function saveEdit(id) {
   q.errorReasons = reasons;
   q.analysis = document.getElementById('edit-analysis').value;
   q.chart = document.getElementById('edit-chart') ? document.getElementById('edit-chart').value.trim() : (q.chart || '');
+  
+  // 资料分析材料组字段处理
+  if (q.module === '资料分析') {
+    const materialText = document.getElementById('edit-material-text') ? document.getElementById('edit-material-text').value.trim() : '';
+    const materialChart = document.getElementById('edit-material-chart') ? document.getElementById('edit-material-chart').value.trim() : '';
+    
+    // 如果有材料内容但没有 materialId，生成新的
+    if ((materialText || materialChart) && !q.materialId) {
+      q.materialId = 'mg_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+    }
+    
+    // 更新材料字段
+    q.materialText = materialText;
+    q.materialChartText = materialChart;
+    
+    // 如果有 materialId，同步更新同组其他题
+    if (q.materialId) {
+      let syncCount = 0;
+      questions.forEach(other => {
+        if (other.id !== q.id && other.materialId === q.materialId) {
+          other.materialText = materialText;
+          other.materialChartText = materialChart;
+          other.materialChartPhotos = q.materialChartPhotos || [];
+          syncCount++;
+        }
+      });
+      if (syncCount > 0) {
+        console.log(`同步更新了 ${syncCount} 道同组题目的材料`);
+      }
+    }
+  }
+  
   saveQuestions();
   showToast('已保存修改');
   closeDetail();
@@ -2936,7 +3105,7 @@ function renderSettings() {
         <p style="margin:0">面向公考备考人群的错题管理工具</p>
         <p style="margin:0">当前错题总数：${questions.length}</p>
         <p style="margin:0">所有数据存储在本地浏览器中，无内置错题</p>
-        <p style="margin:0">页面版本：<b style="color:var(--primary)">0811j</b>（公式渲染+图表+云同步合并版）</p>
+        <p style="margin:0">页面版本：<b style="color:var(--primary)">0811k</b>（公式渲染+图表+云同步合并版）</p>
       </div>
     </div>
   `;
@@ -3051,4 +3220,4 @@ window.__onKatexReady = function() { try { renderPage(currentTab); if (typeof up
 init();
 </script>
 </body>
-<!-- build: 0811j --></html>
+<!-- build: 0811k --></html>
