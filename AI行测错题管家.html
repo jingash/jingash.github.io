@@ -642,7 +642,7 @@ let inputMode = 'single';
 let batchModule = '';
 let batchText = '';
 let batchParsed = null;
-let errorFilters = { module: '全部', type: '全部', source: '全部', sort: '最新' };
+let errorFilters = { module: '全部', type: '全部', source: '全部', accMin: 0, accMax: 100 };
 let expandedCardId = null;
 let errorsViewMode = 'categories';
 let batchDeleteMode = false;
@@ -1614,9 +1614,34 @@ function getFilteredQuestions() {
   if (errorFilters.module !== '全部') filtered = filtered.filter(q => q.module === errorFilters.module);
   if (errorFilters.type !== '全部') filtered = filtered.filter(q => q.type === errorFilters.type);
   if (errorFilters.source !== '全部') filtered = filtered.filter(q => (q.source || '未填来源') === errorFilters.source);
-  if (errorFilters.sort === '错误次数最多') filtered.sort((a,b) => b.errorCount - a.errorCount);
-  else filtered.sort((a,b) => (b.createDate||'').localeCompare(a.createDate||''));
+  // 正确率区间筛选：全区间(0-100)显示全部（含未填）；其他区间只含已填正确率且在区间内的题
+  if (!(errorFilters.accMin === 0 && errorFilters.accMax === 100)) {
+    const lo = Math.min(errorFilters.accMin, errorFilters.accMax);
+    const hi = Math.max(errorFilters.accMin, errorFilters.accMax);
+    filtered = filtered.filter(q => q.accuracy !== '' && q.accuracy != null && !isNaN(Number(q.accuracy)) && Number(q.accuracy) >= lo && Number(q.accuracy) <= hi);
+  }
+  filtered.sort((a,b) => (b.createDate||'').localeCompare(a.createDate||''));
   return filtered;
+}
+
+function setAccFilter(which, val) {
+  const v = Number(val);
+  if (which === 'min') {
+    errorFilters.accMin = v;
+    if (errorFilters.accMin > errorFilters.accMax) {
+      errorFilters.accMax = errorFilters.accMin;
+      const el = document.getElementById('filter-acc-max');
+      if (el) el.value = String(errorFilters.accMax);
+    }
+  } else {
+    errorFilters.accMax = v;
+    if (errorFilters.accMax < errorFilters.accMin) {
+      errorFilters.accMin = errorFilters.accMax;
+      const el = document.getElementById('filter-acc-min');
+      if (el) el.value = String(errorFilters.accMin);
+    }
+  }
+  renderErrors();
 }
 
 function renderErrorList(el) {
@@ -1663,9 +1688,12 @@ function renderErrorList(el) {
           <option value="全部">全部来源</option>
           ${allSources.map(s => `<option value="${s}" ${errorFilters.source===s?'selected':''}>${s}</option>`).join('')}
         </select>
-        <select class="input-field" style="width:auto;flex:1;min-width:100px;padding:6px 28px 6px 10px;font-size:13px" onchange="errorFilters.sort=this.value;renderErrors()">
-          <option value="最新" ${errorFilters.sort==='最新'?'selected':''}>最新</option>
-          <option value="错误次数最多" ${errorFilters.sort==='错误次数最多'?'selected':''}>错误次数最多</option>
+        <select id="filter-acc-min" class="input-field" style="width:auto;flex:1;min-width:90px;padding:6px 28px 6px 10px;font-size:13px" onchange="setAccFilter('min',this.value)">
+          ${[0,10,20,30,40,50,60,70,80,90,100].map(v => `<option value="${v}" ${errorFilters.accMin===v?'selected':''}>${v}%</option>`).join('')}
+        </select>
+        <span style="font-size:12px;color:var(--muted);white-space:nowrap">至</span>
+        <select id="filter-acc-max" class="input-field" style="width:auto;flex:1;min-width:90px;padding:6px 28px 6px 10px;font-size:13px" onchange="setAccFilter('max',this.value)">
+          ${[0,10,20,30,40,50,60,70,80,90,100].map(v => `<option value="${v}" ${errorFilters.accMax===v?'selected':''}>${v}%</option>`).join('')}
         </select>
         <button class="btn btn-primary btn-sm" onclick="exportForPrint()" style="padding:6px 12px;font-size:13px;white-space:nowrap"><i class="fas fa-print"></i> 导出打印</button>
       </div>
@@ -1817,6 +1845,8 @@ function backToErrorCategories() {
   errorsViewMode = 'categories';
   errorFilters.type = '全部';
   errorFilters.source = '全部';
+  errorFilters.accMin = 0;
+  errorFilters.accMax = 100;
   batchDeleteMode = false;
   batchSelectedIds = {};
   renderErrors();
@@ -2052,19 +2082,50 @@ function previewPhoto(base64) {
 }
 
 // ==================== REVIEW ====================
+// 打乱数组顺序（Fisher-Yates）
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// 打开复习板块选择面板
 function startReview() {
-  reviewQueue = questions.filter(q => q.reviewStatus === '待复习' || q.reviewStatus === '模糊')
-    .sort((a,b) => {
-      if (b.errorCount !== a.errorCount) return b.errorCount - a.errorCount;
-      const aDate = a.lastReviewDate || '0000-00-00';
-      const bDate = b.lastReviewDate || '0000-00-00';
-      return aDate.localeCompare(bDate);
-    });
+  const pending = questions.filter(q => q.reviewStatus === '待复习' || q.reviewStatus === '模糊');
+  const countBy = m => pending.filter(q => q.module === m).length;
+  const el = document.getElementById('review-modal');
+  el.innerHTML = `<div class="modal-overlay" style="align-items:center" onclick="if(event.target===this){closeReviewModal()}">
+    <div class="modal-content" style="border-radius:20px;max-height:80vh;overflow-y:auto" onclick="event.stopPropagation()">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <h3 style="font-size:16px;font-weight:700;margin:0">选择本次复习范围</h3>
+        <button class="btn btn-outline btn-sm" onclick="closeReviewModal()"><i class="fas fa-times"></i> 取消</button>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 14px">题目顺序将随机打乱。括号内为待复习数量。</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <button class="btn btn-primary" style="grid-column:1/-1" onclick="confirmStartReview('全部')">
+          <i class="fas fa-layer-group"></i> 全部板块（${pending.length} 道）
+        </button>
+        ${ALL_MODULES.map(m => `<button class="btn btn-outline" onclick="confirmStartReview('${m}')" ${countBy(m)===0?'style="opacity:.45"':''}>
+          ${m}（${countBy(m)} 道）
+        </button>`).join('')}
+      </div>
+    </div>
+  </div>`;
+  el.className = '';
+}
+
+function confirmStartReview(module) {
+  let pool = questions.filter(q => q.reviewStatus === '待复习' || q.reviewStatus === '模糊');
+  if (module !== '全部') pool = pool.filter(q => q.module === module);
+  reviewQueue = shuffleArray(pool);
   reviewIndex = 0;
   reviewResults = [];
 
   if (reviewQueue.length === 0) {
-    showToast('暂无待复习的错题，继续保持！');
+    closeReviewModal();
+    showToast(module === '全部' ? '暂无待复习的错题，继续保持！' : `「${module}」暂无待复习的错题`);
     return;
   }
   showReviewQuestion();
