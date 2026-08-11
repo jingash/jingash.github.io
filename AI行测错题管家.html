@@ -179,6 +179,20 @@ let sbSyncStatus = 'offline'; // offline | syncing | synced | error
 let sbLastSync = null;
 let sbHasChartCol = null; // 云端是否已有 chart 列（null=未知，启动时自动探测）
 
+// ==================== 删除标记（tombstone）：让删除操作也能跨设备同步 ====================
+let deletedIds = [];
+function loadDeletedIds() {
+  try { deletedIds = JSON.parse(localStorage.getItem('xct_deleted_ids') || '[]'); if (!Array.isArray(deletedIds)) deletedIds = []; } catch(e) { deletedIds = []; }
+}
+function saveDeletedIds() {
+  try { deletedIds = deletedIds.slice(-500); localStorage.setItem('xct_deleted_ids', JSON.stringify(deletedIds)); } catch(e) {}
+}
+function markDeleted(ids) {
+  let changed = false;
+  ids.forEach(id => { if (id && !deletedIds.includes(id)) { deletedIds.push(id); changed = true; } });
+  if (changed) saveDeletedIds();
+}
+
 // camelCase ↔ snake_case 转换
 function qToRow(q) {
   const row = {
@@ -215,6 +229,11 @@ async function sbSyncToCloud() {
   sbSyncStatus = 'syncing';
   updateSyncIndicator();
   try {
+    // 先同步删除：把本地已删除的错题从云端清掉
+    if (deletedIds.length) {
+      const { error: delErr } = await sb.from('questions').delete().in('id', deletedIds);
+      if (delErr) console.warn('Supabase delete error:', delErr.message);
+    }
     let upsertErrCount = 0;
     for (const q of questions) {
       const row = qToRow(q);
@@ -232,6 +251,10 @@ async function sbSyncToCloud() {
     const { error: kvErr } = await sb.from('kv').upsert(
       { k: 'daily', v: loadDailyStats() }, { onConflict: 'k' });
     if (kvErr) console.warn('Supabase kv upsert error:', kvErr.message);
+    // 删除标记一并上传，其他设备拉取后会执行同样的删除
+    const { error: kvErr2 } = await sb.from('kv').upsert(
+      { k: 'deleted', v: deletedIds }, { onConflict: 'k' });
+    if (kvErr2) console.warn('Supabase kv(deleted) upsert error:', kvErr2.message);
     sbSyncStatus = 'synced';
     sbLastSync = Date.now();
     localStorage.setItem('xct_sb_last_sync', String(sbLastSync));
@@ -252,8 +275,18 @@ async function sbSyncFromCloud() {
   try {
     const { data, error } = await sb.from('questions').select('*').eq('user_id', sbUserId);
     if (error) throw error;
+    // 先拉取删除标记：云端记录的已删错题，本地同步删除（跨设备删除生效的关键）
+    const { data: delData, error: delErr } = await sb.from('kv').select('k,v').eq('k', 'deleted');
+    if (!delErr && delData && delData.length > 0 && Array.isArray(delData[0].v) && delData[0].v.length) {
+      const cloudDeleted = new Set(delData[0].v);
+      const beforeLen = questions.length;
+      questions = questions.filter(q => !cloudDeleted.has(q.id));
+      let tombChanged = questions.length !== beforeLen;
+      cloudDeleted.forEach(id => { if (!deletedIds.includes(id)) { deletedIds.push(id); tombChanged = true; } });
+      if (tombChanged) { saveDeletedIds(); saveQuestionsLocal(); }
+    }
     if (data && data.length > 0) {
-      const cloudQs = data.map(rowToQ);
+      const cloudQs = data.map(rowToQ).filter(q => !deletedIds.includes(q.id));
       // 合并策略：以 id 为键，云端覆盖本地
       const localMap = {};
       questions.forEach(q => { localMap[q.id] = q; });
@@ -365,6 +398,25 @@ async function sbManualSync(mode) {
     }
   }
   if (document.getElementById('page-settings').innerHTML) renderSettings();
+}
+
+// 以本机数据为准，清理云端多出来的残留错题（如旧版本遗留的"删不掉"的数据）
+async function sbCleanCloudToLocal() {
+  if (!sb || !sbUserId) { showToast('云同步未连接，请稍后再试'); return; }
+  showConfirm('将把云端比本机多出的错题全部删除（以本机当前数据为准），确定继续？', async () => {
+    try {
+      const { data, error } = await sb.from('questions').select('id').eq('user_id', sbUserId);
+      if (error) { showToast('获取云端数据失败：' + error.message); return; }
+      const localSet = new Set(questions.map(q => q.id));
+      const staleIds = (data || []).map(r => r.id).filter(id => !localSet.has(id));
+      if (!staleIds.length) { showToast('云端没有多余数据，无需清理'); return; }
+      markDeleted(staleIds);
+      await sbSyncToCloud();
+      showToast(`已清理云端 ${staleIds.length} 道残留错题`);
+    } catch(e) {
+      showToast('清理失败：' + e.message);
+    }
+  });
 }
 
 // ==================== SEED DATA (22 questions) ====================
@@ -1952,6 +2004,7 @@ function batchDeleteSelected() {
   const ids = Object.keys(batchSelectedIds);
   if (!ids.length) { showToast('请先点击卡片勾选要删除的错题'); return; }
   showConfirm(`确定删除选中的 ${ids.length} 道错题吗？删除后无法恢复。`, () => {
+    markDeleted(ids);
     questions = questions.filter(q => !batchSelectedIds[q.id]);
     saveQuestions();
     batchSelectedIds = {};
@@ -2048,6 +2101,7 @@ function markMastered(id) {
 
 function deleteQuestion(id) {
   showConfirm('确定要删除这道错题吗？删除后无法恢复。', () => {
+    markDeleted([id]);
     questions = questions.filter(q => q.id !== id);
     saveQuestions();
     expandedCardId = null;
@@ -2564,8 +2618,9 @@ function renderSettings() {
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-primary btn-sm" onclick="sbManualSync('push')"><i class="fas fa-cloud-arrow-up"></i> 上传到云端</button>
         <button class="btn btn-outline btn-sm" onclick="sbManualSync('pull')"><i class="fas fa-cloud-arrow-down"></i> 从云端拉取</button>
+        <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="sbCleanCloudToLocal()"><i class="fas fa-broom"></i> 清理云端残留（以本机为准）</button>
       </div>
-      <p style="font-size:11px;color:var(--muted);margin:10px 0 0;line-height:1.6">每次录入/编辑/删除错题后会自动上传。打开页面时会自动拉取云端数据并与本地合并。也可点击上方按钮手动同步。</p>
+      <p style="font-size:11px;color:var(--muted);margin:10px 0 0;line-height:1.6">每次录入/编辑/删除错题后会自动上传，删除操作会同步到云端（其他设备拉取后也会删除）。打开页面时会自动拉取云端数据并与本地合并。若云端有删不掉的残留数据，点"清理云端残留"。</p>
     </div>
     <div class="card">
       <h3 style="font-size:15px;font-weight:700;margin:0 0 12px">数据导出</h3>
@@ -2602,7 +2657,7 @@ function renderSettings() {
         <p style="margin:0">面向公考备考人群的错题管理工具</p>
         <p style="margin:0">当前错题总数：${questions.length}</p>
         <p style="margin:0">所有数据存储在本地浏览器中，无内置错题</p>
-        <p style="margin:0">页面版本：<b style="color:var(--primary)">0811e</b>（公式渲染+图表+云同步合并版）</p>
+        <p style="margin:0">页面版本：<b style="color:var(--primary)">0811f</b>（公式渲染+图表+云同步合并版）</p>
       </div>
     </div>
   `;
@@ -2633,6 +2688,7 @@ function importData() {
     if (!Array.isArray(data)) throw new Error('格式错误');
     if (mode === 'overwrite') {
       showConfirm('覆盖模式将替换所有现有数据，确定继续吗？', () => {
+        markDeleted(questions.map(q => q.id).filter(Boolean));
         questions = data;
         saveQuestions();
         showToast('导入成功（覆盖模式）');
@@ -2658,6 +2714,7 @@ function importData() {
 
 function clearAllData() {
   showConfirm('确定清空吗？你自己录入的全部错题都会被删除（系统无内置错题，删了就没了）。', () => {
+    markDeleted(questions.map(q => q.id));
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(DAILY_KEY);
     questions = [];
@@ -2684,6 +2741,7 @@ function restoreSeedData() {
 // ==================== INIT ====================
 function init() {
   loadQuestions();
+  loadDeletedIds();
   loadSeedData();
   backfillTypes();
   classifyVerbalTypes();
@@ -2714,4 +2772,4 @@ window.__onKatexReady = function() { try { renderPage(currentTab); if (typeof up
 init();
 </script>
 </body>
-<!-- build: 0811e --></html>
+<!-- build: 0811f --></html>
