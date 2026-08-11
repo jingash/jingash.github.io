@@ -13,8 +13,8 @@
 <link href="https://cdn.staticfile.net/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/KaTeX/0.16.11/katex.min.css">
+<script defer src="https://cdn.bootcdn.net/ajax/libs/KaTeX/0.16.11/katex.min.js" onload="if(window.__onKatexReady)window.__onKatexReady()" onerror="this.onerror=null;var __ks=document.createElement('script');__ks.src='https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js';__ks.onload=function(){if(window.__onKatexReady)window.__onKatexReady()};document.head.appendChild(__ks)"></script>
 <script>
 tailwind.config={theme:{extend:{colors:{primary:'#0c1929','primary-light':'#162544',accent:'#f97316',success:'#22c55e'}}}}
 </script>
@@ -796,19 +796,25 @@ function plainLatex(t) {
   s = s.replace(/\\[,;!]/g, ' ');
   s = s.replace(/\\\\/g, '\n');
   s = s.replace(/[{}]/g, '');
+  s = s.replace(/\\/g, '');
+  s = s.replace(/_\s+(?=[a-zA-Z0-9])/g, '_');
   return s.replace(/[ \t]{2,}/g, ' ');
 }
 
 // 把含 LaTeX 的文本渲染成 HTML：\(…\) \[…\] $$…$$ $…$ 交给 KaTeX，其余部分转义并做符号兜底
 function renderMathInText(text) {
   if (text == null) return '';
-  const s = String(text);
+  let s = String(text);
   if (s.indexOf('\\') === -1 && s.indexOf('$') === -1) return escHtml(s);
+  // 兼容脏格式：① "\ times" 这类被空格拆开的已知命令先合并；② "\ r" 这类乱入的孤立反斜杠直接去掉（保留原字符）
+  s = s.replace(/\\\s+(times|div|cdot|approx|equiv|implies|Longrightarrow|Rightarrow|longrightarrow|rightarrow|to|leq|geq|neq|pm|mp|sim|propto|infty|frac|sqrt|text|mathrm|left|right|percent)\b/g, '\\$1');
+  s = s.replace(/\\\s+(?=[a-zA-Z0-9()<>])/g, ' ');
   const re = /\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)|\$((?=[^$\n]*[\\_^])[^$\n]+?)\$/g;
   let out = '', last = 0, m;
   while ((m = re.exec(s)) !== null) {
     out += escHtml(plainLatex(s.slice(last, m.index)));
-    const tex = (m[1] !== undefined ? m[1] : m[2] !== undefined ? m[2] : m[3] !== undefined ? m[3] : m[4]).trim();
+    let tex = (m[1] !== undefined ? m[1] : m[2] !== undefined ? m[2] : m[3] !== undefined ? m[3] : m[4]).trim();
+    tex = tex.replace(/\\_/g, '_'); // r\_1 → r_1，渲染成真正的下标
     const display = !!(m[1] !== undefined || m[2] !== undefined);
     let rendered = null;
     if (window.katex && tex) {
@@ -1884,7 +1890,7 @@ function exportForPrint() {
 <head>
 <meta charset="UTF-8">
 <title>${moduleTitle}</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/KaTeX/0.16.11/katex.min.css">
 <style>
   @page { size: A4; margin: 20mm 20mm 20mm 20mm; }
   * { box-sizing: border-box; }
@@ -2596,6 +2602,7 @@ function renderSettings() {
         <p style="margin:0">面向公考备考人群的错题管理工具</p>
         <p style="margin:0">当前错题总数：${questions.length}</p>
         <p style="margin:0">所有数据存储在本地浏览器中，无内置错题</p>
+        <p style="margin:0">页面版本：<b style="color:var(--primary)">0811e</b>（公式渲染+图表+云同步合并版）</p>
       </div>
     </div>
   `;
@@ -2701,13 +2708,10 @@ function init() {
   });
 }
 
-// KaTeX 公式库加载完成后重渲染当前页面，确保首屏公式也能正常排版
-(function() {
-  const ks = document.querySelector('script[src*="katex.min.js"]');
-  if (ks) ks.addEventListener('load', () => { try { renderPage(currentTab); if (typeof updateSyncIndicator === 'function') updateSyncIndicator(); } catch(e) {} });
-})();
+// KaTeX 公式库加载完成后重渲染当前页面，确保首屏公式也能正常排版（主源/备用源加载成功都会触发）
+window.__onKatexReady = function() { try { renderPage(currentTab); if (typeof updateSyncIndicator === 'function') updateSyncIndicator(); } catch(e) {} };
 
 init();
 </script>
 </body>
-<!-- build: 0811d --></html>
+<!-- build: 0811e --></html>
