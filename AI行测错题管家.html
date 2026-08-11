@@ -66,6 +66,12 @@ textarea.input-field{resize:vertical;min-height:80px}
 .stat-bar-track{flex:1;height:22px;border-radius:6px;background:#e2e8f0;overflow:hidden;position:relative}
 .stat-bar-fill{height:100%;border-radius:6px;transition:width .6s ease;display:flex;align-items:center;padding-left:8px;font-size:11px;color:#fff;font-weight:600;min-width:0}
 .photo-thumb{width:56px;height:56px;border-radius:8px;object-fit:cover;border:1.5px solid var(--border);cursor:pointer}
+.chart-box{margin:8px 0 4px;padding:10px;background:#f8fafc;border:1px solid var(--border);border-radius:10px;overflow-x:auto}
+.data-table{border-collapse:collapse;width:100%;font-size:12.5px;background:#fff}
+.data-table th,.data-table td{border:1px solid #cbd5e1;padding:4px 8px;text-align:center;white-space:nowrap}
+.data-table thead th{background:#eef2f7;font-weight:600}
+.katex{font-size:1.02em}
+.katex-display{margin:6px 0;overflow-x:auto;overflow-y:hidden}
 .confirm-dialog{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;display:flex;align-items:center;justify-content:center;padding:24px}
 .confirm-box{background:#fff;border-radius:16px;padding:24px;max-width:320px;width:100%;text-align:center;animation:fadeIn .2s}
 .empty-state{text-align:center;padding:48px 16px;color:var(--muted)}
@@ -160,10 +166,8 @@ const ERROR_REASONS = ['概念理解错误','审题错误','方法忘记','计�
 const ALL_MODULES = ['言语理解','判断推理','数量关系','资料分析','常识判断'];
 
 // ==================== SUPABASE CONFIG ====================
-const SUPABASE_URL = 'https://fibnnedkozagzucqtpzh.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpYm5uZWRrb3phZ3p1Y3F0cHpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzODk4NTEsImV4cCI6MjEwMTk2NTg1MX0.AY0qPgKVm778Puh9Dcw-60LPta2mYGBfW8s7eUA1xkM';
-// 固定共享身份：所有设备用同一身份读写，保证跨设备同步
-const FIXED_USER_ID = '00000000-0000-4000-8000-000000000001';
+const SUPABASE_URL = 'https://lcdvvctvkdppsefblcbd.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZHZ2Y3R2a2RwcHNlZmJsY2JkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzMDQ4NjEsImV4cCI6MjEwMTg4MDg2MX0.3hCiTrRORBLtn1l0b4ldrOOaDdJxK33a1fLPOFsRF3k';
 let sb = null;
 let sbUserId = null;
 let sbSyncing = false;
@@ -203,23 +207,12 @@ async function sbSyncToCloud() {
   sbSyncStatus = 'syncing';
   updateSyncIndicator();
   try {
-    let upsertErrCount = 0;
     for (const q of questions) {
       const row = qToRow(q);
       row.user_id = sbUserId;
       const { error } = await sb.from('questions').upsert(row, { onConflict: 'id' });
-      if (error) { upsertErrCount++; console.warn('Supabase upsert error:', error.message); }
+      if (error) console.warn('Supabase upsert error:', error.message);
     }
-    if (upsertErrCount > 0) {
-      sbSyncStatus = 'error';
-      sbSyncing = false;
-      updateSyncIndicator();
-      return;
-    }
-    // 每日统计（复盘记录等）一并上传
-    const { error: kvErr } = await sb.from('kv').upsert(
-      { k: 'daily', v: loadDailyStats() }, { onConflict: 'k' });
-    if (kvErr) console.warn('Supabase kv upsert error:', kvErr.message);
     sbSyncStatus = 'synced';
     sbLastSync = Date.now();
     localStorage.setItem('xct_sb_last_sync', String(sbLastSync));
@@ -248,15 +241,6 @@ async function sbSyncFromCloud() {
       cloudQs.forEach(q => { localMap[q.id] = q; });
       questions = Object.values(localMap);
       saveQuestionsLocal();
-    }
-    // 拉取每日统计并与本地合并（按日期取较新的记录集合）
-    const { data: kvData, error: kvErr } = await sb.from('kv').select('k,v').eq('k', 'daily');
-    if (kvErr) console.warn('Supabase kv pull error:', kvErr.message);
-    if (kvData && kvData.length > 0) {
-      const cloudStats = kvData[0].v || {};
-      const localStats = loadDailyStats();
-      const merged = Object.assign({}, localStats, cloudStats);
-      if (JSON.stringify(merged) !== JSON.stringify(localStats)) saveDailyStats(merged);
     }
     sbSyncStatus = 'synced';
     sbLastSync = Date.now();
@@ -313,8 +297,13 @@ async function sbInit() {
     sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     const { data, error } = await sb.auth.signInAnonymously();
     if (error) throw error;
-    // 不用各设备独立的匿名ID，统一改用固定共享身份
-    sbUserId = FIXED_USER_ID;
+    sbUserId = data.user.id;
+    // 探测云端是否有 chart 列（没跑过 ALTER TABLE 时自动降级，不影响其他字段同步）
+    try {
+      const probe = await sb.from('questions').select('chart').limit(1);
+      sbHasChartCol = !probe.error;
+      if (probe.error) console.warn('chart 列不存在，图表字段暂不同步:', probe.error.message);
+    } catch(e) { sbHasChartCol = false; }
     // 先拉云端数据，再上传本地数据
     await sbSyncFromCloud();
     await sbSyncToCloud();
@@ -642,7 +631,7 @@ let inputMode = 'single';
 let batchModule = '';
 let batchText = '';
 let batchParsed = null;
-let errorFilters = { module: '全部', type: '全部', source: '全部', accMin: 0, accMax: 100 };
+let errorFilters = { module: '全部', type: '全部', source: '全部', sort: '最新' };
 let expandedCardId = null;
 let errorsViewMode = 'categories';
 let batchDeleteMode = false;
@@ -670,7 +659,6 @@ function loadDailyStats() {
 
 function saveDailyStats(stats) {
   try { localStorage.setItem(DAILY_KEY, JSON.stringify(stats)); } catch(e) {}
-  if (sb && sbUserId) sbSyncDebounced();
 }
 
 function updateDailyStat(key, amount) {
@@ -753,12 +741,90 @@ function getModuleClass(mod) {
 
 function formatAnalysis(text) {
   if (!text) return '';
-  const escaped = String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  return escaped.replace(/【([^】]*)】/g, '<strong>【$1】</strong>');
+  return renderMathInText(text).replace(/【([^】]*)】/g, '<strong>【$1】</strong>');
 }
 
 function escHtml(s) {
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ==================== 公式渲染（资料分析/数量关系 LaTeX） ====================
+// LaTeX 命令 → Unicode 符号（KaTeX 加载失败时的兜底，也用于公式外的零散命令）
+function plainLatex(t) {
+  if (!t) return '';
+  const SYM = {times:'×',div:'÷',cdot:'·',approx:'≈',equiv:'≡',implies:' ⇒ ',Rightarrow:' ⇒ ',Longrightarrow:' ⇒ ',longrightarrow:' → ',rightarrow:' → ',to:' → ',leq:'≤',geq:'≥',le:'≤',ge:'≥',neq:'≠',ne:'≠',pm:'±',mp:'∓',sim:'～',propto:'∝',infty:'∞',circ:'°',degree:'°',sum:'∑',sqrt:'√',percent:'%'};
+  let s = String(t);
+  s = s.replace(/\\frac\{([^{}]*)\}\{([^{}]*)\}/g, '($1)/($2)');
+  s = s.replace(/\\sqrt\{([^{}]*)\}/g, '√($1)');
+  s = s.replace(/\\text\{([^{}]*)\}/g, '$1');
+  s = s.replace(/\\mathrm\{([^{}]*)\}/g, '$1');
+  s = s.replace(/\\(?:left|right|displaystyle|quad|qquad)/g, ' ');
+  s = s.replace(/\\([a-zA-Z]+)/g, (all, cmd) => (SYM[cmd] !== undefined ? SYM[cmd] : ' '));
+  s = s.replace(/\\%/g, '%').replace(/\\\$/g, '$').replace(/\\&/g, '&').replace(/\\#/g, '#').replace(/\\_/g, '_');
+  s = s.replace(/\\\(/g, ' ').replace(/\\\)/g, ' ');
+  s = s.replace(/\\\[/g, '\n').replace(/\\\]/g, '\n');
+  s = s.replace(/\\[,;!]/g, ' ');
+  s = s.replace(/\\\\/g, '\n');
+  s = s.replace(/[{}]/g, '');
+  return s.replace(/[ \t]{2,}/g, ' ');
+}
+
+// 把含 LaTeX 的文本渲染成 HTML：\(…\) \[…\] $$…$$ $…$ 交给 KaTeX，其余部分转义并做符号兜底
+function renderMathInText(text) {
+  if (text == null) return '';
+  const s = String(text);
+  if (s.indexOf('\\') === -1 && s.indexOf('$') === -1) return escHtml(s);
+  const re = /\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)|\$((?=[^$\n]*[\\_^])[^$\n]+?)\$/g;
+  let out = '', last = 0, m;
+  while ((m = re.exec(s)) !== null) {
+    out += escHtml(plainLatex(s.slice(last, m.index)));
+    const tex = (m[1] !== undefined ? m[1] : m[2] !== undefined ? m[2] : m[3] !== undefined ? m[3] : m[4]).trim();
+    const display = !!(m[1] !== undefined || m[2] !== undefined);
+    let rendered = null;
+    if (window.katex && tex) {
+      try { rendered = katex.renderToString(tex, { displayMode: display, throwOnError: false }); } catch(e) { rendered = null; }
+    }
+    out += (rendered != null) ? rendered : escHtml(plainLatex(tex));
+    last = m.index + m[0].length;
+  }
+  out += escHtml(plainLatex(s.slice(last)));
+  return out;
+}
+
+// ==================== 图表渲染（资料分析表格/图片） ====================
+function renderChartHtml(chart, forPrint) {
+  if (!chart || !String(chart).trim()) return '';
+  const text = String(chart).trim();
+  // 图片链接
+  if (/^https?:\/\/\S+$/.test(text)) {
+    return `<div class="chart-box"><img src="${escHtml(text)}" style="max-width:100%;border-radius:6px;display:block"${forPrint ? '' : ' onclick="event.stopPropagation();previewPhoto(this.src)"'}></div>`;
+  }
+  // 表格识别：| 分隔 / 制表符（Excel 粘贴）/ 两个以上空格
+  const rawLines = text.split('\n').map(l => l.trim()).filter(l => l);
+  const isSepLine = l => l.includes('-') && /^[\s|:\-]+$/.test(l);
+  const rows = [];
+  rawLines.forEach(l => {
+    if (isSepLine(l)) return;
+    let cells;
+    if (l.includes('|')) cells = l.replace(/^\|/, '').replace(/\|$/, '').split('|');
+    else if (l.includes('\t')) cells = l.split('\t');
+    else if (/\s{2,}|　/.test(l)) cells = l.split(/\s{2,}|　+/);
+    else cells = [l];
+    rows.push(cells.map(c => c.trim()));
+  });
+  const maxCols = rows.length ? Math.max.apply(null, rows.map(r => r.length)) : 0;
+  if (rows.length && maxCols >= 2) {
+    const thead = '<tr>' + rows[0].map(c => '<th>' + renderMathInText(c) + '</th>').join('') + '</tr>';
+    const tbody = rows.slice(1).map(r => '<tr>' + Array.from({length: maxCols}, (_, i) => '<td>' + renderMathInText(r[i] || '') + '</td>').join('') + '</tr>').join('');
+    return `<div class="chart-box"><table class="data-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
+  }
+  // 非表格：按原文保留换行显示
+  return `<div class="chart-box"><pre style="white-space:pre-wrap;margin:0;font-size:12.5px;line-height:1.6;font-family:inherit">${renderMathInText(text)}</pre></div>`;
+}
+
+function chartBlock(chart, forPrint) {
+  if (!chart || !String(chart).trim()) return '';
+  return `<div style="margin-top:8px"><div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:2px"><i class="fas fa-chart-line" style="margin-right:4px"></i>图表 / 表格数据</div>${renderChartHtml(chart, forPrint)}</div>`;
 }
 
 // 渲染题干：把末尾的问句（以：或？结尾）另起一行并加粗
@@ -974,6 +1040,10 @@ function renderSingleForm() {
         </div>
       </div>
       <div style="margin-bottom:14px">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">图表 / 表格数据（可选，资料分析推荐）</label>
+        <textarea id="inp-chart" class="input-field" rows="3" placeholder="题目带图表/统计表时贴这里：&#10;① 表格文字直接粘贴（Excel 复制的、用 | 分隔的都行），复盘时自动渲染成表格&#10;② 也可以贴图片链接（http 开头），直接显示图片"></textarea>
+      </div>
+      <div style="margin-bottom:14px">
         <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">选项A</label>
         <input id="inp-optA" class="input-field" placeholder="选项A内容">
       </div>
@@ -1044,6 +1114,10 @@ B. 选项B内容
 C. 选项C内容
 D. 选项D内容
 
+【图表】（可选，资料分析推荐）
+题目带表格/图表时贴这里：表格文字直接粘贴
+（Excel 复制的、| 分隔的都行），也可贴图片链接
+
 【考查知识点】……
 【行文脉络】……
 【核心观点】……
@@ -1090,6 +1164,9 @@ A. 选项A内容
 B. 选项B内容
 C. 选项C内容
 D. 选项D内容
+
+【图表】（可选，资料分析推荐）
+表格文字直接粘贴，或贴图片链接
 
 【考查知识点】……
 【行文脉络】……
@@ -1151,15 +1228,22 @@ function parseBatchContent(text) {
         finalLines.push(l);
       }
     });
-    const q = { question: '', optionA: '', optionB: '', optionC: '', optionD: '', myAnswer: '', correctAnswer: '', accuracy: '', type: '', source: '', errorReasons: [], analysis: '' };
-    const qLines = [], aLines = [];
+    const q = { question: '', optionA: '', optionB: '', optionC: '', optionD: '', myAnswer: '', correctAnswer: '', accuracy: '', type: '', source: '', chart: '', errorReasons: [], analysis: '' };
+    const qLines = [], aLines = [], chartLines = [];
     let section = 'question';
     let optSeen = false;
     finalLines.forEach(raw => {
       const line = raw.trim();
       if (!line) return;
-      if (/^(?:【)?选项(?:】)?$/.test(line)) return;
+      // 图表区块内的普通数据行直接收录，遇到下一个区块标签才跳出
+      if (section === 'chart') {
+        const labelHit = /^【[^】]+】/.test(line) || /^(?:正确答案|我的答案|错选项及原因|错选项|错选选项|错选|题型|来源|错题来源|题目来源|试题来源|正确率|错误原因|错误类型|解析|选项)\s*[:：]/.test(line);
+        if (!labelHit) { chartLines.push(line); return; }
+        section = 'analysis';
+      }
       let m;
+      if (/^(?:【)?选项(?:】)?$/.test(line)) return;
+      if ((m = line.match(/^(?:【)?(?:图表|表格|图表数据|表格数据|统计图表|统计图|图表材料|材料图表|资料图表)(?:】)?\s*[:：]?\s*(.*)$/))) { section = 'chart'; if (m[1].trim()) chartLines.push(m[1].trim()); return; }
       if (!q.optionA && (m = line.match(/^(?:选项A|A)\s*[.、．:：]\s*(.+)$/))) { q.optionA = m[1].trim(); optSeen = true; return; }
       if (!q.optionB && (m = line.match(/^(?:选项B|B)\s*[.、．:：]\s*(.+)$/))) { q.optionB = m[1].trim(); optSeen = true; return; }
       if (!q.optionC && (m = line.match(/^(?:选项C|C)\s*[.、．:：]\s*(.+)$/))) { q.optionC = m[1].trim(); optSeen = true; return; }
@@ -1186,6 +1270,7 @@ function parseBatchContent(text) {
     });
     q.question = qLines.join('\n').trim();
     q.analysis = aLines.join('\n').trim();
+    q.chart = chartLines.join('\n').trim();
     if (q.question && q.myAnswer && q.correctAnswer) results.push(q);
   });
   return results;
@@ -1544,6 +1629,7 @@ function saveNewQuestion() {
     accuracy: document.getElementById('inp-accuracy').value.trim(),
     errorReasons: reasons,
     analysis: '',
+    chart: document.getElementById('inp-chart') ? document.getElementById('inp-chart').value.trim() : '',
     notes: '',
     photos: [...inputPhotos],
     createDate: new Date().toISOString().slice(0,10),
@@ -1614,34 +1700,9 @@ function getFilteredQuestions() {
   if (errorFilters.module !== '全部') filtered = filtered.filter(q => q.module === errorFilters.module);
   if (errorFilters.type !== '全部') filtered = filtered.filter(q => q.type === errorFilters.type);
   if (errorFilters.source !== '全部') filtered = filtered.filter(q => (q.source || '未填来源') === errorFilters.source);
-  // 正确率区间筛选：全区间(0-100)显示全部（含未填）；其他区间只含已填正确率且在区间内的题
-  if (!(errorFilters.accMin === 0 && errorFilters.accMax === 100)) {
-    const lo = Math.min(errorFilters.accMin, errorFilters.accMax);
-    const hi = Math.max(errorFilters.accMin, errorFilters.accMax);
-    filtered = filtered.filter(q => q.accuracy !== '' && q.accuracy != null && !isNaN(Number(q.accuracy)) && Number(q.accuracy) >= lo && Number(q.accuracy) <= hi);
-  }
-  filtered.sort((a,b) => (b.createDate||'').localeCompare(a.createDate||''));
+  if (errorFilters.sort === '错误次数最多') filtered.sort((a,b) => b.errorCount - a.errorCount);
+  else filtered.sort((a,b) => (b.createDate||'').localeCompare(a.createDate||''));
   return filtered;
-}
-
-function setAccFilter(which, val) {
-  const v = Number(val);
-  if (which === 'min') {
-    errorFilters.accMin = v;
-    if (errorFilters.accMin > errorFilters.accMax) {
-      errorFilters.accMax = errorFilters.accMin;
-      const el = document.getElementById('filter-acc-max');
-      if (el) el.value = String(errorFilters.accMax);
-    }
-  } else {
-    errorFilters.accMax = v;
-    if (errorFilters.accMax < errorFilters.accMin) {
-      errorFilters.accMin = errorFilters.accMax;
-      const el = document.getElementById('filter-acc-min');
-      if (el) el.value = String(errorFilters.accMin);
-    }
-  }
-  renderErrors();
 }
 
 function renderErrorList(el) {
@@ -1688,12 +1749,9 @@ function renderErrorList(el) {
           <option value="全部">全部来源</option>
           ${allSources.map(s => `<option value="${s}" ${errorFilters.source===s?'selected':''}>${s}</option>`).join('')}
         </select>
-        <select id="filter-acc-min" class="input-field" style="width:auto;flex:1;min-width:90px;padding:6px 28px 6px 10px;font-size:13px" onchange="setAccFilter('min',this.value)">
-          ${[0,10,20,30,40,50,60,70,80,90,100].map(v => `<option value="${v}" ${errorFilters.accMin===v?'selected':''}>${v}%</option>`).join('')}
-        </select>
-        <span style="font-size:12px;color:var(--muted);white-space:nowrap">至</span>
-        <select id="filter-acc-max" class="input-field" style="width:auto;flex:1;min-width:90px;padding:6px 28px 6px 10px;font-size:13px" onchange="setAccFilter('max',this.value)">
-          ${[0,10,20,30,40,50,60,70,80,90,100].map(v => `<option value="${v}" ${errorFilters.accMax===v?'selected':''}>${v}%</option>`).join('')}
+        <select class="input-field" style="width:auto;flex:1;min-width:100px;padding:6px 28px 6px 10px;font-size:13px" onchange="errorFilters.sort=this.value;renderErrors()">
+          <option value="最新" ${errorFilters.sort==='最新'?'selected':''}>最新</option>
+          <option value="错误次数最多" ${errorFilters.sort==='错误次数最多'?'selected':''}>错误次数最多</option>
         </select>
         <button class="btn btn-primary btn-sm" onclick="exportForPrint()" style="padding:6px 12px;font-size:13px;white-space:nowrap"><i class="fas fa-print"></i> 导出打印</button>
       </div>
@@ -1767,10 +1825,16 @@ function exportForPrint() {
 <head>
 <meta charset="UTF-8">
 <title>${moduleTitle}</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
 <style>
   @page { size: A4; margin: 20mm 20mm 20mm 20mm; }
   * { box-sizing: border-box; }
   body { font-family: "SimSun","宋体","PingFang SC","Microsoft YaHei",serif; font-size: 13px; color: #000; line-height: 1.6; margin: 0; padding: 15px; max-width: 210mm; margin: 0 auto; font-weight: normal; }
+  .chart-box{margin:4px 0;padding:8px;background:#fafafa;border:1px solid #d1d5db;border-radius:6px;overflow-x:auto}
+  .data-table{border-collapse:collapse;width:100%;font-size:12px;background:#fff}
+  .data-table th,.data-table td{border:1px solid #9ca3af;padding:3px 8px;text-align:center;white-space:nowrap}
+  .data-table thead th{background:#f3f4f6;font-weight:600}
+  .katex{font-size:1em}
   .print-header { text-align: center; margin-bottom: 16px; padding: 12px 0; border-bottom:2px solid #000; }
   .print-header h1 { font-size: 20px; font-weight: normal; margin: 0 0 8px; }
   .print-header .meta { font-size: 12px; color: #333; font-weight: normal; margin-bottom: 4px; }
@@ -1845,8 +1909,6 @@ function backToErrorCategories() {
   errorsViewMode = 'categories';
   errorFilters.type = '全部';
   errorFilters.source = '全部';
-  errorFilters.accMin = 0;
-  errorFilters.accMax = 100;
   batchDeleteMode = false;
   batchSelectedIds = {};
   renderErrors();
@@ -1877,6 +1939,7 @@ function renderErrorCard(q) {
       ${q.accuracy ? `<span style="font-size:11px;color:#059669;background:rgba(5,150,105,.1);padding:2px 8px;border-radius:10px;font-weight:600">${q.accuracy}%</span>` : ''}
       ${q.type ? `<span style="font-size:11px;color:#1e40af;background:rgba(59,130,246,.12);padding:2px 8px;border-radius:10px;font-weight:600">${q.type}</span>` : ''}
       ${q.source ? `<span style="font-size:11px;color:#0f766e;background:rgba(20,184,166,.1);padding:2px 8px;border-radius:10px"><i class="fas fa-book-open" style="margin-right:3px;font-size:10px"></i>${q.source}</span>` : ''}
+      ${q.chart ? `<span style="font-size:11px;color:#7c3aed;background:rgba(139,92,246,.1);padding:2px 8px;border-radius:10px;font-weight:600"><i class="fas fa-chart-line" style="margin-right:3px;font-size:10px"></i>图表</span>` : ''}
       <span style="font-size:11px;color:${statusColor};margin-left:auto;font-weight:600">${q.reviewStatus}</span>
     </div>
     ${hasPhoto ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${q.photos.map(p => `<img src="${p}" style="height:${isExpanded?'160px':'110px'};width:auto;max-width:${q.photos.length>1?'48%':'100%'};object-fit:cover;border-radius:8px;display:block" onclick="event.stopPropagation();previewPhoto('${p}')">`).join('')}</div>` : ''}
@@ -1943,12 +2006,13 @@ function viewDetail(id) {
         ${q.type ? `<span style="font-size:11px;color:#1e40af;background:rgba(59,130,246,.12);padding:2px 8px;border-radius:10px;font-weight:600">${q.type}</span>` : ''}
         ${q.errorReasons.map(r=>`<span style="font-size:11px;color:var(--accent);background:rgba(249,115,22,.08);padding:2px 8px;border-radius:10px">${r}</span>`).join('')}
         ${q.source ? `<span style="font-size:11px;color:#0f766e;background:rgba(20,184,166,.1);padding:2px 8px;border-radius:10px"><i class="fas fa-book-open" style="margin-right:3px;font-size:10px"></i>${q.source}</span>` : ''}
+        ${q.chart ? `<span style="font-size:11px;color:#7c3aed;background:rgba(139,92,246,.1);padding:2px 8px;border-radius:10px;font-weight:600"><i class="fas fa-chart-line" style="margin-right:3px;font-size:10px"></i>图表</span>` : ''}
       </div>
-      <div class="detail-section"><h4>题干</h4>${(q.photos && q.photos.length) ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:${q.question?'10px':'0'}">${q.photos.map(p=>`<img src="${p}" style="height:150px;width:auto;max-width:${q.photos.length>1?'48%':'100%'};object-fit:cover;border-radius:8px" onclick="previewPhoto('${p}')">`).join('')}</div>` : ''}${q.question ? `<p style="line-height:1.7">${renderQuestionText(q.question)}</p>` : ''}</div>
-      ${q.optionA?`<div class="option-item ${q.myAnswer==='A'?'my-wrong':''} ${q.correctAnswer==='A'?'correct':''}">A. ${q.optionA}</div>`:''}
-      ${q.optionB?`<div class="option-item ${q.myAnswer==='B'?'my-wrong':''} ${q.correctAnswer==='B'?'correct':''}">B. ${q.optionB}</div>`:''}
-      ${q.optionC?`<div class="option-item ${q.myAnswer==='C'?'my-wrong':''} ${q.correctAnswer==='C'?'correct':''}">C. ${q.optionC}</div>`:''}
-      ${q.optionD?`<div class="option-item ${q.myAnswer==='D'?'my-wrong':''} ${q.correctAnswer==='D'?'correct':''}">D. ${q.optionD}</div>`:''}
+      <div class="detail-section"><h4>题干</h4>${(q.photos && q.photos.length) ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:${q.question?'10px':'0'}">${q.photos.map(p=>`<img src="${p}" style="height:150px;width:auto;max-width:${q.photos.length>1?'48%':'100%'};object-fit:cover;border-radius:8px" onclick="previewPhoto('${p}')">`).join('')}</div>` : ''}${q.question ? `<p style="line-height:1.7">${renderQuestionText(q.question)}</p>` : ''}${q.chart ? chartBlock(q.chart) : ''}</div>
+      ${q.optionA?`<div class="option-item ${q.myAnswer==='A'?'my-wrong':''} ${q.correctAnswer==='A'?'correct':''}">A. ${renderMathInText(q.optionA)}</div>`:''}
+      ${q.optionB?`<div class="option-item ${q.myAnswer==='B'?'my-wrong':''} ${q.correctAnswer==='B'?'correct':''}">B. ${renderMathInText(q.optionB)}</div>`:''}
+      ${q.optionC?`<div class="option-item ${q.myAnswer==='C'?'my-wrong':''} ${q.correctAnswer==='C'?'correct':''}">C. ${renderMathInText(q.optionC)}</div>`:''}
+      ${q.optionD?`<div class="option-item ${q.myAnswer==='D'?'my-wrong':''} ${q.correctAnswer==='D'?'correct':''}">D. ${renderMathInText(q.optionD)}</div>`:''}
       <div style="display:flex;gap:16px;margin:12px 0;font-size:14px">
         <span>我的答案：<b style="color:var(--danger)">${q.myAnswer}</b></span>
         <span>正确答案：<b style="color:var(--success)">${q.correctAnswer}</b></span>
@@ -2003,6 +2067,8 @@ function editQuestion(id) {
       </div>
       <input type="file" id="edit-photoInput" accept="image/*" capture="environment" style="display:none" onchange="handleEditPhotoUpload(this,'${q.id}')">
       <button class="btn btn-outline btn-sm" style="margin-bottom:12px" onclick="document.getElementById('edit-photoInput').click()"><i class="fas fa-camera"></i> 添加照片</button>
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">图表 / 表格数据（可选，资料分析推荐）</label>
+      <textarea id="edit-chart" class="input-field" rows="3" style="margin-bottom:12px" placeholder="表格文字直接粘贴（Excel 复制的、| 分隔的都行），或贴图片链接">${q.chart||''}</textarea>
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">选项A</label>
       <input id="edit-optA" class="input-field" value="${(q.optionA||'').replace(/"/g,'&quot;')}" style="margin-bottom:8px">
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">选项B</label>
@@ -2066,6 +2132,7 @@ function saveEdit(id) {
   document.querySelectorAll('#edit-reasons .checkbox-item.checked input').forEach(inp => reasons.push(inp.value));
   q.errorReasons = reasons;
   q.analysis = document.getElementById('edit-analysis').value;
+  q.chart = document.getElementById('edit-chart') ? document.getElementById('edit-chart').value.trim() : (q.chart || '');
   saveQuestions();
   showToast('已保存修改');
   closeDetail();
@@ -2082,50 +2149,19 @@ function previewPhoto(base64) {
 }
 
 // ==================== REVIEW ====================
-// 打乱数组顺序（Fisher-Yates）
-function shuffleArray(arr) {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
-
-// 打开复习板块选择面板
 function startReview() {
-  const pending = questions.filter(q => q.reviewStatus === '待复习' || q.reviewStatus === '模糊');
-  const countBy = m => pending.filter(q => q.module === m).length;
-  const el = document.getElementById('review-modal');
-  el.innerHTML = `<div class="modal-overlay" style="align-items:center" onclick="if(event.target===this){closeReviewModal()}">
-    <div class="modal-content" style="border-radius:20px;max-height:80vh;overflow-y:auto" onclick="event.stopPropagation()">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-        <h3 style="font-size:16px;font-weight:700;margin:0">选择本次复习范围</h3>
-        <button class="btn btn-outline btn-sm" onclick="closeReviewModal()"><i class="fas fa-times"></i> 取消</button>
-      </div>
-      <p style="font-size:12px;color:var(--muted);margin:0 0 14px">题目顺序将随机打乱。括号内为待复习数量。</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <button class="btn btn-primary" style="grid-column:1/-1" onclick="confirmStartReview('全部')">
-          <i class="fas fa-layer-group"></i> 全部板块（${pending.length} 道）
-        </button>
-        ${ALL_MODULES.map(m => `<button class="btn btn-outline" onclick="confirmStartReview('${m}')" ${countBy(m)===0?'style="opacity:.45"':''}>
-          ${m}（${countBy(m)} 道）
-        </button>`).join('')}
-      </div>
-    </div>
-  </div>`;
-  el.className = '';
-}
-
-function confirmStartReview(module) {
-  let pool = questions.filter(q => q.reviewStatus === '待复习' || q.reviewStatus === '模糊');
-  if (module !== '全部') pool = pool.filter(q => q.module === module);
-  reviewQueue = shuffleArray(pool);
+  reviewQueue = questions.filter(q => q.reviewStatus === '待复习' || q.reviewStatus === '模糊')
+    .sort((a,b) => {
+      if (b.errorCount !== a.errorCount) return b.errorCount - a.errorCount;
+      const aDate = a.lastReviewDate || '0000-00-00';
+      const bDate = b.lastReviewDate || '0000-00-00';
+      return aDate.localeCompare(bDate);
+    });
   reviewIndex = 0;
   reviewResults = [];
 
   if (reviewQueue.length === 0) {
-    closeReviewModal();
-    showToast(module === '全部' ? '暂无待复习的错题，继续保持！' : `「${module}」暂无待复习的错题`);
+    showToast('暂无待复习的错题，继续保持！');
     return;
   }
   showReviewQuestion();
@@ -2148,11 +2184,11 @@ function showReviewQuestion() {
         <span class="badge ${getModuleClass(q.module)}">${q.module}</span>
         ${q.type ? `<span style="font-size:11px;color:#1e40af;background:rgba(59,130,246,.12);padding:2px 8px;border-radius:10px;font-weight:600">${q.type}</span>` : ''}
       </div>
-      <div class="detail-section"><h4>题干</h4>${q.question ? `<p style="line-height:1.7">${renderQuestionText(q.question)}</p>` : ''}${(!q.question && q.photos && q.photos.length) ? `<img src="${q.photos[0]}" style="max-width:100%;max-height:340px;border-radius:8px" onclick="previewPhoto('${q.photos[0]}')">` : ''}</div>
-      ${q.optionA?`<div id="review-opt-A" class="option-item" style="cursor:pointer" onclick="selectReviewOption('A')">A. ${q.optionA}</div>`:''}
-      ${q.optionB?`<div id="review-opt-B" class="option-item" style="cursor:pointer" onclick="selectReviewOption('B')">B. ${q.optionB}</div>`:''}
-      ${q.optionC?`<div id="review-opt-C" class="option-item" style="cursor:pointer" onclick="selectReviewOption('C')">C. ${q.optionC}</div>`:''}
-      ${q.optionD?`<div id="review-opt-D" class="option-item" style="cursor:pointer" onclick="selectReviewOption('D')">D. ${q.optionD}</div>`:''}
+      <div class="detail-section"><h4>题干</h4>${q.question ? `<p style="line-height:1.7">${renderQuestionText(q.question)}</p>` : ''}${(!q.question && q.photos && q.photos.length) ? `<img src="${q.photos[0]}" style="max-width:100%;max-height:340px;border-radius:8px" onclick="previewPhoto('${q.photos[0]}')">` : ''}${q.chart ? chartBlock(q.chart) : ''}</div>
+      ${q.optionA?`<div id="review-opt-A" class="option-item" style="cursor:pointer" onclick="selectReviewOption('A')">A. ${renderMathInText(q.optionA)}</div>`:''}
+      ${q.optionB?`<div id="review-opt-B" class="option-item" style="cursor:pointer" onclick="selectReviewOption('B')">B. ${renderMathInText(q.optionB)}</div>`:''}
+      ${q.optionC?`<div id="review-opt-C" class="option-item" style="cursor:pointer" onclick="selectReviewOption('C')">C. ${renderMathInText(q.optionC)}</div>`:''}
+      ${q.optionD?`<div id="review-opt-D" class="option-item" style="cursor:pointer" onclick="selectReviewOption('D')">D. ${renderMathInText(q.optionD)}</div>`:''}
       <div id="review-answer-area" style="margin-top:16px;text-align:center">
         <p style="font-size:13px;color:var(--muted);margin-bottom:10px">先选出你的答案，再提交查看对错与解析</p>
         <button id="review-submit-btn" class="btn btn-accent" style="opacity:.5;pointer-events:none" onclick="submitReviewAnswer()"><i class="fas fa-paper-plane"></i> 提交答案</button>
@@ -2423,7 +2459,7 @@ function renderSettings() {
           <div style="display:flex;justify-content:space-between;padding:4px 0"><span>同步状态</span><span id="sb-status-detail" style="color:${syncStatusColor[sbSyncStatus]||syncStatusColor.offline};font-weight:600">${syncStatusText[sbSyncStatus]||syncStatusText.offline}</span></div>
           <div style="display:flex;justify-content:space-between;padding:4px 0"><span>上次同步</span><span id="sb-last-sync">${lastSyncText}</span></div>
           <div style="display:flex;justify-content:space-between;padding:4px 0"><span>本地错题数</span><span>${questions.length} 道</span></div>
-          <div style="display:flex;justify-content:space-between;padding:4px 0"><span>登录方式</span><span>固定共享身份</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0"><span>登录方式</span><span>匿名登录</span></div>
         </div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -2572,7 +2608,13 @@ function init() {
   });
 }
 
+// KaTeX 公式库加载完成后重渲染当前页面，确保首屏公式也能正常排版
+(function() {
+  const ks = document.querySelector('script[src*="katex.min.js"]');
+  if (ks) ks.addEventListener('load', () => { try { renderPage(currentTab); if (typeof updateSyncIndicator === 'function') updateSyncIndicator(); } catch(e) {} });
+})();
+
 init();
 </script>
 </body>
-<!-- build: 0810b --></html>
+<!-- build: 0811a --></html>
