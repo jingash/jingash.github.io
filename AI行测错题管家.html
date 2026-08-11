@@ -205,7 +205,9 @@ function qToRow(q) {
     error_reasons: q.errorReasons||[], analysis: q.analysis||'', notes: q.notes||'',
     photos: q.photos||[], create_date: q.createDate||'', error_count: q.errorCount||1,
     review_status: q.reviewStatus||'待复习', last_review_date: q.lastReviewDate||null,
-    is_seed: !!q.isSeed
+    is_seed: !!q.isSeed,
+    material_id: q.materialId||'', material_text: q.materialText||'',
+    material_chart_text: q.materialChartText||'', material_chart_photos: q.materialChartPhotos||[]
   };
   if (sbHasChartCol !== false) row.chart = q.chart||'';
   return row;
@@ -220,7 +222,9 @@ function rowToQ(r) {
     chart: r.chart||'',
     photos: r.photos||[], createDate: r.create_date||'', errorCount: r.error_count||1,
     reviewStatus: r.review_status||'待复习', lastReviewDate: r.last_review_date||null,
-    isSeed: !!r.is_seed
+    isSeed: !!r.is_seed,
+    materialId: r.material_id||'', materialText: r.material_text||'',
+    materialChartText: r.material_chart_text||'', materialChartPhotos: r.material_chart_photos||[]
   };
 }
 
@@ -783,6 +787,7 @@ let inputMode = 'single';
 let batchModule = '';
 let batchText = '';
 let batchParsed = null;
+let batchMode = 'normal'; // 'normal' or 'data-analysis'
 let errorFilters = { module: '全部', type: '全部', source: '全部', accMin: 0, accMax: 100 };
 let expandedCardId = null;
 let errorsViewMode = 'categories';
@@ -1247,15 +1252,32 @@ function renderSingleForm() {
 }
 
 function renderBatchForm() {
+  const isDataAnalysis = batchModule === '资料分析';
   return `
     <div class="card" style="margin-bottom:12px">
       <div style="margin-bottom:12px">
         <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">本批错题所属模块 <span style="color:var(--danger)">*</span></label>
-        <select id="batch-module" class="input-field">
+        <select id="batch-module" class="input-field" onchange="batchModule=this.value;batchMode='normal';renderInput()">
           <option value="">请选择模块</option>
           ${ALL_MODULES.map(m => `<option value="${m}" ${batchModule===m?'selected':''}>${m}</option>`).join('')}
         </select>
       </div>
+      ${isDataAnalysis ? `
+      <div style="margin-bottom:12px">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">录入模式</label>
+        <div style="display:flex;gap:8px">
+          <button class="btn ${batchMode==='normal'?'btn-primary':'btn-outline'} btn-sm" onclick="batchMode='normal';renderInput()">
+            <i class="fas fa-list"></i> 普通批量
+          </button>
+          <button class="btn ${batchMode==='data-analysis'?'btn-primary':'btn-outline'} btn-sm" onclick="batchMode='data-analysis';renderInput()">
+            <i class="fas fa-layer-group"></i> 材料组批量
+          </button>
+        </div>
+        <p style="font-size:11px;color:var(--muted);margin:6px 0 0">
+          ${batchMode==='data-analysis' ? '一个材料+多个小题共用材料文字，适合资料分析' : '每道题独立录入，与其他模块相同'}
+        </p>
+      </div>
+      ` : ''}
       <div style="display:flex;align-items:center;justify-content:space-between">
         <span style="font-size:13px;font-weight:600">统一模板（照这个格式粘贴）</span>
         <div style="display:flex;gap:6px">
@@ -1263,7 +1285,17 @@ function renderBatchForm() {
           <button class="btn btn-outline btn-sm" onclick="copyBatchTemplate()"><i class="fas fa-copy"></i> 复制</button>
         </div>
       </div>
-      <pre id="batch-template" style="display:none;font-size:11.5px;background:var(--bg);padding:10px;border-radius:8px;line-height:1.7;margin:10px 0 0;white-space:pre-wrap;color:var(--muted)">第 1 题：（第 1 页）
+      <pre id="batch-template" style="display:none;font-size:11.5px;background:var(--bg);padding:10px;border-radius:8px;line-height:1.7;margin:10px 0 0;white-space:pre-wrap;color:var(--muted)">${isDataAnalysis && batchMode==='data-analysis' ? getDADataAnalysisTemplate() : getNormalBatchTemplate()}</pre>
+    </div>
+    <div class="card">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">粘贴错题内容${isDataAnalysis && batchMode==='data-analysis' ? '（多组材料用【材料组1】【材料组2】分隔）' : '（多题用【题目1】【题目2】依次分隔）'}</label>
+      <textarea id="batch-text" class="input-field" rows="12" placeholder="按上方模板粘贴${isDataAnalysis && batchMode==='data-analysis' ? '，可一次粘贴多组材料+多个小题' : '，可一次粘贴多道题'}">${batchText}</textarea>
+      <button class="btn btn-primary" style="width:100%;margin-top:10px" onclick="parseBatchText()"><i class="fas fa-magic"></i> 解析并预览</button>
+    </div>`;
+}
+
+function getNormalBatchTemplate() {
+  return `第 1 题：（第 1 页）
 这里写题干内容……
 这段文字意在强调：
 
@@ -1293,13 +1325,54 @@ D. 选项D内容
 题型：中心理解题
 错误类型：概念理解错误
 来源：2025联考真题
-正确率：65</pre>
-    </div>
-    <div class="card">
-      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">粘贴错题内容（多题用【题目1】【题目2】依次分隔）</label>
-      <textarea id="batch-text" class="input-field" rows="12" placeholder="按上方模板粘贴，可一次粘贴多道题">${batchText}</textarea>
-      <button class="btn btn-primary" style="width:100%;margin-top:10px" onclick="parseBatchText()"><i class="fas fa-magic"></i> 解析并预览</button>
-    </div>`;
+正确率：65`;
+}
+
+function getDADataAnalysisTemplate() {
+  return `【材料组1】
+【材料文字】
+2021年1-2月，全国商品房销售面积同比增长1.05倍，
+比2019年1-2月增长23.3%。其中，住宅销售面积...
+（这里粘贴整段长材料）
+
+【图表】（可选，有图表才填）
+年份 | 销售面积(万㎡) | 同比增长(%)
+2019 | 15000          | 5.2
+2020 | 16500          | 10.0
+2021 | 18150          | 10.0
+
+【小题1】
+2020年1-2月全国商品房销售面积的同比增长率约为？
+【选项】
+A. 5%
+B. 10%
+C. 15%
+D. 20%
+【正确答案】B
+【我的答案】A
+【解析】
+间隔增长率公式：\\(R = r_1 + r_2 + r_1 \\times r_2\\)
+
+【小题2】
+2019年1-2月住宅销售面积约为多少万㎡？
+【选项】
+A. 12000
+B. 13000
+C. 14000
+D. 15000
+【正确答案】C
+【我的答案】C
+【解析】
+基期公式：\\(基期 = \\frac{现期}{1 + 增长率}\\)
+
+---
+
+【材料组2】
+【材料文字】
+另一段材料...
+
+【小题1】
+...`;
 }
 
 function toggleBatchTemplate() {
@@ -1314,28 +1387,7 @@ function toggleBatchTemplate() {
 }
 
 function copyBatchTemplate() {
-  const tpl = `第 1 题：（第 1 页）
-这里写题干内容……
-这段文字意在强调：
-
-【选项】
-A. 选项A内容
-B. 选项B内容
-C. 选项C内容
-D. 选项D内容
-
-【图表】（可选，资料分析推荐）
-表格文字直接粘贴，或贴图片链接
-
-【考查知识点】……
-【行文脉络】……
-【正确答案】D
-【错选项及原因】
-错选项：B
-原因分析：……
-【选项分析】……
-【导图分析】……
-来源：2025联考真题`;
+  const tpl = (batchMode === 'data-analysis' && batchModule === '资料分析') ? getDADataAnalysisTemplate() : getNormalBatchTemplate();
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(tpl).then(() => showToast('模板已复制')).catch(() => fallbackCopy(tpl));
   } else fallbackCopy(tpl);
@@ -1435,60 +1487,214 @@ function parseBatchContent(text) {
   return results;
 }
 
+// ==================== 资料分析材料组批量解析 ====================
+function parseDataAnalysisBatch(text) {
+  // 按【材料组\d+】或 --- 分割
+  const groups = [];
+  const groupParts = text.split(/(?:^|\n)\s*(?:【材料组\s*\d*】|---+)\s*(?:\n|$)/);
+  
+  groupParts.forEach((part, idx) => {
+    part = part.trim();
+    if (!part) return;
+    
+    const materialId = 'mg_' + Date.now() + '_' + idx;
+    let materialText = '';
+    let materialChart = '';
+    const subQuestions = [];
+    
+    // 提取材料文字（从开头到【小题1】）
+    const materialMatch = part.match(/^([\s\S]*?)(?=(?:【小题\d+】|$))/);
+    if (materialMatch) {
+      let mat = materialMatch[1];
+      // 移除【材料文字】标签
+      mat = mat.replace(/^【材料文字】\s*[:：]?\s*/i, '');
+      // 提取图表
+      const chartMatch = mat.match(/【(?:图表|表格|图表数据)】\s*[:：]?\s*([\s\S]*?)$/);
+      if (chartMatch) {
+        materialChart = chartMatch[1].trim();
+        mat = mat.slice(0, chartMatch.index);
+      }
+      materialText = mat.trim();
+    }
+    
+    // 提取所有小题
+    const subParts = part.split(/【小题\s*(\d+)\s*】/);
+    for (let i = 1; i < subParts.length; i += 2) {
+      const subIdx = subParts[i];
+      const subContent = subParts[i + 1] || '';
+      
+      // 解析每个小题（复用现有逻辑）
+      const lines = subContent.split('\n').map(l => l.trim()).filter(l => l);
+      const q = { 
+        question: '', optionA: '', optionB: '', optionC: '', optionD: '', 
+        myAnswer: '', correctAnswer: '', accuracy: '', type: '', source: '', 
+        chart: '', errorReasons: [], analysis: '' 
+      };
+      const qLines = [], aLines = [];
+      let section = 'question';
+      let optSeen = false;
+      
+      lines.forEach(line => {
+        if (!line) return;
+        let m;
+        if (/^(?:【)?选项(?:】)?$/.test(line)) return;
+        if (!q.optionA && (m = line.match(/^(?:选项A|A)\s*[.、．:：]\s*(.+)$/))) { q.optionA = m[1].trim(); optSeen = true; return; }
+        if (!q.optionB && (m = line.match(/^(?:选项B|B)\s*[.、．:：]\s*(.+)$/))) { q.optionB = m[1].trim(); optSeen = true; return; }
+        if (!q.optionC && (m = line.match(/^(?:选项C|C)\s*[.、．:：]\s*(.+)$/))) { q.optionC = m[1].trim(); optSeen = true; return; }
+        if (!q.optionD && (m = line.match(/^(?:选项D|D)\s*[.、．:：]\s*(.+)$/))) { q.optionD = m[1].trim(); optSeen = true; return; }
+        if ((m = line.match(/^(?:【)?(?:我的答案|错选选项|错选项|错选)(?:】)?\s*[:：]?\s*([A-Da-d])/))) { q.myAnswer = m[1].toUpperCase(); section = 'meta'; return; }
+        if ((m = line.match(/^(?:【)?正确答案(?:】)?\s*[:：]?\s*([A-Da-d])/))) { q.correctAnswer = m[1].toUpperCase(); section = 'meta'; return; }
+        if ((m = line.match(/^(?:【)?正确率(?:】)?\s*[:：]?\s*(\d+)\s*%?/))) { q.accuracy = m[1]; section = 'meta'; return; }
+        if ((m = line.match(/^(?:【)?(?:错题来源|题目来源|试题来源|来源)(?:】)?\s*[:：]?\s*(.+)$/))) { if (!q.source) q.source = m[1].trim(); section = 'meta'; return; }
+        if ((m = line.match(/^(?:【)?解析(?:】)?\s*[:：]?\s*(.*)$/))) { section = 'analysis'; if (m[1].trim()) aLines.push(m[1].trim()); return; }
+        if (section === 'analysis') { aLines.push(line); return; }
+        if (optSeen) { aLines.push(line); return; }
+        qLines.push(line);
+      });
+      
+      q.question = qLines.join('\n').trim();
+      q.analysis = aLines.join('\n').trim();
+      
+      if (q.question && q.myAnswer && q.correctAnswer) {
+        q.materialId = materialId;
+        q.materialText = materialText;
+        q.materialChart = materialChart;
+        q.materialChartPhotos = [];
+        subQuestions.push(q);
+      }
+    }
+    
+    if (subQuestions.length > 0) {
+      groups.push({
+        materialId: materialId,
+        materialText: materialText,
+        materialChart: materialChart,
+        questions: subQuestions
+      });
+    }
+  });
+  
+  return groups;
+}
+
 function parseBatchText() {
   batchModule = document.getElementById('batch-module').value;
   batchText = document.getElementById('batch-text').value;
   const pv = document.getElementById('batch-preview');
   if (!batchModule) { showToast('请先选择本批错题的模块'); return; }
   if (!batchText.trim()) { showToast('请粘贴错题内容'); return; }
-  batchParsed = parseBatchContent(batchText);
-  if (!batchParsed.length) {
-    pv.innerHTML = '<div class="card"><p style="color:var(--danger);font-size:13px;margin:0">没有解析出有效题目。请检查：每道题以【题目1】开头，且包含题干、我的答案、正确答案三项。</p></div>';
-    return;
+  
+  if (batchMode === 'data-analysis' && batchModule === '资料分析') {
+    // 资料分析材料组模式
+    const groups = parseDataAnalysisBatch(batchText);
+    if (!groups.length) {
+      pv.innerHTML = '<div class="card"><p style="color:var(--danger);font-size:13px;margin:0">没有解析出有效材料组。请检查格式：每个材料组以【材料组1】开头，包含【小题1】【小题2】等。</p></div>';
+      return;
+    }
+    batchParsed = groups;
+    const totalQs = groups.reduce((sum, g) => sum + g.questions.length, 0);
+    pv.innerHTML = `
+      <div class="card">
+        <p style="font-size:14px;font-weight:700;margin:0 0 10px"><i class="fas fa-check-circle" style="color:var(--success)"></i> 解析成功 ${groups.length} 个材料组，共 ${totalQs} 道小题</p>
+        ${groups.map((g, gi) => `<div style="padding:10px 0;border-top:1px solid var(--border)">
+          <div style="font-size:13px;font-weight:600;margin-bottom:6px">材料组${gi+1}（${g.questions.length}题）</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:6px">${g.materialText.slice(0,50)}${g.materialText.length>50?'…':''}</div>
+          ${g.questions.map((q, qi) => `<div style="font-size:12px;padding:3px 0;color:var(--text)">
+            <span style="color:var(--muted)">小题${qi+1}:</span> ${q.question.slice(0,25)}${q.question.length>25?'…':''}
+            <span style="margin-left:4px">我答<b style="color:var(--danger)">${q.myAnswer}</b>→正确<b style="color:var(--success)">${q.correctAnswer}</b></span>
+          </div>`).join('')}
+        </div>`).join('')}
+        <button class="btn btn-success" style="width:100%;margin-top:12px" onclick="confirmBatchImport()"><i class="fas fa-file-import"></i> 确认导入 ${totalQs} 道错题</button>
+      </div>`;
+  } else {
+    // 普通模式
+    batchParsed = parseBatchContent(batchText);
+    if (!batchParsed.length) {
+      pv.innerHTML = '<div class="card"><p style="color:var(--danger);font-size:13px;margin:0">没有解析出有效题目。请检查：每道题以【题目1】开头，且包含题干、我的答案、正确答案三项。</p></div>';
+      return;
+    }
+    pv.innerHTML = `
+      <div class="card">
+        <p style="font-size:14px;font-weight:700;margin:0 0 10px"><i class="fas fa-check-circle" style="color:var(--success)"></i> 解析成功 ${batchParsed.length} 道题</p>
+        ${batchParsed.map((q,i) => `<div style="padding:8px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5">
+          <span style="color:var(--muted)">第${i+1}题</span> ${q.question.slice(0,30)}${q.question.length>30?'…':''}
+          <span style="margin-left:6px;white-space:nowrap">我答<b style="color:var(--danger)">${q.myAnswer}</b> → 正确<b style="color:var(--success)">${q.correctAnswer}</b></span>
+        </div>`).join('')}
+        <button class="btn btn-success" style="width:100%;margin-top:12px" onclick="confirmBatchImport()"><i class="fas fa-file-import"></i> 确认导入 ${batchParsed.length} 道错题</button>
+      </div>`;
   }
-  pv.innerHTML = `
-    <div class="card">
-      <p style="font-size:14px;font-weight:700;margin:0 0 10px"><i class="fas fa-check-circle" style="color:var(--success)"></i> 解析成功 ${batchParsed.length} 道题</p>
-      ${batchParsed.map((q,i) => `<div style="padding:8px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5">
-        <span style="color:var(--muted)">第${i+1}题</span> ${q.question.slice(0,30)}${q.question.length>30?'…':''}
-        <span style="margin-left:6px;white-space:nowrap">我答<b style="color:var(--danger)">${q.myAnswer}</b> → 正确<b style="color:var(--success)">${q.correctAnswer}</b></span>
-      </div>`).join('')}
-      <button class="btn btn-success" style="width:100%;margin-top:12px" onclick="confirmBatchImport()"><i class="fas fa-file-import"></i> 确认导入 ${batchParsed.length} 道错题</button>
-    </div>`;
 }
 
 function confirmBatchImport() {
-  if (!batchParsed || !batchParsed.length) return;
+  if (!batchParsed) return;
   const todayStr = new Date().toISOString().slice(0,10);
-  batchParsed.forEach(p => {
-    questions.push({
-      id: genId(),
-      module: batchModule,
-      type: p.type || '',
-      source: p.source || '',
-      question: p.question,
-      optionA: p.optionA, optionB: p.optionB, optionC: p.optionC, optionD: p.optionD,
-      myAnswer: p.myAnswer,
-      correctAnswer: p.correctAnswer,
-      accuracy: p.accuracy || '',
-      errorReasons: p.errorReasons.length ? p.errorReasons : [],
-      analysis: p.analysis,
-      chart: p.chart || '',
-      notes: '',
-      photos: [],
-      createDate: todayStr,
-      errorCount: 1,
-      reviewStatus: '待复习',
-      lastReviewDate: null,
-      isSeed: false
+  let added = 0;
+  
+  if (batchMode === 'data-analysis' && batchModule === '资料分析' && Array.isArray(batchParsed) && batchParsed[0] && batchParsed[0].questions) {
+    // 材料组模式
+    batchParsed.forEach(group => {
+      group.questions.forEach(p => {
+        questions.push({
+          id: genId(),
+          module: batchModule,
+          type: p.type || '',
+          source: p.source || '',
+          question: p.question,
+          optionA: p.optionA, optionB: p.optionB, optionC: p.optionC, optionD: p.optionD,
+          myAnswer: p.myAnswer,
+          correctAnswer: p.correctAnswer,
+          accuracy: p.accuracy || '',
+          errorReasons: p.errorReasons.length ? p.errorReasons : [],
+          analysis: p.analysis,
+          chart: p.chart || '',
+          notes: '',
+          photos: [],
+          createDate: todayStr,
+          errorCount: 1,
+          reviewStatus: '待复习',
+          lastReviewDate: null,
+          isSeed: false,
+          materialId: group.materialId,
+          materialText: group.materialText,
+          materialChartText: group.materialChart || '',
+          materialChartPhotos: []
+        });
+        added++;
+      });
     });
-  });
-  const added = batchParsed.length;
+  } else if (Array.isArray(batchParsed)) {
+    // 普通模式
+    batchParsed.forEach(p => {
+      questions.push({
+        id: genId(),
+        module: batchModule,
+        type: p.type || '',
+        source: p.source || '',
+        question: p.question,
+        optionA: p.optionA, optionB: p.optionB, optionC: p.optionC, optionD: p.optionD,
+        myAnswer: p.myAnswer,
+        correctAnswer: p.correctAnswer,
+        accuracy: p.accuracy || '',
+        errorReasons: p.errorReasons.length ? p.errorReasons : [],
+        analysis: p.analysis,
+        chart: p.chart || '',
+        notes: '',
+        photos: [],
+        createDate: todayStr,
+        errorCount: 1,
+        reviewStatus: '待复习',
+        lastReviewDate: null,
+        isSeed: false
+      });
+      added++;
+    });
+  }
+  
   saveQuestions();
   classifyVerbalTypes();
   updateDailyStat('newErrors', added);
   showToast(`成功导入 ${added} 道错题`);
-  batchParsed = null; batchText = '';
+  batchParsed = null; batchText = ''; batchMode = 'normal';
   errorsViewMode = 'categories';
   switchTab('errors');
 }
@@ -2730,7 +2936,7 @@ function renderSettings() {
         <p style="margin:0">面向公考备考人群的错题管理工具</p>
         <p style="margin:0">当前错题总数：${questions.length}</p>
         <p style="margin:0">所有数据存储在本地浏览器中，无内置错题</p>
-        <p style="margin:0">页面版本：<b style="color:var(--primary)">0811i</b>（公式渲染+图表+云同步合并版）</p>
+        <p style="margin:0">页面版本：<b style="color:var(--primary)">0811j</b>（公式渲染+图表+云同步合并版）</p>
       </div>
     </div>
   `;
@@ -2845,4 +3051,4 @@ window.__onKatexReady = function() { try { renderPage(currentTab); if (typeof up
 init();
 </script>
 </body>
-<!-- build: 0811i --></html>
+<!-- build: 0811j --></html>
