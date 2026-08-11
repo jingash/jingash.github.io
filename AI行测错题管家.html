@@ -179,6 +179,7 @@ let sbSyncStatus = 'offline'; // offline | syncing | synced | error
 let sbLastSync = null;
 let sbHasChartCol = null; // 云端是否已有 chart 列（null=未知，启动时自动探测）
 let sbLastErrorMsg = null; // 最近一次同步错误的详细信息
+let sbLastTombstoneInfo = ''; // 最近一次拉取的删除标记信息
 
 // ==================== 删除标记（tombstone）：让删除操作也能跨设备同步 ====================
 let deletedIds = [];
@@ -232,9 +233,14 @@ async function sbSyncToCloud() {
   try {
     sbLastErrorMsg = null;
     // 先同步删除：把本地已删除的错题从云端清掉
+    let deleteFailed = false;
     if (deletedIds.length) {
       const { error: delErr } = await sb.from('questions').delete().in('id', deletedIds);
-      if (delErr) console.warn('Supabase delete error:', delErr.message);
+      if (delErr) {
+        console.warn('Supabase delete error:', delErr.message);
+        deleteFailed = true;
+        sbLastErrorMsg = '云端删除失败（' + delErr.message + '），删除标记暂未同步到云端';
+      }
     }
     let upsertErrCount = 0;
     for (const q of questions) {
@@ -280,6 +286,7 @@ async function sbSyncFromCloud() {
     const { data, error } = await sb.from('questions').select('*').eq('user_id', sbUserId);
     if (error) throw error;
     // 先拉取删除标记：云端记录的已删错题，本地同步删除（跨设备删除生效的关键）
+    let tombstoneInfo = '';
     const { data: delData, error: delErr } = await sb.from('kv').select('k,v').eq('k', 'deleted');
     if (!delErr && delData && delData.length > 0 && Array.isArray(delData[0].v) && delData[0].v.length) {
       const cloudDeleted = new Set(delData[0].v);
@@ -288,6 +295,18 @@ async function sbSyncFromCloud() {
       let tombChanged = questions.length !== beforeLen;
       cloudDeleted.forEach(id => { if (!deletedIds.includes(id)) { deletedIds.push(id); tombChanged = true; } });
       if (tombChanged) { saveDeletedIds(); saveQuestionsLocal(); }
+      tombstoneInfo = `（${cloudDeleted.size} 条删除标记已同步）`;
+      // 如果发现云端有被标记删除的数据，直接从云端也删掉
+      if (data && data.length > 0) {
+        const cloudTombstoned = data.filter(r => cloudDeleted.has(r.id)).map(r => r.id);
+        if (cloudTombstoned.length) {
+          try {
+            await sb.from('questions').delete().in('id', cloudTombstoned);
+            tombstoneInfo += `，已从云端清除 ${cloudTombstoned.length} 条残留`;
+          } catch(e) { console.warn('清除云端残留失败:', e.message); }
+        }
+      }
+      sbLastTombstoneInfo = tombstoneInfo;
     }
     if (data && data.length > 0) {
       const cloudQs = data.map(rowToQ).filter(q => !deletedIds.includes(q.id));
@@ -419,7 +438,12 @@ async function sbManualSync(mode) {
     } catch(e) {}
     await sbSyncFromCloud();
     if (sbSyncStatus === 'synced') {
-      showToast(`拉取完成：云端 ${cloudCountBefore} 道 → 本地现有 ${questions.length} 道`);
+      let msg = `拉取完成：云端 ${cloudCountBefore} 道 → 本地现有 ${questions.length} 道`;
+      if (sbLastTombstoneInfo) msg += sbLastTombstoneInfo;
+      if (cloudCountBefore > 0 && questions.length === 0 && deletedIds.length > 0) {
+        msg += `。⚠️ ${deletedIds.length} 条删除标记可能阻止了数据拉取，请在设置中点击"重置删除标记"后重新拉取`;
+      }
+      showToast(msg);
       renderHome();
       if (errorsViewMode === 'list') renderErrors();
     } else {
@@ -444,6 +468,24 @@ async function sbCleanCloudToLocal() {
       showToast(`已清理云端 ${staleIds.length} 道残留错题`);
     } catch(e) {
       showToast('清理失败：' + e.message);
+    }
+  });
+}
+
+// 重置删除标记（tombstone）——当删除标记和云端数据冲突导致拉不到数据时使用
+async function sbResetTombstones() {
+  if (!sb || !sbUserId) { showToast('云同步未连接，请稍后再试'); return; }
+  const count = deletedIds.length;
+  showConfirm(`确定要清空所有删除标记吗？当前有 ${count} 条标记。清空后，之前删除的错题可能会重新出现在云端。`, async () => {
+    try {
+      deletedIds = [];
+      saveDeletedIds();
+      // 同时清空云端的删除标记
+      await sb.from('kv').upsert({ k: 'deleted', v: [] }, { onConflict: 'k' });
+      showToast(`已重置 ${count} 条删除标记。现在可以重新拉取云端数据了。`);
+      renderSettings();
+    } catch(e) {
+      showToast('重置失败：' + e.message);
     }
   });
 }
@@ -2641,6 +2683,7 @@ function renderSettings() {
           <div style="display:flex;justify-content:space-between;padding:4px 0"><span>同步状态</span><span id="sb-status-detail" style="color:${syncStatusColor[sbSyncStatus]||syncStatusColor.offline};font-weight:600">${syncStatusText[sbSyncStatus]||syncStatusText.offline}</span></div>
           <div style="display:flex;justify-content:space-between;padding:4px 0"><span>上次同步</span><span id="sb-last-sync">${lastSyncText}</span></div>
           <div style="display:flex;justify-content:space-between;padding:4px 0"><span>本地错题数</span><span>${questions.length} 道</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0"><span>删除标记数</span><span style="${deletedIds.length > 0 ? 'color:var(--accent)' : ''}">${deletedIds.length} 条</span></div>
           <div style="display:flex;justify-content:space-between;padding:4px 0"><span>登录方式</span><span>固定共享身份</span></div>
         </div>
       </div>
@@ -2648,8 +2691,9 @@ function renderSettings() {
         <button class="btn btn-primary btn-sm" onclick="sbManualSync('push')"><i class="fas fa-cloud-arrow-up"></i> 上传到云端</button>
         <button class="btn btn-outline btn-sm" onclick="sbManualSync('pull')"><i class="fas fa-cloud-arrow-down"></i> 从云端拉取</button>
         <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="sbCleanCloudToLocal()"><i class="fas fa-broom"></i> 清理云端残留（以本机为准）</button>
+        <button class="btn btn-outline btn-sm" onclick="sbResetTombstones()"><i class="fas fa-undo"></i> 重置删除标记</button>
       </div>
-      <p style="font-size:11px;color:var(--muted);margin:10px 0 0;line-height:1.6">每次录入/编辑/删除错题后会自动上传，删除操作会同步到云端（其他设备拉取后也会删除）。打开页面时会自动拉取云端数据并与本地合并。若云端有删不掉的残留数据，点"清理云端残留"。</p>
+      <p style="font-size:11px;color:var(--muted);margin:10px 0 0;line-height:1.6">每次录入/编辑/删除错题后会自动上传，删除操作会同步到云端（其他设备拉取后也会删除）。打开页面时会自动拉取云端数据并与本地合并。若云端有删不掉的残留数据，点"清理云端残留"；若拉取后数据为 0 但云端有数据，点"重置删除标记"。</p>
     </div>
     <div class="card">
       <h3 style="font-size:15px;font-weight:700;margin:0 0 12px">数据导出</h3>
@@ -2686,7 +2730,7 @@ function renderSettings() {
         <p style="margin:0">面向公考备考人群的错题管理工具</p>
         <p style="margin:0">当前错题总数：${questions.length}</p>
         <p style="margin:0">所有数据存储在本地浏览器中，无内置错题</p>
-        <p style="margin:0">页面版本：<b style="color:var(--primary)">0811h</b>（公式渲染+图表+云同步合并版）</p>
+        <p style="margin:0">页面版本：<b style="color:var(--primary)">0811i</b>（公式渲染+图表+云同步合并版）</p>
       </div>
     </div>
   `;
@@ -2801,4 +2845,4 @@ window.__onKatexReady = function() { try { renderPage(currentTab); if (typeof up
 init();
 </script>
 </body>
-<!-- build: 0811h --></html>
+<!-- build: 0811i --></html>
