@@ -178,6 +178,7 @@ let sbSyncing = false;
 let sbSyncStatus = 'offline'; // offline | syncing | synced | error
 let sbLastSync = null;
 let sbHasChartCol = null; // 云端是否已有 chart 列（null=未知，启动时自动探测）
+let sbLastErrorMsg = null; // 最近一次同步错误的详细信息
 
 // ==================== 删除标记（tombstone）：让删除操作也能跨设备同步 ====================
 let deletedIds = [];
@@ -229,6 +230,7 @@ async function sbSyncToCloud() {
   sbSyncStatus = 'syncing';
   updateSyncIndicator();
   try {
+    sbLastErrorMsg = null;
     // 先同步删除：把本地已删除的错题从云端清掉
     if (deletedIds.length) {
       const { error: delErr } = await sb.from('questions').delete().in('id', deletedIds);
@@ -243,6 +245,7 @@ async function sbSyncToCloud() {
     }
     if (upsertErrCount > 0) {
       sbSyncStatus = 'error';
+      sbLastErrorMsg = `有 ${upsertErrCount}/${questions.length} 条写入失败（常见原因：Supabase 的 RLS 策略阻止了写入，请到 Supabase 控制台检查 questions 表的 RLS 策略）`;
       sbSyncing = false;
       updateSyncIndicator();
       return;
@@ -260,6 +263,7 @@ async function sbSyncToCloud() {
     localStorage.setItem('xct_sb_last_sync', String(sbLastSync));
   } catch(e) {
     sbSyncStatus = 'error';
+    sbLastErrorMsg = e.message;
     console.warn('Supabase sync error:', e.message);
   }
   sbSyncing = false;
@@ -377,7 +381,13 @@ async function sbInit() {
 }
 
 async function sbManualSync(mode) {
-  if (sbSyncing) { showToast('同步进行中，请稍后再试'); return; }
+  // 如果后台正在同步，等一下再做（避免竞态导致误报成功）
+  if (sbSyncing) {
+    showToast('正在同步中，请稍等…');
+    const waitStart = Date.now();
+    while (sbSyncing && Date.now() - waitStart < 5000) await new Promise(r => setTimeout(r, 200));
+    if (sbSyncing) { showToast('同步仍在进行，请稍后再试'); return; }
+  }
   if (!sb || !sbUserId) {
     showToast('云同步未连接，正在重新初始化…');
     await sbInit();
@@ -385,16 +395,35 @@ async function sbManualSync(mode) {
   }
   if (mode === 'push') {
     await sbSyncToCloud();
-    if (sbSyncStatus === 'synced') showToast(`上传成功，共 ${questions.length} 道错题已同步到云端`);
-    else showToast('上传失败：' + (sbSyncStatus === 'error' ? '网络或服务异常' : '未知错误'));
+    if (sbSyncStatus === 'synced') {
+      // 验证云端实际数据量
+      let cloudCount = '?';
+      try {
+        const { count } = await sb.from('questions').select('*', { count: 'exact', head: true }).eq('user_id', sbUserId);
+        cloudCount = count ?? 0;
+      } catch(e) {}
+      if (cloudCount === 0 && questions.length > 0) {
+        showToast(`⚠️ 本地 ${questions.length} 道，但云端 0 道——上传可能失败，请检查 Supabase RLS 策略`);
+      } else {
+        showToast(`上传完成：本地 ${questions.length} 道，云端 ${cloudCount} 道`);
+      }
+    } else {
+      showToast('上传失败：' + (sbLastErrorMsg || sbSyncStatus === 'error' ? '网络或服务异常' : '未知错误'));
+    }
   } else {
+    // 先查云端数量再拉取
+    let cloudCountBefore = '?';
+    try {
+      const { count } = await sb.from('questions').select('*', { count: 'exact', head: true }).eq('user_id', sbUserId);
+      cloudCountBefore = count ?? 0;
+    } catch(e) {}
     await sbSyncFromCloud();
     if (sbSyncStatus === 'synced') {
-      showToast(`拉取成功，本地共 ${questions.length} 道错题`);
+      showToast(`拉取完成：云端 ${cloudCountBefore} 道 → 本地现有 ${questions.length} 道`);
       renderHome();
       if (errorsViewMode === 'list') renderErrors();
     } else {
-      showToast('拉取失败：' + (sbSyncStatus === 'error' ? '网络或服务异常' : '未知错误'));
+      showToast('拉取失败：' + (sbLastErrorMsg || sbSyncStatus === 'error' ? '网络或服务异常' : '未知错误'));
     }
   }
   if (document.getElementById('page-settings').innerHTML) renderSettings();
@@ -2657,7 +2686,7 @@ function renderSettings() {
         <p style="margin:0">面向公考备考人群的错题管理工具</p>
         <p style="margin:0">当前错题总数：${questions.length}</p>
         <p style="margin:0">所有数据存储在本地浏览器中，无内置错题</p>
-        <p style="margin:0">页面版本：<b style="color:var(--primary)">0811f</b>（公式渲染+图表+云同步合并版）</p>
+        <p style="margin:0">页面版本：<b style="color:var(--primary)">0811g</b>（公式渲染+图表+云同步合并版）</p>
       </div>
     </div>
   `;
@@ -2772,4 +2801,4 @@ window.__onKatexReady = function() { try { renderPage(currentTab); if (typeof up
 init();
 </script>
 </body>
-<!-- build: 0811f --></html>
+<!-- build: 0811g --></html>
