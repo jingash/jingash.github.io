@@ -162,6 +162,8 @@ const ALL_MODULES = ['言语理解','判断推理','数量关系','资料分析'
 // ==================== SUPABASE CONFIG ====================
 const SUPABASE_URL = 'https://fibnnedkozagzucqtpzh.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpYm5uZWRrb3phZ3p1Y3F0cHpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzODk4NTEsImV4cCI6MjEwMTk2NTg1MX0.AY0qPgKVm778Puh9Dcw-60LPta2mYGBfW8s7eUA1xkM';
+// 固定共享身份：所有设备用同一身份读写，保证跨设备同步
+const FIXED_USER_ID = '00000000-0000-4000-8000-000000000001';
 let sb = null;
 let sbUserId = null;
 let sbSyncing = false;
@@ -201,12 +203,23 @@ async function sbSyncToCloud() {
   sbSyncStatus = 'syncing';
   updateSyncIndicator();
   try {
+    let upsertErrCount = 0;
     for (const q of questions) {
       const row = qToRow(q);
       row.user_id = sbUserId;
       const { error } = await sb.from('questions').upsert(row, { onConflict: 'id' });
-      if (error) console.warn('Supabase upsert error:', error.message);
+      if (error) { upsertErrCount++; console.warn('Supabase upsert error:', error.message); }
     }
+    if (upsertErrCount > 0) {
+      sbSyncStatus = 'error';
+      sbSyncing = false;
+      updateSyncIndicator();
+      return;
+    }
+    // 每日统计（复盘记录等）一并上传
+    const { error: kvErr } = await sb.from('kv').upsert(
+      { k: 'daily', v: loadDailyStats() }, { onConflict: 'k' });
+    if (kvErr) console.warn('Supabase kv upsert error:', kvErr.message);
     sbSyncStatus = 'synced';
     sbLastSync = Date.now();
     localStorage.setItem('xct_sb_last_sync', String(sbLastSync));
@@ -235,6 +248,15 @@ async function sbSyncFromCloud() {
       cloudQs.forEach(q => { localMap[q.id] = q; });
       questions = Object.values(localMap);
       saveQuestionsLocal();
+    }
+    // 拉取每日统计并与本地合并（按日期取较新的记录集合）
+    const { data: kvData, error: kvErr } = await sb.from('kv').select('k,v').eq('k', 'daily');
+    if (kvErr) console.warn('Supabase kv pull error:', kvErr.message);
+    if (kvData && kvData.length > 0) {
+      const cloudStats = kvData[0].v || {};
+      const localStats = loadDailyStats();
+      const merged = Object.assign({}, localStats, cloudStats);
+      if (JSON.stringify(merged) !== JSON.stringify(localStats)) saveDailyStats(merged);
     }
     sbSyncStatus = 'synced';
     sbLastSync = Date.now();
@@ -291,7 +313,8 @@ async function sbInit() {
     sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     const { data, error } = await sb.auth.signInAnonymously();
     if (error) throw error;
-    sbUserId = data.user.id;
+    // 不用各设备独立的匿名ID，统一改用固定共享身份
+    sbUserId = FIXED_USER_ID;
     // 先拉云端数据，再上传本地数据
     await sbSyncFromCloud();
     await sbSyncToCloud();
@@ -647,6 +670,7 @@ function loadDailyStats() {
 
 function saveDailyStats(stats) {
   try { localStorage.setItem(DAILY_KEY, JSON.stringify(stats)); } catch(e) {}
+  if (sb && sbUserId) sbSyncDebounced();
 }
 
 function updateDailyStat(key, amount) {
@@ -2338,7 +2362,7 @@ function renderSettings() {
           <div style="display:flex;justify-content:space-between;padding:4px 0"><span>同步状态</span><span id="sb-status-detail" style="color:${syncStatusColor[sbSyncStatus]||syncStatusColor.offline};font-weight:600">${syncStatusText[sbSyncStatus]||syncStatusText.offline}</span></div>
           <div style="display:flex;justify-content:space-between;padding:4px 0"><span>上次同步</span><span id="sb-last-sync">${lastSyncText}</span></div>
           <div style="display:flex;justify-content:space-between;padding:4px 0"><span>本地错题数</span><span>${questions.length} 道</span></div>
-          <div style="display:flex;justify-content:space-between;padding:4px 0"><span>登录方式</span><span>匿名登录</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0"><span>登录方式</span><span>固定共享身份</span></div>
         </div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
