@@ -13,6 +13,8 @@
 <link href="https://cdn.staticfile.net/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
 <script>
 tailwind.config={theme:{extend:{colors:{primary:'#0c1929','primary-light':'#162544',accent:'#f97316',success:'#22c55e'}}}}
 </script>
@@ -166,17 +168,20 @@ const ERROR_REASONS = ['概念理解错误','审题错误','方法忘记','计�
 const ALL_MODULES = ['言语理解','判断推理','数量关系','资料分析','常识判断'];
 
 // ==================== SUPABASE CONFIG ====================
-const SUPABASE_URL = 'https://lcdvvctvkdppsefblcbd.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxjZHZ2Y3R2a2RwcHNlZmJsY2JkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzMDQ4NjEsImV4cCI6MjEwMTg4MDg2MX0.3hCiTrRORBLtn1l0b4ldrOOaDdJxK33a1fLPOFsRF3k';
+const SUPABASE_URL = 'https://fibnnedkozagzucqtpzh.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpYm5uZWRrb3phZ3p1Y3F0cHpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzODk4NTEsImV4cCI6MjEwMTk2NTg1MX0.AY0qPgKVm778Puh9Dcw-60LPta2mYGBfW8s7eUA1xkM';
+// 固定共享身份：所有设备用同一身份读写，保证跨设备同步
+const FIXED_USER_ID = '00000000-0000-4000-8000-000000000001';
 let sb = null;
 let sbUserId = null;
 let sbSyncing = false;
 let sbSyncStatus = 'offline'; // offline | syncing | synced | error
 let sbLastSync = null;
+let sbHasChartCol = null; // 云端是否已有 chart 列（null=未知，启动时自动探测）
 
 // camelCase ↔ snake_case 转换
 function qToRow(q) {
-  return {
+  const row = {
     id: q.id, module: q.module||'', type: q.type||'', source: q.source||'',
     question: q.question||'', option_a: q.optionA||'', option_b: q.optionB||'',
     option_c: q.optionC||'', option_d: q.optionD||'', my_answer: q.myAnswer||'',
@@ -186,6 +191,8 @@ function qToRow(q) {
     review_status: q.reviewStatus||'待复习', last_review_date: q.lastReviewDate||null,
     is_seed: !!q.isSeed
   };
+  if (sbHasChartCol !== false) row.chart = q.chart||'';
+  return row;
 }
 function rowToQ(r) {
   return {
@@ -194,6 +201,7 @@ function rowToQ(r) {
     optionC: r.option_c||'', optionD: r.option_d||'', myAnswer: r.my_answer||'',
     correctAnswer: r.correct_answer||'', accuracy: r.accuracy||'',
     errorReasons: r.error_reasons||[], analysis: r.analysis||'', notes: r.notes||'',
+    chart: r.chart||'',
     photos: r.photos||[], createDate: r.create_date||'', errorCount: r.error_count||1,
     reviewStatus: r.review_status||'待复习', lastReviewDate: r.last_review_date||null,
     isSeed: !!r.is_seed
@@ -207,12 +215,23 @@ async function sbSyncToCloud() {
   sbSyncStatus = 'syncing';
   updateSyncIndicator();
   try {
+    let upsertErrCount = 0;
     for (const q of questions) {
       const row = qToRow(q);
       row.user_id = sbUserId;
       const { error } = await sb.from('questions').upsert(row, { onConflict: 'id' });
-      if (error) console.warn('Supabase upsert error:', error.message);
+      if (error) { upsertErrCount++; console.warn('Supabase upsert error:', error.message); }
     }
+    if (upsertErrCount > 0) {
+      sbSyncStatus = 'error';
+      sbSyncing = false;
+      updateSyncIndicator();
+      return;
+    }
+    // 每日统计（复盘记录等）一并上传
+    const { error: kvErr } = await sb.from('kv').upsert(
+      { k: 'daily', v: loadDailyStats() }, { onConflict: 'k' });
+    if (kvErr) console.warn('Supabase kv upsert error:', kvErr.message);
     sbSyncStatus = 'synced';
     sbLastSync = Date.now();
     localStorage.setItem('xct_sb_last_sync', String(sbLastSync));
@@ -241,6 +260,15 @@ async function sbSyncFromCloud() {
       cloudQs.forEach(q => { localMap[q.id] = q; });
       questions = Object.values(localMap);
       saveQuestionsLocal();
+    }
+    // 拉取每日统计并与本地合并（按日期取较新的记录集合）
+    const { data: kvData, error: kvErr } = await sb.from('kv').select('k,v').eq('k', 'daily');
+    if (kvErr) console.warn('Supabase kv pull error:', kvErr.message);
+    if (kvData && kvData.length > 0) {
+      const cloudStats = kvData[0].v || {};
+      const localStats = loadDailyStats();
+      const merged = Object.assign({}, localStats, cloudStats);
+      if (JSON.stringify(merged) !== JSON.stringify(localStats)) saveDailyStats(merged);
     }
     sbSyncStatus = 'synced';
     sbLastSync = Date.now();
@@ -297,7 +325,8 @@ async function sbInit() {
     sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     const { data, error } = await sb.auth.signInAnonymously();
     if (error) throw error;
-    sbUserId = data.user.id;
+    // 不用各设备独立的匿名ID，统一改用固定共享身份
+    sbUserId = FIXED_USER_ID;
     // 探测云端是否有 chart 列（没跑过 ALTER TABLE 时自动降级，不影响其他字段同步）
     try {
       const probe = await sb.from('questions').select('chart').limit(1);
@@ -631,7 +660,7 @@ let inputMode = 'single';
 let batchModule = '';
 let batchText = '';
 let batchParsed = null;
-let errorFilters = { module: '全部', type: '全部', source: '全部', sort: '最新' };
+let errorFilters = { module: '全部', type: '全部', source: '全部', accMin: 0, accMax: 100 };
 let expandedCardId = null;
 let errorsViewMode = 'categories';
 let batchDeleteMode = false;
@@ -659,6 +688,7 @@ function loadDailyStats() {
 
 function saveDailyStats(stats) {
   try { localStorage.setItem(DAILY_KEY, JSON.stringify(stats)); } catch(e) {}
+  if (sb && sbUserId) sbSyncDebounced();
 }
 
 function updateDailyStat(key, amount) {
@@ -834,10 +864,10 @@ function renderQuestionText(qtext) {
   if (m && m[1] && m[1].trim().length > 2) {
     const questionPart = m[1].trim();
     const body = qtext.slice(0, m.index).replace(/[。\s\n]+$/, '');
-    const bodyHtml = escHtml(body).replace(/\n/g, '<br>');
-    return bodyHtml + (body ? '<br>' : '') + '<b style="color:var(--primary)">' + escHtml(questionPart) + '</b>';
+    const bodyHtml = renderMathInText(body).replace(/\n/g, '<br>');
+    return bodyHtml + (body ? '<br>' : '') + '<b style="color:var(--primary)">' + renderMathInText(questionPart) + '</b>';
   }
-  return escHtml(qtext).replace(/\n/g, '<br>');
+  return renderMathInText(qtext).replace(/\n/g, '<br>');
 }
 
 function genId() {
@@ -1314,6 +1344,7 @@ function confirmBatchImport() {
       accuracy: p.accuracy || '',
       errorReasons: p.errorReasons.length ? p.errorReasons : [],
       analysis: p.analysis,
+      chart: p.chart || '',
       notes: '',
       photos: [],
       createDate: todayStr,
@@ -1700,9 +1731,34 @@ function getFilteredQuestions() {
   if (errorFilters.module !== '全部') filtered = filtered.filter(q => q.module === errorFilters.module);
   if (errorFilters.type !== '全部') filtered = filtered.filter(q => q.type === errorFilters.type);
   if (errorFilters.source !== '全部') filtered = filtered.filter(q => (q.source || '未填来源') === errorFilters.source);
-  if (errorFilters.sort === '错误次数最多') filtered.sort((a,b) => b.errorCount - a.errorCount);
-  else filtered.sort((a,b) => (b.createDate||'').localeCompare(a.createDate||''));
+  // 正确率区间筛选：全区间(0-100)显示全部（含未填）；其他区间只含已填正确率且在区间内的题
+  if (!(errorFilters.accMin === 0 && errorFilters.accMax === 100)) {
+    const lo = Math.min(errorFilters.accMin, errorFilters.accMax);
+    const hi = Math.max(errorFilters.accMin, errorFilters.accMax);
+    filtered = filtered.filter(q => q.accuracy !== '' && q.accuracy != null && !isNaN(Number(q.accuracy)) && Number(q.accuracy) >= lo && Number(q.accuracy) <= hi);
+  }
+  filtered.sort((a,b) => (b.createDate||'').localeCompare(a.createDate||''));
   return filtered;
+}
+
+function setAccFilter(which, val) {
+  const v = Number(val);
+  if (which === 'min') {
+    errorFilters.accMin = v;
+    if (errorFilters.accMin > errorFilters.accMax) {
+      errorFilters.accMax = errorFilters.accMin;
+      const el = document.getElementById('filter-acc-max');
+      if (el) el.value = String(errorFilters.accMax);
+    }
+  } else {
+    errorFilters.accMax = v;
+    if (errorFilters.accMax < errorFilters.accMin) {
+      errorFilters.accMin = errorFilters.accMax;
+      const el = document.getElementById('filter-acc-min');
+      if (el) el.value = String(errorFilters.accMin);
+    }
+  }
+  renderErrors();
 }
 
 function renderErrorList(el) {
@@ -1749,9 +1805,12 @@ function renderErrorList(el) {
           <option value="全部">全部来源</option>
           ${allSources.map(s => `<option value="${s}" ${errorFilters.source===s?'selected':''}>${s}</option>`).join('')}
         </select>
-        <select class="input-field" style="width:auto;flex:1;min-width:100px;padding:6px 28px 6px 10px;font-size:13px" onchange="errorFilters.sort=this.value;renderErrors()">
-          <option value="最新" ${errorFilters.sort==='最新'?'selected':''}>最新</option>
-          <option value="错误次数最多" ${errorFilters.sort==='错误次数最多'?'selected':''}>错误次数最多</option>
+        <select id="filter-acc-min" class="input-field" style="width:auto;flex:1;min-width:90px;padding:6px 28px 6px 10px;font-size:13px" onchange="setAccFilter('min',this.value)">
+          ${[0,10,20,30,40,50,60,70,80,90,100].map(v => `<option value="${v}" ${errorFilters.accMin===v?'selected':''}>${v}%</option>`).join('')}
+        </select>
+        <span style="font-size:12px;color:var(--muted);white-space:nowrap">至</span>
+        <select id="filter-acc-max" class="input-field" style="width:auto;flex:1;min-width:90px;padding:6px 28px 6px 10px;font-size:13px" onchange="setAccFilter('max',this.value)">
+          ${[0,10,20,30,40,50,60,70,80,90,100].map(v => `<option value="${v}" ${errorFilters.accMax===v?'selected':''}>${v}%</option>`).join('')}
         </select>
         <button class="btn btn-primary btn-sm" onclick="exportForPrint()" style="padding:6px 12px;font-size:13px;white-space:nowrap"><i class="fas fa-print"></i> 导出打印</button>
       </div>
@@ -1792,17 +1851,16 @@ function exportForPrint() {
       if (qText) {
         // 去掉开头的原题号（如"第2题：（第1页）"或"第3题：（第2页）"）
         qText = qText.replace(/^第\s*\d+\s*题\s*[：:]\s*（[^）]*）\s*/, '');
-        const qEscaped = qText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-        qText = qEscaped.replace(/\n/g,'<br>');
+        qText = renderMathInText(qText).replace(/\n/g,'<br>');
       }
       // 选项：从 optionA/B/C/D 读取
       const opts = [];
-      if (q.optionA) opts.push('A. ' + q.optionA);
-      if (q.optionB) opts.push('B. ' + q.optionB);
-      if (q.optionC) opts.push('C. ' + q.optionC);
-      if (q.optionD) opts.push('D. ' + q.optionD);
+      if (q.optionA) opts.push('A. ' + renderMathInText(q.optionA));
+      if (q.optionB) opts.push('B. ' + renderMathInText(q.optionB));
+      if (q.optionC) opts.push('C. ' + renderMathInText(q.optionC));
+      if (q.optionD) opts.push('D. ' + renderMathInText(q.optionD));
       const optsHtml = opts.map(opt => {
-        return `<div style="padding:2px 0 2px 16px">${opt.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')}</div>`;
+        return `<div style="padding:2px 0 2px 16px">${opt.replace(/\n/g,'<br>')}</div>`;
       }).join('');
       
       return `
@@ -1810,6 +1868,7 @@ function exportForPrint() {
         <div style="font-size:13px;line-height:1.5;margin-bottom:4px">
           <span style="font-weight:normal">${globalIdx}. ${qText}</span>
         </div>
+        ${q.chart ? `<div style="margin:4px 0 6px 16px">${renderChartHtml(q.chart, true)}</div>` : ''}
         ${optsHtml ? `<div style="font-size:12.5px;line-height:1.4">${optsHtml}</div>` : ''}
       </div>`;
     }).join('');
@@ -1909,6 +1968,8 @@ function backToErrorCategories() {
   errorsViewMode = 'categories';
   errorFilters.type = '全部';
   errorFilters.source = '全部';
+  errorFilters.accMin = 0;
+  errorFilters.accMax = 100;
   batchDeleteMode = false;
   batchSelectedIds = {};
   renderErrors();
@@ -1952,10 +2013,11 @@ function renderErrorCard(q) {
           <span>正确答案：<b style="color:var(--success)">${q.correctAnswer}</b></span>
           <span style="margin-left:auto;font-size:12px;color:var(--muted)">错误${q.errorCount}次</span>
         </div>
-        ${q.optionA ? `<div class="option-item ${q.myAnswer==='A'?'my-wrong':''} ${q.correctAnswer==='A'?'correct':''}">A. ${q.optionA}</div>` : ''}
-        ${q.optionB ? `<div class="option-item ${q.myAnswer==='B'?'my-wrong':''} ${q.correctAnswer==='B'?'correct':''}">B. ${q.optionB}</div>` : ''}
-        ${q.optionC ? `<div class="option-item ${q.myAnswer==='C'?'my-wrong':''} ${q.correctAnswer==='C'?'correct':''}">C. ${q.optionC}</div>` : ''}
-        ${q.optionD ? `<div class="option-item ${q.myAnswer==='D'?'my-wrong':''} ${q.correctAnswer==='D'?'correct':''}">D. ${q.optionD}</div>` : ''}
+        ${q.chart ? chartBlock(q.chart) : ''}
+        ${q.optionA ? `<div class="option-item ${q.myAnswer==='A'?'my-wrong':''} ${q.correctAnswer==='A'?'correct':''}">A. ${renderMathInText(q.optionA)}</div>` : ''}
+        ${q.optionB ? `<div class="option-item ${q.myAnswer==='B'?'my-wrong':''} ${q.correctAnswer==='B'?'correct':''}">B. ${renderMathInText(q.optionB)}</div>` : ''}
+        ${q.optionC ? `<div class="option-item ${q.myAnswer==='C'?'my-wrong':''} ${q.correctAnswer==='C'?'correct':''}">C. ${renderMathInText(q.optionC)}</div>` : ''}
+        ${q.optionD ? `<div class="option-item ${q.myAnswer==='D'?'my-wrong':''} ${q.correctAnswer==='D'?'correct':''}">D. ${renderMathInText(q.optionD)}</div>` : ''}
         ${q.analysis ? `<div class="detail-section"><h4>解析</h4><p style="white-space:pre-line">${formatAnalysis(q.analysis)}</p></div>` : ''}
         <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
           <button class="btn btn-success btn-sm" onclick="event.stopPropagation();markMastered('${q.id}')"><i class="fas fa-check"></i> 标记掌握</button>
@@ -2149,19 +2211,50 @@ function previewPhoto(base64) {
 }
 
 // ==================== REVIEW ====================
+// 打乱数组顺序（Fisher-Yates）
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// 打开复习板块选择面板
 function startReview() {
-  reviewQueue = questions.filter(q => q.reviewStatus === '待复习' || q.reviewStatus === '模糊')
-    .sort((a,b) => {
-      if (b.errorCount !== a.errorCount) return b.errorCount - a.errorCount;
-      const aDate = a.lastReviewDate || '0000-00-00';
-      const bDate = b.lastReviewDate || '0000-00-00';
-      return aDate.localeCompare(bDate);
-    });
+  const pending = questions.filter(q => q.reviewStatus === '待复习' || q.reviewStatus === '模糊');
+  const countBy = m => pending.filter(q => q.module === m).length;
+  const el = document.getElementById('review-modal');
+  el.innerHTML = `<div class="modal-overlay" style="align-items:center" onclick="if(event.target===this){closeReviewModal()}">
+    <div class="modal-content" style="border-radius:20px;max-height:80vh;overflow-y:auto" onclick="event.stopPropagation()">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <h3 style="font-size:16px;font-weight:700;margin:0">选择本次复习范围</h3>
+        <button class="btn btn-outline btn-sm" onclick="closeReviewModal()"><i class="fas fa-times"></i> 取消</button>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 14px">题目顺序将随机打乱。括号内为待复习数量。</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <button class="btn btn-primary" style="grid-column:1/-1" onclick="confirmStartReview('全部')">
+          <i class="fas fa-layer-group"></i> 全部板块（${pending.length} 道）
+        </button>
+        ${ALL_MODULES.map(m => `<button class="btn btn-outline" onclick="confirmStartReview('${m}')" ${countBy(m)===0?'style="opacity:.45"':''}>
+          ${m}（${countBy(m)} 道）
+        </button>`).join('')}
+      </div>
+    </div>
+  </div>`;
+  el.className = '';
+}
+
+function confirmStartReview(module) {
+  let pool = questions.filter(q => q.reviewStatus === '待复习' || q.reviewStatus === '模糊');
+  if (module !== '全部') pool = pool.filter(q => q.module === module);
+  reviewQueue = shuffleArray(pool);
   reviewIndex = 0;
   reviewResults = [];
 
   if (reviewQueue.length === 0) {
-    showToast('暂无待复习的错题，继续保持！');
+    closeReviewModal();
+    showToast(module === '全部' ? '暂无待复习的错题，继续保持！' : `「${module}」暂无待复习的错题`);
     return;
   }
   showReviewQuestion();
@@ -2459,7 +2552,7 @@ function renderSettings() {
           <div style="display:flex;justify-content:space-between;padding:4px 0"><span>同步状态</span><span id="sb-status-detail" style="color:${syncStatusColor[sbSyncStatus]||syncStatusColor.offline};font-weight:600">${syncStatusText[sbSyncStatus]||syncStatusText.offline}</span></div>
           <div style="display:flex;justify-content:space-between;padding:4px 0"><span>上次同步</span><span id="sb-last-sync">${lastSyncText}</span></div>
           <div style="display:flex;justify-content:space-between;padding:4px 0"><span>本地错题数</span><span>${questions.length} 道</span></div>
-          <div style="display:flex;justify-content:space-between;padding:4px 0"><span>登录方式</span><span>匿名登录</span></div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0"><span>登录方式</span><span>固定共享身份</span></div>
         </div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -2617,4 +2710,4 @@ function init() {
 init();
 </script>
 </body>
-<!-- build: 0811b --></html>
+<!-- build: 0811c --></html>
