@@ -31,6 +31,12 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang 
 .card:active{box-shadow:0 1px 4px rgba(0,0,0,.08)}
 .badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600;color:#fff;white-space:nowrap}
 .badge-blue{background:var(--blue)}.badge-purple{background:var(--purple)}.badge-red{background:var(--red)}.badge-green{background:var(--green)}.badge-orange{background:var(--orange)}.badge-teal{background:var(--teal)}
+.sk-root,.sk-root *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.sk-body{display:flex;flex-direction:column;flex:1;min-height:0}
+.sk-question{max-height:30vh;overflow:auto;border-bottom:1px solid var(--border);background:#fffdf5;padding:10px 14px;font-size:13px;line-height:1.6}
+.sk-canvas-wrap{flex:1;position:relative;background:#fdfdfd;min-height:0}
+@media(min-width:900px){.sk-body{flex-direction:row}.sk-question{max-height:none;width:38%;border-bottom:none;border-right:1px solid var(--border)}.sk-canvas-wrap{width:62%}}
+#sketch-overlay, #sketch-overlay *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;border:none;cursor:pointer;transition:all .15s}
 .btn:active{transform:scale(.96)}
 .btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-light)}
@@ -3410,7 +3416,7 @@ function renderSettings() {
         <p style="margin:0">面向公考备考人群的错题管理工具</p>
         <p style="margin:0">当前错题总数：${questions.length}</p>
         <p style="margin:0">所有数据存储在本地浏览器中，无内置错题</p>
-        <p style="margin:0">页面版本：<b style="color:var(--primary)">0812c</b>（材料组题+组合成组+手写画布+云同步合并版）</p>
+        <p style="margin:0">页面版本：<b style="color:var(--primary)">0812d</b>（材料组题+组合成组+手写画布带题目参照+云同步合并版）</p>
       </div>
     </div>
   `;
@@ -3544,15 +3550,46 @@ let sketchColor = '#1e293b', sketchWidth = 3, sketchEraser = false;
 let sketchUndoStack = [];
 let sketchDrawing = false;
 
+// 构建题目参照面板 HTML（材料/题干/选项/照片）
+function buildSketchQuestionHtml(qid, subIndex) {
+  const q = questions.find(x => x.id === qid);
+  if (!q) return '';
+  const parts = [];
+  if (isGroupQ(q) && subIndex != null) {
+    const s = q.subs[subIndex];
+    if (!s) return '';
+    if (q.materialPhotos && q.materialPhotos.length) {
+      parts.push(`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">${q.materialPhotos.map(p => `<img src="${p}" style="max-width:100%;max-height:220px;border-radius:6px;display:block">`).join('')}</div>`);
+    }
+    if (q.material) parts.push(`<div style="white-space:pre-line;margin-bottom:6px">${renderMathInText(q.material)}</div>`);
+    parts.push(`<div style="font-weight:700;margin:4px 0">第 ${subIndex+1} 小题</div>`);
+    if (s.question) parts.push(`<div>${renderQuestionText(s.question)}</div>`);
+    const opts = [['A',s.optionA],['B',s.optionB],['C',s.optionC],['D',s.optionD]].filter(o => o[1]);
+    if (opts.length) parts.push(opts.map(o => `<div style="padding:2px 0">${o[0]}. ${renderMathInText(o[1])}</div>`).join(''));
+  } else if (!isGroupQ(q)) {
+    if (q.photos && q.photos.length) {
+      parts.push(`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">${q.photos.map(p => `<img src="${p}" style="max-width:100%;max-height:220px;border-radius:6px;display:block">`).join('')}</div>`);
+    }
+    if (q.question) parts.push(`<div>${renderQuestionText(q.question)}</div>`);
+    const opts = [['A',q.optionA],['B',q.optionB],['C',q.optionC],['D',q.optionD]].filter(o => o[1]);
+    if (opts.length) parts.push(opts.map(o => `<div style="padding:2px 0">${o[0]}. ${renderMathInText(o[1])}</div>`).join(''));
+  } else {
+    return '';
+  }
+  return parts.join('');
+}
+
 function openSketch(target) {
   sketchTarget = target || null;
   sketchUndoStack = [];
+  const qHtml = sketchTarget ? buildSketchQuestionHtml(sketchTarget.qid, sketchTarget.subIndex != null ? sketchTarget.subIndex : null) : '';
   const el = document.getElementById('sketch-overlay');
-  el.innerHTML = `<div style="position:fixed;inset:0;z-index:120;background:rgba(12,25,41,.55);display:flex;align-items:center;justify-content:center;padding:12px" onclick="if(event.target===this)closeSketch()">
-    <div style="background:#fff;border-radius:16px;width:100%;max-width:900px;height:82vh;display:flex;flex-direction:column;overflow:hidden" onclick="event.stopPropagation()">
+  el.innerHTML = `<div class="sk-root" style="position:fixed;inset:0;z-index:120;background:rgba(12,25,41,.55);display:flex;align-items:center;justify-content:center;padding:12px" onclick="if(event.target===this)closeSketch()">
+    <div style="background:#fff;border-radius:16px;width:100%;max-width:1100px;height:86vh;display:flex;flex-direction:column;overflow:hidden" onclick="event.stopPropagation()">
       <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap">
         <span style="font-size:14px;font-weight:700"><i class="fas fa-pen-nib" style="color:var(--primary);margin-right:4px"></i>手写草稿板</span>
         <span style="font-size:11px;color:var(--muted)">${sketchTarget ? '保存后放入该题解析' : '自由草稿（不保存）'}</span>
+        ${qHtml ? `<button class="btn btn-outline btn-sm" onclick="toggleSketchQuestion()" style="padding:4px 10px"><i class="fas fa-eye"></i> 显示/隐藏题目</button>` : ''}
         <div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
           ${['#1e293b','#ef4444','#3b82f6'].map(c => `<button onclick="setSketchColor('${c}')" id="skc-${c.slice(1)}" style="width:24px;height:24px;border-radius:50%;background:${c};border:2px solid ${c===sketchColor?'var(--primary)':'#fff'};cursor:pointer"></button>`).join('')}
           <select id="sk-width" onchange="sketchWidth=Number(this.value)" style="font-size:12px;padding:2px 4px;border:1px solid var(--border);border-radius:6px">
@@ -3565,8 +3602,11 @@ function openSketch(target) {
           <button class="btn btn-outline btn-sm" onclick="closeSketch()" style="padding:4px 10px"><i class="fas fa-times"></i></button>
         </div>
       </div>
-      <div style="flex:1;position:relative;background:#fdfdfd">
-        <canvas id="sketch-canvas" style="position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair"></canvas>
+      <div class="sk-body">
+        ${qHtml ? `<div class="sk-question" id="sk-question">${qHtml}</div>` : ''}
+        <div class="sk-canvas-wrap">
+          <canvas id="sketch-canvas" style="position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair"></canvas>
+        </div>
       </div>
     </div>
   </div>`;
@@ -3582,7 +3622,38 @@ function openSketch(target) {
   bindSketchEvents(cv);
 }
 
+function toggleSketchQuestion() {
+  const el = document.getElementById('sk-question');
+  if (!el) return;
+  const hide = el.style.display !== 'none';
+  el.style.display = hide ? 'none' : '';
+  // 重新计算画布尺寸
+  setTimeout(() => {
+    const cv = document.getElementById('sketch-canvas');
+    if (!cv) return;
+    const snap = cv.toDataURL();
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const rect = cv.parentElement.getBoundingClientRect();
+    cv.width = Math.round(rect.width * dpr);
+    cv.height = Math.round(rect.height * dpr);
+    const ctx = cv.getContext('2d');
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.scale(dpr, dpr);
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    const img = new Image();
+    img.onload = function() { ctx.drawImage(img, 0, 0, rect.width, rect.height); };
+    img.src = snap;
+  }, 30);
+}
+
 function bindSketchEvents(cv) {
+  // 防选中/防长按菜单/防手势缩放干扰手写
+  ['selectstart', 'contextmenu', 'gesturestart', 'dblclick'].forEach(t => cv.addEventListener(t, e => e.preventDefault()));
+  const root = cv.closest('.sk-root');
+  if (root && !root.__skGuard) {
+    root.__skGuard = true;
+    ['selectstart', 'contextmenu', 'gesturestart'].forEach(t => root.addEventListener(t, e => e.preventDefault()));
+  }
   cv.addEventListener('pointerdown', e => {
     e.preventDefault();
     cv.setPointerCapture(e.pointerId);
@@ -3743,4 +3814,4 @@ window.__onKatexReady = function() { try { renderPage(currentTab); if (typeof up
 init();
 </script>
 </body>
-<!-- build: 0812c --></html>
+<!-- build: 0812d --></html>
