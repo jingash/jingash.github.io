@@ -172,6 +172,7 @@ const SUPABASE_URL = 'https://fibnnedkozagzucqtpzh.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpYm5uZWRrb3phZ3p1Y3F0cHpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzODk4NTEsImV4cCI6MjEwMTk2NTg1MX0.AY0qPgKVm778Puh9Dcw-60LPta2mYGBfW8s7eUA1xkM';
 // 固定共享身份：所有设备用同一身份读写，保证跨设备同步
 const FIXED_USER_ID = '00000000-0000-4000-8000-000000000001';
+let sbHasGroupCols = false; // 云端是否已有 material/subs 列（未跑过 ALTER TABLE 时降级不同步组题字段）
 let sb = null;
 let sbUserId = null;
 let sbSyncing = false;
@@ -206,6 +207,12 @@ function qToRow(q) {
     review_status: q.reviewStatus||'待复习', last_review_date: q.lastReviewDate||null,
     is_seed: !!q.isSeed
   };
+  // 材料组题字段：云端有列才带上（没跑过 ALTER TABLE 时自动降级）
+  if (sbHasGroupCols) {
+    row.material = q.material||'';
+    row.material_photos = q.materialPhotos||[];
+    row.subs = q.subs||[];
+  }
   return row;
 }
 function rowToQ(r) {
@@ -215,6 +222,10 @@ function rowToQ(r) {
     optionC: r.option_c||'', optionD: r.option_d||'', myAnswer: r.my_answer||'',
     correctAnswer: r.correct_answer||'', accuracy: r.accuracy||'',
     errorReasons: r.error_reasons||[], analysis: r.analysis||'', notes: r.notes||'',
+    // 云端无组题列时这些为 undefined，用 null 标记，合并时保留本地组题数据
+    material: r.material!=null ? r.material : null,
+    materialPhotos: r.material_photos!=null ? r.material_photos : null,
+    subs: r.subs!=null ? r.subs : null,
     photos: r.photos||[], createDate: r.create_date||'', errorCount: r.error_count||1,
     reviewStatus: r.review_status||'待复习', lastReviewDate: r.last_review_date||null,
     isSeed: !!r.is_seed
@@ -307,10 +318,17 @@ async function sbSyncFromCloud() {
     }
     if (data && data.length > 0) {
       const cloudQs = data.map(rowToQ).filter(q => !deletedIds.includes(q.id));
-      // 合并策略：以 id 为键，云端覆盖本地
+      // 合并策略：以 id 为键，云端覆盖本地；但云端缺组题列时保留本地组题字段
       const localMap = {};
       questions.forEach(q => { localMap[q.id] = q; });
-      cloudQs.forEach(q => { localMap[q.id] = q; });
+      cloudQs.forEach(cq => {
+        const local = localMap[cq.id];
+        if (local && (cq.subs == null || !cq.subs.length) && isGroupQ(local)) {
+          cq.subs = local.subs; cq.material = cq.material != null ? cq.material : (local.material||'');
+          cq.materialPhotos = cq.materialPhotos != null ? cq.materialPhotos : (local.materialPhotos||[]);
+        }
+        localMap[cq.id] = cq;
+      });
       questions = Object.values(localMap);
       saveQuestionsLocal();
     }
@@ -380,6 +398,12 @@ async function sbInit() {
     if (error) throw error;
     // 不用各设备独立的匿名ID，统一改用固定共享身份
     sbUserId = FIXED_USER_ID;
+    // 探测云端是否已有材料组题列（未跑过 ALTER TABLE 时自动降级，不影响其他字段）
+    try {
+      const probe = await sb.from('questions').select('subs').limit(1);
+      sbHasGroupCols = !probe.error;
+      if (probe.error) console.warn('subs 列不存在，材料组题字段暂不同步（请在 Supabase 执行 ALTER TABLE）:', probe.error.message);
+    } catch(e) { sbHasGroupCols = false; }
     // 先拉云端数据，再迁移旧板块，最后上传本地数据（避免云端旧数据覆盖迁移结果）
     await sbSyncFromCloud();
     migrateModules();
@@ -1003,16 +1027,16 @@ function renderPage(tab) {
 // ==================== HOME PAGE ====================
 function renderHome() {
   const el = document.getElementById('page-home');
-  const total = questions.length;
+  const total = itemCount(questions);
   const todayStr = new Date().toISOString().slice(0,10);
-  const toReview = questions.filter(q => q.reviewStatus === '待复习' || q.reviewStatus === '模糊').length;
+  const toReview = allItems().filter(q => q.reviewStatus === '待复习' || q.reviewStatus === '模糊').length;
 
-  // Module mastery
+  // Module mastery（组题按小题计）
   const moduleStats = {};
   ALL_MODULES.forEach(m => {
-    const mq = questions.filter(q => q.module === m);
-    const mastered = mq.filter(q => q.reviewStatus === '已掌握').length;
-    moduleStats[m] = { total: mq.length, mastered, rate: mq.length ? mastered / mq.length : -1 };
+    const items = allItems().filter(q => q.module === m);
+    const mastered = items.filter(q => q.reviewStatus === '已掌握').length;
+    moduleStats[m] = { total: items.length, mastered, rate: items.length ? mastered / items.length : -1 };
   });
 
   // Weak modules TOP3
@@ -1103,6 +1127,8 @@ function renderHome() {
 function renderInput() {
   const el = document.getElementById('page-input');
   inputPhotos = [];
+  inputMatPhotos = [];
+  inputGroupOn = false;
   batchModule = '';
   batchText = '';
   batchParsed = null;
@@ -1144,6 +1170,28 @@ function renderSingleForm() {
         <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">题目来源（可选）</label>
         <input id="inp-source" class="input-field" placeholder="如：2025联考真题 / 粉笔5000题 / 某模考卷">
       </div>
+      <div id="inp-group-toggle" class="hidden" style="margin-bottom:14px">
+        <label style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="inp-isGroup" onchange="toggleGroupInputMode()" style="width:16px;height:16px">
+          材料组题模式（一材料多小题，资料分析推荐）
+        </label>
+      </div>
+      <div id="inp-group-area" class="hidden">
+        <div style="margin-bottom:14px">
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">材料文字</label>
+          <textarea id="inp-material" class="input-field" rows="3" placeholder="粘贴材料/表格文字，或留空用截图"></textarea>
+        </div>
+        <div style="margin-bottom:14px">
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">材料截图（最多3张，可粘贴）</label>
+          <input type="file" accept="image/*" id="inp-matInput" style="display:none" onchange="handleInputMatUpload(this)">
+          <button class="btn btn-outline btn-sm" onclick="document.getElementById('inp-matInput').click()"><i class="fas fa-camera"></i> 添加材料截图</button>
+          <div id="inp-matPreview" style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"></div>
+        </div>
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">小题列表</label>
+        <div id="inp-subs"></div>
+        <button class="btn btn-outline btn-sm" style="width:100%;margin:0 0 14px" onclick="addInputSub()"><i class="fas fa-plus"></i> 添加小题</button>
+      </div>
+      <div id="inp-single-area">
       <div style="margin-bottom:14px">
         <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">题干（文字或照片） <span style="color:var(--danger)">*</span></label>
         <textarea id="inp-question" class="input-field" rows="4" placeholder="输入题干文字；若用照片当题干，此处可不填"></textarea>
@@ -1194,8 +1242,62 @@ function renderSingleForm() {
           ${ERROR_REASONS.map(r => `<div class="checkbox-item" onclick="toggleReason(this)"><input type="checkbox" value="${r}"><span>${r}</span></div>`).join('')}
         </div>
       </div>
+      </div>
       <button class="btn btn-accent" style="width:100%" onclick="saveNewQuestion()"><i class="fas fa-save"></i> 保存错题</button>
     </div>`;
+}
+
+let inputMatPhotos = [];
+let inputGroupOn = false;
+
+function updateInputMatPreview() {
+  const c = document.getElementById('inp-matPreview');
+  if (!c) return;
+  c.innerHTML = inputMatPhotos.map((p, i) => `<div style="position:relative;display:inline-block"><img src="${p}" style="width:72px;height:72px;object-fit:cover;border-radius:8px" onclick="previewPhoto('${p}')"><button onclick="removeInputMat(${i})" style="position:absolute;top:-7px;right:-7px;width:20px;height:20px;border-radius:50%;background:var(--danger);color:#fff;border:2px solid #fff;font-size:12px;line-height:16px;cursor:pointer;padding:0">×</button></div>`).join('');
+}
+function removeInputMat(i) { inputMatPhotos.splice(i, 1); updateInputMatPreview(); }
+function handleInputMatUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (inputMatPhotos.length >= 3) { showToast('最多3张截图'); input.value = ''; return; }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      let w = img.width, h = img.height;
+      const maxSide = 1000;
+      if (w > maxSide || h > maxSide) {
+        if (w > h) { h = Math.round(h * maxSide / w); w = maxSide; }
+        else { w = Math.round(w * maxSide / h); h = maxSide; }
+      }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      inputMatPhotos.push(canvas.toDataURL('image/jpeg', 0.7));
+      updateInputMatPreview();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+function toggleGroupInputMode() {
+  inputGroupOn = document.getElementById('inp-isGroup').checked;
+  document.getElementById('inp-group-area').classList.toggle('hidden', !inputGroupOn);
+  document.getElementById('inp-single-area').classList.toggle('hidden', inputGroupOn);
+  if (inputGroupOn && !document.getElementById('inp-subs').children.length) addInputSub();
+}
+function addInputSub() {
+  const box = document.getElementById('inp-subs');
+  const i = box.querySelectorAll('[id^="insub-card-"]').length;
+  box.insertAdjacentHTML('beforeend', renderGroupSubEditor('insub', i, null, 'removeInputSub'));
+}
+function removeInputSub(i) {
+  const box = document.getElementById('inp-subs');
+  const subs = collectSubsFromForm('insub', box.querySelectorAll('[id^="insub-card-"]').length, null);
+  subs.splice(i, 1);
+  if (!subs.length) subs.push(subDefaults());
+  box.innerHTML = subs.map((s, k) => renderGroupSubEditor('insub', k, s, 'removeInputSub')).join('');
 }
 
 function renderBatchForm() {
@@ -1224,6 +1326,21 @@ A. 选项A内容
 B. 选项B内容
 C. 选项C内容
 D. 选项D内容
+
+【材料】（资料分析组题用，可选）
+材料/表格文字贴这里，下面用【小题1】【小题2】分题
+
+【小题1】
+与2022年相比，2023年……（ ）。
+A. 减少了4个
+B. 增加了6个
+【我的答案】A
+【正确答案】B
+【正确率】60
+【解析】……
+
+【小题2】
+……
 
 【考查知识点】……
 【行文脉络】……
@@ -1332,14 +1449,42 @@ function parseBatchContent(text) {
         finalLines.push(l);
       }
     });
-    const q = { question: '', optionA: '', optionB: '', optionC: '', optionD: '', myAnswer: '', correctAnswer: '', accuracy: '', type: '', source: '', errorReasons: [], analysis: '' };
-    const qLines = [], aLines = [];
+    const q = { question: '', optionA: '', optionB: '', optionC: '', optionD: '', myAnswer: '', correctAnswer: '', accuracy: '', type: '', source: '', errorReasons: [], analysis: '', material: '', materialPhotos: [], subs: [] };
+    const qLines = [], aLines = [], matLines = [];
+    let curSub = null;
     let section = 'question';
     let optSeen = false;
     finalLines.forEach(raw => {
       const line = raw.trim();
       if (!line) return;
       let m;
+      // 材料区块
+      if ((m = line.match(/^(?:【)?(?:材料|资料|给定材料|材料内容)(?:】)?\s*[:：]?\s*(.*)$/))) { section = 'material'; if (m[1].trim()) matLines.push(m[1].trim()); return; }
+      // 小题区块开始
+      if (/^(?:【)?小题\s*\d*(?:】)?\s*[:：]?$/.test(line) || /^(?:【)?小题\s*\d+(?:】)?/.test(line)) {
+        curSub = subDefaults();
+        q.subs.push(curSub);
+        const rest = line.replace(/^(?:【)?小题\s*\d*(?:】)?\s*[:：]?\s*/, '');
+        if (rest) curSub.question = rest;
+        section = 'sub';
+        return;
+      }
+      // 小题内规则
+      if (curSub && section === 'sub') {
+        if (/^(?:【)?选项(?:】)?$/.test(line)) return;
+        if (!curSub.optionA && (m = line.match(/^(?:选项A|A)\s*[.、．:：]\s*(.+)$/))) { curSub.optionA = m[1].trim(); return; }
+        if (!curSub.optionB && (m = line.match(/^(?:选项B|B)\s*[.、．:：]\s*(.+)$/))) { curSub.optionB = m[1].trim(); return; }
+        if (!curSub.optionC && (m = line.match(/^(?:选项C|C)\s*[.、．:：]\s*(.+)$/))) { curSub.optionC = m[1].trim(); return; }
+        if (!curSub.optionD && (m = line.match(/^(?:选项D|D)\s*[.、．:：]\s*(.+)$/))) { curSub.optionD = m[1].trim(); return; }
+        if ((m = line.match(/^(?:【)?(?:我的答案|错选选项|错选项|错选)(?:】)?\s*[:：]?\s*([A-Da-d])/))) { curSub.myAnswer = m[1].toUpperCase(); return; }
+        if ((m = line.match(/^(?:【)?正确答案(?:】)?\s*[:：]?\s*([A-Da-d])/))) { curSub.correctAnswer = m[1].toUpperCase(); return; }
+        if ((m = line.match(/^(?:【)?正确率(?:】)?\s*[:：]?\s*(\d+)\s*%?/))) { curSub.accuracy = m[1]; return; }
+        if ((m = line.match(/^(?:【)?解析(?:】)?\s*[:：]?\s*(.*)$/))) { section = 'subAnalysis'; if (m[1].trim()) curSub.analysis = (curSub.analysis ? curSub.analysis + '\n' : '') + m[1].trim(); return; }
+        curSub.question = (curSub.question ? curSub.question + '\n' : '') + line;
+        return;
+      }
+      if (section === 'subAnalysis' && curSub) { curSub.analysis = (curSub.analysis ? curSub.analysis + '\n' : '') + line; return; }
+      if (section === 'material') { matLines.push(line); return; }
       if (/^(?:【)?选项(?:】)?$/.test(line)) return;
       if (!q.optionA && (m = line.match(/^(?:选项A|A)\s*[.、．:：]\s*(.+)$/))) { q.optionA = m[1].trim(); optSeen = true; return; }
       if (!q.optionB && (m = line.match(/^(?:选项B|B)\s*[.、．:：]\s*(.+)$/))) { q.optionB = m[1].trim(); optSeen = true; return; }
@@ -1367,7 +1512,14 @@ function parseBatchContent(text) {
     });
     q.question = qLines.join('\n').trim();
     q.analysis = aLines.join('\n').trim();
-    if (q.question && q.myAnswer && q.correctAnswer) results.push(q);
+    q.material = matLines.join('\n').trim();
+    // 有效小题：至少有题干且填了两个答案
+    q.subs = q.subs.filter(s => s.question && s.myAnswer && s.correctAnswer);
+    if (q.material && q.subs.length) {
+      results.push(q); // 材料组题
+    } else if (q.question && q.myAnswer && q.correctAnswer) {
+      results.push(q);
+    }
   });
   return results;
 }
@@ -1397,29 +1549,43 @@ function parseBatchText() {
 function confirmBatchImport() {
   if (!batchParsed || !batchParsed.length) return;
   const todayStr = new Date().toISOString().slice(0,10);
+  let added = 0;
   batchParsed.forEach(p => {
-    questions.push({
-      id: genId(),
-      module: batchModule,
-      type: p.type || '',
-      source: p.source || '',
-      question: p.question,
-      optionA: p.optionA, optionB: p.optionB, optionC: p.optionC, optionD: p.optionD,
-      myAnswer: p.myAnswer,
-      correctAnswer: p.correctAnswer,
-      accuracy: p.accuracy || '',
-      errorReasons: p.errorReasons.length ? p.errorReasons : [],
-      analysis: p.analysis,
-      notes: '',
-      photos: [],
-      createDate: todayStr,
-      errorCount: 1,
-      reviewStatus: '待复习',
-      lastReviewDate: null,
-      isSeed: false
-    });
+    if (p.material && p.subs && p.subs.length) {
+      // 材料组题
+      questions.push({
+        id: genId(), module: batchModule, type: p.type || '', source: p.source || '',
+        question: '', optionA:'', optionB:'', optionC:'', optionD:'',
+        myAnswer:'', correctAnswer:'', accuracy:'', errorReasons:[], analysis:'',
+        notes:'', photos:[],
+        material: p.material, materialPhotos: p.materialPhotos || [], subs: p.subs,
+        createDate: todayStr, errorCount: 1, reviewStatus: '待复习', lastReviewDate: null, isSeed: false
+      });
+      added += p.subs.length;
+    } else {
+      questions.push({
+        id: genId(),
+        module: batchModule,
+        type: p.type || '',
+        source: p.source || '',
+        question: p.question,
+        optionA: p.optionA, optionB: p.optionB, optionC: p.optionC, optionD: p.optionD,
+        myAnswer: p.myAnswer,
+        correctAnswer: p.correctAnswer,
+        accuracy: p.accuracy || '',
+        errorReasons: p.errorReasons.length ? p.errorReasons : [],
+        analysis: p.analysis,
+        notes: '',
+        photos: [],
+        createDate: todayStr,
+        errorCount: 1,
+        reviewStatus: '待复习',
+        lastReviewDate: null,
+        isSeed: false
+      });
+      added += 1;
+    }
   });
-  const added = batchParsed.length;
   saveQuestions();
   classifyVerbalTypes();
   updateDailyStat('newErrors', added);
@@ -1437,6 +1603,19 @@ function updateSubTypes() {
     MODULE_TYPES[mod].forEach(t => {
       sel.innerHTML += `<option value="${t}">${t}</option>`;
     });
+  }
+  // 仅资料分析显示材料组题开关；切走模块时自动关闭
+  const isData = mod === '资料分析';
+  const tg = document.getElementById('inp-group-toggle');
+  if (tg) tg.classList.toggle('hidden', !isData);
+  if (!isData && inputGroupOn) {
+    inputGroupOn = false;
+    const cb = document.getElementById('inp-isGroup');
+    if (cb) cb.checked = false;
+    const ga = document.getElementById('inp-group-area');
+    if (ga) ga.classList.add('hidden');
+    const sa = document.getElementById('inp-single-area');
+    if (sa) sa.classList.remove('hidden');
   }
 }
 
@@ -1579,6 +1758,35 @@ document.addEventListener('paste', function(e) {
     if (!file) continue;
     const modal = document.getElementById('detail-modal');
     const editOpen = modal && !modal.className.includes('hidden') && document.getElementById('edit-photoInput');
+    // 组题编辑弹窗：粘贴进材料截图
+    if (modal && !modal.className.includes('hidden') && document.getElementById('gedit-matInput') && editCurrentId) {
+      e.preventDefault();
+      const gq = questions.find(x => x.id === editCurrentId);
+      if (gq && (gq.materialPhotos||[]).length < 3) {
+        const r = new FileReader();
+        r.onload = function(ev) {
+          const img = new Image();
+          img.onload = function() {
+            const canvas = document.createElement('canvas');
+            let w = img.width, h = img.height;
+            const maxSide = 1000;
+            if (w > maxSide || h > maxSide) {
+              if (w > h) { h = Math.round(h * maxSide / w); w = maxSide; }
+              else { w = Math.round(w * maxSide / h); h = maxSide; }
+            }
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            gq.materialPhotos = gq.materialPhotos || [];
+            gq.materialPhotos.push(canvas.toDataURL('image/jpeg', 0.7));
+            rerenderGroupEdit(gq);
+            showToast('已粘贴材料截图');
+          };
+          img.src = ev.target.result;
+        };
+        r.readAsDataURL(file);
+      } else showToast('材料截图最多3张');
+      return;
+    }
     if (editOpen && editCurrentId) {
       e.preventDefault();
       processPastedImage(file, 'edit', editCurrentId);
@@ -1586,7 +1794,32 @@ document.addEventListener('paste', function(e) {
     }
     if (document.getElementById('page-input').classList.contains('active')) {
       e.preventDefault();
-      processPastedImage(file, 'input', null);
+      // 组题模式下粘贴进材料截图
+      if (inputGroupOn) {
+        if (inputMatPhotos.length >= 3) { showToast('材料截图最多3张'); return; }
+        const r = new FileReader();
+        r.onload = function(ev) {
+          const img = new Image();
+          img.onload = function() {
+            const canvas = document.createElement('canvas');
+            let w = img.width, h = img.height;
+            const maxSide = 1000;
+            if (w > maxSide || h > maxSide) {
+              if (w > h) { h = Math.round(h * maxSide / w); w = maxSide; }
+              else { w = Math.round(w * maxSide / h); h = maxSide; }
+            }
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            inputMatPhotos.push(canvas.toDataURL('image/jpeg', 0.7));
+            updateInputMatPreview();
+            showToast('已粘贴材料截图');
+          };
+          img.src = ev.target.result;
+        };
+        r.readAsDataURL(file);
+      } else {
+        processPastedImage(file, 'input', null);
+      }
       return;
     }
   }
@@ -1758,6 +1991,35 @@ function removePhoto(idx) {
 }
 
 function saveNewQuestion() {
+  const mod = document.getElementById('inp-module').value;
+  if (!mod) { showToast('请选择模块'); return; }
+  // 材料组题模式（仅资料分析）
+  if (inputGroupOn && mod === '资料分析') {
+    const material = (document.getElementById('inp-material')||{}).value || '';
+    const box = document.getElementById('inp-subs');
+    const n = box ? box.querySelectorAll('[id^="insub-card-"]').length : 0;
+    const subs = collectSubsFromForm('insub', n, null);
+    if (!material.trim() && !inputMatPhotos.length) { showToast('请填写材料文字或添加材料截图'); return; }
+    if (!subs.length) { showToast('请至少添加一道小题'); return; }
+    if (subs.some(s => !s.myAnswer || !s.correctAnswer)) { showToast('每道小题都需选择我的答案与正确答案'); return; }
+    const newQ = {
+      id: genId(), module: mod,
+      type: document.getElementById('inp-type').value,
+      source: document.getElementById('inp-source').value.trim(),
+      question: '', optionA:'', optionB:'', optionC:'', optionD:'',
+      myAnswer:'', correctAnswer:'', accuracy:'', errorReasons:[], analysis:'',
+      notes:'', photos:[],
+      material: material.trim(), materialPhotos: [...inputMatPhotos], subs,
+      createDate: new Date().toISOString().slice(0,10),
+      errorCount: 1, reviewStatus: '待复习', lastReviewDate: null, isSeed: false
+    };
+    questions.push(newQ);
+    saveQuestions();
+    updateDailyStat('newErrors', subs.length);
+    showToast(`保存成功，已录入 ${subs.length} 道小题`);
+    renderInput();
+    return;
+  }
   const question = document.getElementById('inp-question').value.trim();
   const myAns = document.getElementById('inp-myAns').value;
   const correctAns = document.getElementById('inp-correctAns').value;
@@ -1810,10 +2072,10 @@ function renderErrorCategories(el) {
   const COLOR_VARS = {blue:'var(--blue)',purple:'var(--purple)',red:'var(--red)',green:'var(--green)',orange:'var(--orange)',teal:'var(--teal)'};
   const BG_MAP = {blue:'rgba(59,130,246,.12)',purple:'rgba(139,92,246,.12)',red:'rgba(239,68,68,.12)',green:'rgba(34,197,94,.12)',orange:'rgba(249,115,22,.12)',teal:'rgba(20,184,166,.12)'};
   const cards = ALL_MODULES.map(m => {
-    const mq = questions.filter(q => q.module === m);
-    const mastered = mq.filter(q => q.reviewStatus === '已掌握').length;
-    const toReview = mq.length - mastered;
-    const rate = mq.length ? Math.round(mastered / mq.length * 100) : 0;
+    const items = allItems().filter(q => q.module === m);
+    const mastered = items.filter(q => q.reviewStatus === '已掌握').length;
+    const toReview = items.length - mastered;
+    const rate = items.length ? Math.round(mastered / items.length * 100) : 0;
     const ck = MODULE_COLORS[m] || 'blue';
     const color = COLOR_VARS[ck];
     const icon = MODULE_ICONS[m] || 'fa-book';
@@ -1824,7 +2086,7 @@ function renderErrorCategories(el) {
         </div>
         <div style="min-width:0">
           <div style="font-size:15px;font-weight:700">${m}</div>
-          <div style="font-size:12px;color:var(--muted)">${mq.length} 道错题</div>
+          <div style="font-size:12px;color:var(--muted)">${items.length} 道错题</div>
         </div>
         <i class="fas fa-chevron-right" style="color:var(--muted);margin-left:auto;font-size:12px"></i>
       </div>
@@ -1834,15 +2096,16 @@ function renderErrorCategories(el) {
       <div style="font-size:11px;color:var(--muted)">已掌握 ${mastered} · 待复习 ${toReview} · ${rate}%</div>
     </div>`;
   }).join('');
-  const totalMastered = questions.filter(q => q.reviewStatus === '已掌握').length;
+  const allIt = allItems();
+  const totalMastered = allIt.filter(q => q.reviewStatus === '已掌握').length;
   el.innerHTML = `
     <h2 style="font-size:18px;font-weight:700;margin:0 0 4px">错题本</h2>
-    <p style="font-size:13px;color:var(--muted);margin:0 0 14px">共 ${questions.length} 道错题 · 已掌握 ${totalMastered} 道，点击卡片进入对应模块</p>
+    <p style="font-size:13px;color:var(--muted);margin:0 0 14px">共 ${allIt.length} 道错题 · 已掌握 ${totalMastered} 道，点击卡片进入对应模块</p>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">${cards}</div>
     <div class="card" onclick="openErrorCategory('全部')" style="cursor:pointer;margin-top:12px;padding:14px 16px;display:flex;align-items:center;gap:10px">
       <i class="fas fa-layer-group" style="color:var(--primary);font-size:16px"></i>
       <span style="font-size:14px;font-weight:600">全部错题</span>
-      <span style="font-size:12px;color:var(--muted)">${questions.length} 道</span>
+      <span style="font-size:12px;color:var(--muted)">${allIt.length} 道</span>
       <i class="fas fa-chevron-right" style="color:var(--muted);margin-left:auto;font-size:12px"></i>
     </div>
   `;
@@ -1853,11 +2116,12 @@ function getFilteredQuestions() {
   if (errorFilters.module !== '全部') filtered = filtered.filter(q => q.module === errorFilters.module);
   if (errorFilters.type !== '全部') filtered = filtered.filter(q => q.type === errorFilters.type);
   if (errorFilters.source !== '全部') filtered = filtered.filter(q => (q.source || '未填来源') === errorFilters.source);
-  // 正确率区间筛选：全区间(0-100)显示全部（含未填）；其他区间只含已填正确率且在区间内的题
+  // 正确率区间筛选：全区间(0-100)显示全部（含未填）；组题按任一小题命中处理
   if (!(errorFilters.accMin === 0 && errorFilters.accMax === 100)) {
     const lo = Math.min(errorFilters.accMin, errorFilters.accMax);
     const hi = Math.max(errorFilters.accMin, errorFilters.accMax);
-    filtered = filtered.filter(q => q.accuracy !== '' && q.accuracy != null && !isNaN(Number(q.accuracy)) && Number(q.accuracy) >= lo && Number(q.accuracy) <= hi);
+    const hit = acc => acc !== '' && acc != null && !isNaN(Number(acc)) && Number(acc) >= lo && Number(acc) <= hi;
+    filtered = filtered.filter(q => isGroupQ(q) ? q.subs.some(s => hit(s.accuracy)) : hit(q.accuracy));
   }
   filtered.sort((a,b) => (b.createDate||'').localeCompare(a.createDate||''));
   return filtered;
@@ -1971,6 +2235,26 @@ function exportForPrint() {
     const qs = grouped[typeName];
     const cardsHtml = qs.map(q => {
       globalIdx++;
+      // 材料组题：材料 + 逐小题
+      if (isGroupQ(q)) {
+        const matHtml = (q.material ? `<div style="font-size:12px;line-height:1.6;margin:4px 0 8px;white-space:pre-line">${renderMathInText(q.material)}</div>` : '') +
+          ((q.materialPhotos||[]).map(p => `<img src="${p}" style="max-width:100%;max-height:260px;border-radius:4px;display:block;margin:4px 0">`).join(''));
+        const subsHtml = q.subs.map((s, i) => {
+          const sopts = [];
+          if (s.optionA) sopts.push('A. ' + renderMathInText(s.optionA));
+          if (s.optionB) sopts.push('B. ' + renderMathInText(s.optionB));
+          if (s.optionC) sopts.push('C. ' + renderMathInText(s.optionC));
+          if (s.optionD) sopts.push('D. ' + renderMathInText(s.optionD));
+          return `<div style="margin:6px 0 6px 8px">
+            <div style="font-size:13px;line-height:1.5">（${i+1}）${renderMathInText(s.question).replace(/\n/g,'<br>')}</div>
+            ${sopts.map(o => `<div style="padding:2px 0 2px 16px">${o.replace(/\n/g,'<br>')}</div>`).join('')}
+          </div>`;
+        }).join('');
+        return `<div style="page-break-inside:avoid;margin-bottom:12px;padding:0 0 8px 0;border-bottom:1px solid #e5e7eb">
+          <div style="font-size:13px;line-height:1.5;margin-bottom:4px"><span style="font-weight:normal">${globalIdx}. 【材料】</span></div>
+          ${matHtml}${subsHtml}
+        </div>`;
+      }
       // 题干渲染：去掉原题号（如"第2题：（第1页）"），处理问句换行
       let qText = q.question || '';
       if (qText) {
@@ -2099,7 +2383,79 @@ function backToErrorCategories() {
   renderErrors();
 }
 
+let subExpandedKey = null; // 组题卡片内展开的小题键：groupId:index
+
+function renderGroupCard(q) {
+  if (batchDeleteMode) {
+    const sel = !!batchSelectedIds[q.id];
+    const matText = (q.material || '').slice(0, 30);
+    return `<div class="card" style="cursor:pointer;padding:12px;${sel?'box-shadow:0 0 0 2px var(--danger)':''}" onclick="toggleBatchSelect('${q.id}')">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:24px;height:24px;border-radius:50%;border:2px solid ${sel?'var(--danger)':'var(--border)'};background:${sel?'var(--danger)':'#fff'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          ${sel?'<i class="fas fa-check" style="color:#fff;font-size:13px"></i>':''}
+        </div>
+        <div style="flex:1;min-width:0">
+          <p style="font-size:13px;line-height:1.5;margin:0 0 4px"><i class="fas fa-chart-line" style="color:var(--green);margin-right:4px"></i>材料组题 · ${q.subs.length} 道小题${matText ? '：'+matText+'…' : ''}</p>
+          <div style="font-size:12px;color:var(--muted)">已掌握 ${q.subs.filter(s=>s.reviewStatus==='已掌握').length}/${q.subs.length}</div>
+        </div>
+      </div>
+    </div>`;
+  }
+  const isExpanded = expandedCardId === q.id;
+  const mastered = q.subs.filter(s => s.reviewStatus === '已掌握').length;
+  return `<div class="card" style="cursor:pointer" onclick="toggleCardExpand('${q.id}')">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+      <span style="font-size:11px;color:#059669;background:rgba(5,150,105,.1);padding:2px 8px;border-radius:10px;font-weight:600"><i class="fas fa-layer-group" style="margin-right:3px;font-size:10px"></i>${q.subs.length} 小题</span>
+      <span style="font-size:11px;color:#7c3aed;background:rgba(139,92,246,.1);padding:2px 8px;border-radius:10px;font-weight:600">已掌握 ${mastered}/${q.subs.length}</span>
+      ${q.type ? `<span style="font-size:11px;color:#1e40af;background:rgba(59,130,246,.12);padding:2px 8px;border-radius:10px;font-weight:600">${q.type}</span>` : ''}
+      ${q.source ? `<span style="font-size:11px;color:#0f766e;background:rgba(20,184,166,.1);padding:2px 8px;border-radius:10px"><i class="fas fa-book-open" style="margin-right:3px;font-size:10px"></i>${q.source}</span>` : ''}
+      <span style="font-size:11px;color:var(--muted);margin-left:auto;font-weight:600">${q.createDate}</span>
+    </div>
+    ${q.materialPhotos && q.materialPhotos.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${q.materialPhotos.map(p => `<img src="${p}" style="height:${isExpanded?'160px':'90px'};width:auto;max-width:${q.materialPhotos.length>1?'48%':'100%'};object-fit:cover;border-radius:8px;display:block" onclick="event.stopPropagation();previewPhoto('${p}')">`).join('')}</div>` : ''}
+    ${q.material ? `<p style="font-size:13px;line-height:1.6;margin:0 0 8px;color:${isExpanded?'var(--text)':'var(--muted)'}">${isExpanded ? renderMathInText(q.material).replace(/\n/g,'<br>') : escHtml((q.material||'').slice(0,60)) + '…'}</p>` : ''}
+    <div style="border-top:1px solid var(--border);padding-top:8px">
+      ${q.subs.map((s, i) => {
+        const stColor = s.reviewStatus === '已掌握' ? 'var(--success)' : s.reviewStatus === '模糊' ? 'var(--accent)' : 'var(--muted)';
+        const subOpen = subExpandedKey === q.id + ':' + i;
+        const qText = (s.question||'').slice(0, subOpen ? 9999 : 40);
+        return `<div style="padding:6px 0;${i<q.subs.length-1?'border-bottom:1px dashed var(--border);':''}">
+          <div style="display:flex;align-items:center;gap:6px;cursor:pointer" onclick="event.stopPropagation();toggleSubExpand('${q.id}',${i})">
+            <span style="font-size:12px;font-weight:700;color:var(--primary);width:18px;flex-shrink:0">${i+1}.</span>
+            <span style="font-size:13px;line-height:1.5;flex:1;min-width:0">${escHtml(qText)}${!subOpen && (s.question||'').length>40?'…':''}</span>
+            ${s.accuracy ? `<span style="font-size:10px;color:#059669;background:rgba(5,150,105,.1);padding:1px 6px;border-radius:8px;font-weight:600;flex-shrink:0">${s.accuracy}%</span>` : ''}
+            <span style="font-size:10px;color:${stColor};font-weight:600;flex-shrink:0">${s.reviewStatus}</span>
+          </div>
+          ${subOpen ? `
+            <div style="margin:8px 0 4px 24px">
+              ${s.optionA?`<div class="option-item ${s.myAnswer==='A'?'my-wrong':''} ${s.correctAnswer==='A'?'correct':''}">A. ${renderMathInText(s.optionA)}</div>`:''}
+              ${s.optionB?`<div class="option-item ${s.myAnswer==='B'?'my-wrong':''} ${s.correctAnswer==='B'?'correct':''}">B. ${renderMathInText(s.optionB)}</div>`:''}
+              ${s.optionC?`<div class="option-item ${s.myAnswer==='C'?'my-wrong':''} ${s.correctAnswer==='C'?'correct':''}">C. ${renderMathInText(s.optionC)}</div>`:''}
+              ${s.optionD?`<div class="option-item ${s.myAnswer==='D'?'my-wrong':''} ${s.correctAnswer==='D'?'correct':''}">D. ${renderMathInText(s.optionD)}</div>`:''}
+              <div style="display:flex;gap:14px;font-size:12px;margin:6px 0">
+                <span>我答：<b style="color:var(--danger)">${s.myAnswer}</b></span>
+                <span>正确：<b style="color:var(--success)">${s.correctAnswer}</b></span>
+                <span style="color:var(--muted)">错${s.errorCount||1}次</span>
+              </div>
+              ${s.analysis ? `<div class="detail-section" style="margin:6px 0 0"><h4>解析</h4><p style="white-space:pre-line">${formatAnalysis(s.analysis)}</p></div>` : ''}
+            </div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+      <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();editGroup('${q.id}')"><i class="fas fa-pen"></i> 编辑</button>
+      <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();viewDetail('${q.id}')"><i class="fas fa-eye"></i> 详情</button>
+      <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="event.stopPropagation();deleteQuestion('${q.id}')"><i class="fas fa-trash"></i> 删除</button>
+    </div>
+  </div>`;
+}
+
+function toggleSubExpand(gid, idx) {
+  subExpandedKey = subExpandedKey === gid + ':' + idx ? null : gid + ':' + idx;
+  renderErrors();
+}
+
 function renderErrorCard(q) {
+  if (isGroupQ(q)) return renderGroupCard(q);
   if (batchDeleteMode) {
     const sel = !!batchSelectedIds[q.id];
     const qText = q.question.length > 40 ? q.question.slice(0, 40) + '…' : q.question;
@@ -2159,7 +2515,10 @@ function toggleCardExpand(id) {
 
 function markMastered(id) {
   const q = questions.find(q => q.id === id);
-  if (q) { q.reviewStatus = '已掌握'; saveQuestions(); renderErrors(); showToast('已标记为掌握'); }
+  if (!q) return;
+  if (isGroupQ(q)) q.subs.forEach(s => { s.reviewStatus = '已掌握'; });
+  else q.reviewStatus = '已掌握';
+  saveQuestions(); renderErrors(); showToast('已标记为掌握');
 }
 
 function deleteQuestion(id) {
@@ -2177,6 +2536,7 @@ function viewDetail(id) {
   const q = questions.find(q => q.id === id);
   if (!q) return;
   const el = document.getElementById('detail-modal');
+  if (isGroupQ(q)) { renderGroupDetail(q, el); return; }
   el.innerHTML = `<div class="modal-overlay modal-full" onclick="if(event.target===this)closeDetail()">
     <div class="modal-content">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
@@ -2208,6 +2568,217 @@ function viewDetail(id) {
     </div>
   </div>`;
   el.className = '';
+}
+
+function renderGroupDetail(q, el) {
+  const mastered = q.subs.filter(s => s.reviewStatus === '已掌握').length;
+  el.innerHTML = `<div class="modal-overlay modal-full" onclick="if(event.target===this)closeDetail()">
+    <div class="modal-content">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <h3 style="font-size:16px;font-weight:700;margin:0">材料组题详情</h3>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-outline btn-sm" onclick="editGroup('${q.id}')"><i class="fas fa-pen"></i> 编辑</button>
+          <button class="btn btn-outline btn-sm" onclick="closeDetail()"><i class="fas fa-times"></i></button>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+        <span class="badge ${getModuleClass(q.module)}">${q.module}</span>
+        ${q.type ? `<span style="font-size:11px;color:#1e40af;background:rgba(59,130,246,.12);padding:2px 8px;border-radius:10px;font-weight:600">${q.type}</span>` : ''}
+        ${q.source ? `<span style="font-size:11px;color:#0f766e;background:rgba(20,184,166,.1);padding:2px 8px;border-radius:10px"><i class="fas fa-book-open" style="margin-right:3px;font-size:10px"></i>${q.source}</span>` : ''}
+        <span style="font-size:11px;color:#7c3aed;background:rgba(139,92,246,.1);padding:2px 8px;border-radius:10px;font-weight:600">已掌握 ${mastered}/${q.subs.length}</span>
+      </div>
+      <div class="detail-section"><h4>材料</h4>
+        ${q.materialPhotos && q.materialPhotos.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${q.materialPhotos.map(p=>`<img src="${p}" style="max-width:100%;max-height:300px;border-radius:8px;display:block;object-fit:contain" onclick="previewPhoto('${p}')">`).join('')}</div>` : ''}
+        ${q.material ? `<p style="line-height:1.7;white-space:pre-line">${renderMathInText(q.material)}</p>` : ''}
+      </div>
+      ${q.subs.map((s, i) => `
+        <div style="border-top:1px solid var(--border);padding:12px 0">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+            <span style="font-size:14px;font-weight:700">${i+1}.</span>
+            ${s.accuracy ? `<span style="font-size:11px;color:#059669;background:rgba(5,150,105,.1);padding:2px 8px;border-radius:10px;font-weight:600">${s.accuracy}%</span>` : ''}
+            <span style="font-size:11px;color:${s.reviewStatus==='已掌握'?'var(--success)':'var(--muted)'};font-weight:600">${s.reviewStatus}</span>
+          </div>
+          <p style="line-height:1.7;margin:0 0 8px">${renderQuestionText(s.question)}</p>
+          ${s.optionA?`<div class="option-item ${s.myAnswer==='A'?'my-wrong':''} ${s.correctAnswer==='A'?'correct':''}">A. ${renderMathInText(s.optionA)}</div>`:''}
+          ${s.optionB?`<div class="option-item ${s.myAnswer==='B'?'my-wrong':''} ${s.correctAnswer==='B'?'correct':''}">B. ${renderMathInText(s.optionB)}</div>`:''}
+          ${s.optionC?`<div class="option-item ${s.myAnswer==='C'?'my-wrong':''} ${s.correctAnswer==='C'?'correct':''}">C. ${renderMathInText(s.optionC)}</div>`:''}
+          ${s.optionD?`<div class="option-item ${s.myAnswer==='D'?'my-wrong':''} ${s.correctAnswer==='D'?'correct':''}">D. ${renderMathInText(s.optionD)}</div>`:''}
+          <div style="display:flex;gap:16px;margin:10px 0;font-size:13px">
+            <span>我的答案：<b style="color:var(--danger)">${s.myAnswer}</b></span>
+            <span>正确答案：<b style="color:var(--success)">${s.correctAnswer}</b></span>
+          </div>
+          ${s.analysis ? `<div class="detail-section"><h4>解析</h4><p style="white-space:pre-line">${formatAnalysis(s.analysis)}</p></div>` : ''}
+        </div>`).join('')}
+      <div style="font-size:12px;color:var(--muted);margin-top:12px">创建日期：${q.createDate}</div>
+    </div>
+  </div>`;
+  el.className = '';
+}
+
+// 组题编辑：材料 + 逐小题增删改
+function editGroup(id) {
+  const q = questions.find(x => x.id === id);
+  if (!q) return;
+  editCurrentId = id;
+  const el = document.getElementById('detail-modal');
+  const stdTypes = MODULE_TYPES[q.module] || [];
+  const typeOptions = `<option value="">未选择题型</option>` + stdTypes.map(t => `<option value="${t}" ${t===q.type?'selected':''}>${t}</option>`).join('');
+  el.innerHTML = `<div class="modal-overlay modal-full" onclick="if(event.target===this)closeDetail()">
+    <div class="modal-content">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <h3 style="font-size:16px;font-weight:700;margin:0">编辑材料组题</h3>
+        <button class="btn btn-outline btn-sm" onclick="closeDetail()"><i class="fas fa-times"></i></button>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:12px">
+        <div style="flex:1"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">模块</label>
+          <select id="gedit-module" class="input-field" onchange="updateGroupEditType()">${ALL_MODULES.map(m=>`<option value="${m}" ${m===q.module?'selected':''}>${m}</option>`).join('')}</select></div>
+        <div style="flex:1"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">题型</label>
+          <select id="gedit-type" class="input-field">${typeOptions}</select></div>
+      </div>
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">题目来源（可选）</label>
+      <input id="gedit-source" class="input-field" value="${(q.source||'').replace(/"/g,'&quot;')}" style="margin-bottom:12px">
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">材料文字</label>
+      <textarea id="gedit-material" class="input-field" rows="4" style="margin-bottom:8px">${escHtml(q.material||'')}</textarea>
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">材料截图（最多3张）</label>
+      <div id="gedit-matPreview" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+        ${(q.materialPhotos||[]).map((p,i)=>`<div style="position:relative;display:inline-block"><img src="${p}" style="width:84px;height:84px;object-fit:cover;border-radius:8px;display:block" onclick="previewPhoto('${p}')"><button onclick="removeGroupMatPhoto(${i})" style="position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;background:var(--danger);color:#fff;border:2px solid #fff;font-size:13px;line-height:18px;cursor:pointer;padding:0">×</button></div>`).join('') || '<span style="font-size:12px;color:var(--muted)">暂无截图（可粘贴添加）</span>'}
+      </div>
+      <input type="file" id="gedit-matInput" accept="image/*" style="display:none" onchange="handleGroupMatUpload(this)">
+      <button class="btn btn-outline btn-sm" style="margin-bottom:14px" onclick="document.getElementById('gedit-matInput').click()"><i class="fas fa-camera"></i> 添加材料截图</button>
+      <p style="font-size:11px;color:var(--muted);margin:-8px 0 12px">电脑截图后直接 Ctrl/⌘+V 粘贴即可添加</p>
+      <div id="gedit-subs">
+        ${q.subs.map((s, i) => renderGroupSubEditor('gsub', i, s, 'removeGroupSub')).join('')}
+      </div>
+      <button class="btn btn-outline btn-sm" style="width:100%;margin:8px 0 12px" onclick="addGroupSub()"><i class="fas fa-plus"></i> 添加小题</button>
+      <button class="btn btn-primary" style="width:100%" onclick="saveGroupEdit('${q.id}')"><i class="fas fa-save"></i> 保存修改</button>
+    </div>
+  </div>`;
+  el.className = '';
+}
+
+function renderGroupSubEditor(prefix, i, s, onRemove) {
+  s = s || subDefaults();
+  const delBtn = onRemove ? `<button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger);padding:4px 10px" onclick="${onRemove}(${i})"><i class="fas fa-trash"></i></button>` : '';
+  return `<div class="card" style="padding:12px;margin-bottom:10px" id="${prefix}-card-${i}">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <span style="font-size:13px;font-weight:700">小题 ${i+1}</span>
+      ${delBtn}
+    </div>
+    <textarea id="${prefix}-${i}-question" class="input-field" rows="2" placeholder="小题题干" style="margin-bottom:6px">${escHtml(s.question||'')}</textarea>
+    <input id="${prefix}-${i}-optA" class="input-field" placeholder="选项A" value="${(s.optionA||'').replace(/"/g,'&quot;')}" style="margin-bottom:4px">
+    <input id="${prefix}-${i}-optB" class="input-field" placeholder="选项B" value="${(s.optionB||'').replace(/"/g,'&quot;')}" style="margin-bottom:4px">
+    <input id="${prefix}-${i}-optC" class="input-field" placeholder="选项C" value="${(s.optionC||'').replace(/"/g,'&quot;')}" style="margin-bottom:4px">
+    <input id="${prefix}-${i}-optD" class="input-field" placeholder="选项D" value="${(s.optionD||'').replace(/"/g,'&quot;')}" style="margin-bottom:6px">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px">
+      <select id="${prefix}-${i}-myAns" class="input-field"><option value="">我答</option>${['A','B','C','D'].map(o=>`<option ${o===s.myAnswer?'selected':''}>${o}</option>`).join('')}</select>
+      <select id="${prefix}-${i}-correctAns" class="input-field"><option value="">正确</option>${['A','B','C','D'].map(o=>`<option ${o===s.correctAnswer?'selected':''}>${o}</option>`).join('')}</select>
+      <input id="${prefix}-${i}-accuracy" class="input-field" type="number" min="0" max="100" placeholder="正确率" value="${s.accuracy||''}">
+    </div>
+    <textarea id="${prefix}-${i}-analysis" class="input-field" rows="2" placeholder="解析" style="margin-bottom:6px">${escHtml(s.analysis||'')}</textarea>
+    <select id="${prefix}-${i}-status" class="input-field"><option value="待复习" ${s.reviewStatus==='待复习'?'selected':''}>待复习</option><option value="模糊" ${s.reviewStatus==='模糊'?'selected':''}>模糊</option><option value="已掌握" ${s.reviewStatus==='已掌握'?'selected':''}>已掌握</option></select>
+  </div>`;
+}
+
+function collectSubsFromForm(prefix, n, oldSubs) {
+  const g = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+  const subs = [];
+  for (let i = 0; i < n; i++) {
+    const old = (oldSubs && oldSubs[i]) || subDefaults();
+    subs.push(Object.assign({}, old, {
+      question: g(prefix+'-'+i+'-question'), optionA: g(prefix+'-'+i+'-optA'), optionB: g(prefix+'-'+i+'-optB'),
+      optionC: g(prefix+'-'+i+'-optC'), optionD: g(prefix+'-'+i+'-optD'),
+      myAnswer: g(prefix+'-'+i+'-myAns'), correctAnswer: g(prefix+'-'+i+'-correctAns'),
+      accuracy: g(prefix+'-'+i+'-accuracy'), analysis: g(prefix+'-'+i+'-analysis'),
+      reviewStatus: g(prefix+'-'+i+'-status') || '待复习'
+    }));
+  }
+  return subs;
+}
+
+let groupSubCount = 0;
+function refreshGroupSubCount() {
+  const box = document.getElementById('gedit-subs');
+  groupSubCount = box ? box.querySelectorAll('[id^="gsub-card-"]').length : 0;
+  return groupSubCount;
+}
+function addGroupSub() {
+  const q = questions.find(x => x.id === editCurrentId);
+  if (!q) return;
+  collectGroupEditInto(q);
+  q.subs.push(subDefaults());
+  rerenderGroupEdit(q);
+}
+function removeGroupSub(i) {
+  const q = questions.find(x => x.id === editCurrentId);
+  if (!q) return;
+  collectGroupEditInto(q);
+  q.subs.splice(i, 1);
+  if (!q.subs.length) { showToast('至少保留一道小题'); q.subs = [subDefaults()]; }
+  rerenderGroupEdit(q);
+}
+function handleGroupMatUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const q = questions.find(x => x.id === editCurrentId);
+  if (!q) { input.value = ''; return; }
+  if ((q.materialPhotos||[]).length >= 3) { showToast('最多3张截图'); input.value = ''; return; }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      let w = img.width, h = img.height;
+      const maxSide = 1000;
+      if (w > maxSide || h > maxSide) {
+        if (w > h) { h = Math.round(h * maxSide / w); w = maxSide; }
+        else { w = Math.round(w * maxSide / h); h = maxSide; }
+      }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      q.materialPhotos = q.materialPhotos || [];
+      q.materialPhotos.push(canvas.toDataURL('image/jpeg', 0.7));
+      rerenderGroupEdit(q);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+function removeGroupMatPhoto(i) {
+  const q = questions.find(x => x.id === editCurrentId);
+  if (!q) return;
+  q.materialPhotos.splice(i, 1);
+  rerenderGroupEdit(q);
+}
+// 把当前编辑表单内容收进 q（不保存）
+function collectGroupEditInto(q) {
+  const g = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+  q.module = g('gedit-module') || q.module;
+  q.type = g('gedit-type');
+  q.source = g('gedit-source').trim();
+  q.material = g('gedit-material');
+  const n = refreshGroupSubCount();
+  const subs = collectSubsFromForm('gsub', n, q.subs);
+  if (subs.length) q.subs = subs;
+}
+function rerenderGroupEdit(q) { editGroup(q.id); }
+function updateGroupEditType() {
+  const mod = document.getElementById('gedit-module').value;
+  const sel = document.getElementById('gedit-type');
+  const stdTypes = MODULE_TYPES[mod] || [];
+  sel.innerHTML = `<option value="">未选择题型</option>` + stdTypes.map(t => `<option value="${t}">${t}</option>`).join('');
+}
+function saveGroupEdit(id) {
+  const q = questions.find(x => x.id === id);
+  if (!q) return;
+  collectGroupEditInto(q);
+  const bad = q.subs.some(s => !s.myAnswer || !s.correctAnswer);
+  if (bad) { showToast('每道小题都需选择我的答案与正确答案'); return; }
+  saveQuestions();
+  showToast('已保存修改');
+  editCurrentId = null;
+  viewDetail(id);
+  renderErrors();
 }
 
 function closeDetail() {
@@ -2344,7 +2915,7 @@ function shuffleArray(arr) {
 
 // 打开复习板块选择面板
 function startReview() {
-  const pending = questions.filter(q => q.reviewStatus === '待复习' || q.reviewStatus === '模糊');
+  const pending = allItems().filter(q => q.reviewStatus === '待复习' || q.reviewStatus === '模糊');
   const countBy = m => pending.filter(q => q.module === m).length;
   const el = document.getElementById('review-modal');
   el.innerHTML = `<div class="modal-overlay" style="align-items:center" onclick="if(event.target===this){closeReviewModal()}">
@@ -2368,7 +2939,8 @@ function startReview() {
 }
 
 function confirmStartReview(module) {
-  let pool = questions.filter(q => q.reviewStatus === '待复习' || q.reviewStatus === '模糊');
+  // 小题粒度组队列：组题拆成各小题分别进入队列
+  let pool = allItems().filter(q => q.reviewStatus === '待复习' || q.reviewStatus === '模糊');
   if (module !== '全部') pool = pool.filter(q => q.module === module);
   reviewQueue = shuffleArray(pool);
   reviewIndex = 0;
@@ -2389,6 +2961,20 @@ function showReviewQuestion() {
   const q = reviewQueue[reviewIndex];
   const el = document.getElementById('review-modal');
   const hasPhoto = q.photos && q.photos.length > 0;
+  // 材料组题的小题：顶部展示所属材料（可折叠）
+  const parent = q._parent;
+  const materialHtml = parent ? `
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:6px;cursor:pointer" onclick="toggleReviewMaterial()">
+        <i class="fas fa-chart-line" style="color:var(--green);font-size:12px"></i>
+        <span style="font-size:12px;font-weight:700;color:var(--muted)">材料（第 ${q._subIndex+1} 小题）</span>
+        <i id="review-material-arrow" class="fas fa-chevron-down" style="margin-left:auto;font-size:11px;color:var(--muted)"></i>
+      </div>
+      <div id="review-material-body" style="margin-top:8px">
+        ${parent.materialPhotos && parent.materialPhotos.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">${parent.materialPhotos.map(p=>`<img src="${p}" style="max-width:100%;max-height:280px;border-radius:8px;display:block" onclick="previewPhoto('${p}')">`).join('')}</div>` : ''}
+        ${parent.material ? `<p style="font-size:13px;line-height:1.7;margin:0;white-space:pre-line">${renderMathInText(parent.material)}</p>` : ''}
+      </div>
+    </div>` : '';
   el.innerHTML = `<div class="modal-overlay modal-full" style="align-items:stretch">
     <div class="modal-content" style="padding-top:16px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
@@ -2399,6 +2985,7 @@ function showReviewQuestion() {
         <span class="badge ${getModuleClass(q.module)}">${q.module}</span>
         ${q.type ? `<span style="font-size:11px;color:#1e40af;background:rgba(59,130,246,.12);padding:2px 8px;border-radius:10px;font-weight:600">${q.type}</span>` : ''}
       </div>
+      ${materialHtml}
       <div class="detail-section"><h4>题干</h4>${q.question ? `<p style="line-height:1.7">${renderQuestionText(q.question)}</p>` : ''}${(!q.question && q.photos && q.photos.length) ? `<img src="${q.photos[0]}" style="max-width:100%;max-height:340px;border-radius:8px" onclick="previewPhoto('${q.photos[0]}')">` : ''}</div>
       ${q.optionA?`<div id="review-opt-A" class="option-item" style="cursor:pointer" onclick="selectReviewOption('A')">A. ${renderMathInText(q.optionA)}</div>`:''}
       ${q.optionB?`<div id="review-opt-B" class="option-item" style="cursor:pointer" onclick="selectReviewOption('B')">B. ${renderMathInText(q.optionB)}</div>`:''}
@@ -2417,6 +3004,15 @@ function showReviewQuestion() {
 function toggleReviewPhoto() {
   const el = document.getElementById('review-photos');
   if (el) el.classList.toggle('hidden');
+}
+
+function toggleReviewMaterial() {
+  const body = document.getElementById('review-material-body');
+  const arrow = document.getElementById('review-material-arrow');
+  if (!body) return;
+  const hidden = body.style.display === 'none';
+  body.style.display = hidden ? '' : 'none';
+  if (arrow) arrow.className = hidden ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
 }
 
 function selectReviewOption(L) {
@@ -2472,10 +3068,17 @@ function submitReviewAnswer() {
 
 function reviewMark(status) {
   const q = reviewQueue[reviewIndex];
-  const real = questions.find(item => item.id === q.id);
+  // 组题小题：作用于父记录的对应小题；单题：作用于自身
+  let real = null;
+  if (q._parent) {
+    const parent = questions.find(item => item.id === q._parent.id);
+    if (parent && parent.subs && parent.subs[q._subIndex]) real = parent.subs[q._subIndex];
+  } else {
+    real = questions.find(item => item.id === q.id);
+  }
   if (real) {
     if (status === '还是不会') {
-      real.errorCount += 1;
+      real.errorCount = (real.errorCount || 1) + 1;
       real.reviewStatus = '待复习';
     } else if (status === '模糊') {
       real.reviewStatus = '模糊';
@@ -2486,7 +3089,7 @@ function reviewMark(status) {
     saveQuestions();
     updateDailyStat('reviews', 1);
   }
-  reviewResults.push({ id: q.id, status });
+  reviewResults.push({ id: (q._parent ? q._parent.id + '#s' + q._subIndex : q.id), status });
   if (status === '还是不会') reviewQueue.push(q);
   reviewIndex++;
   showReviewQuestion();
@@ -2536,12 +3139,12 @@ function closeReviewModal() {
 function renderStats() {
   const el = document.getElementById('page-stats');
 
-  // Module mastery bar chart
+  // Module mastery bar chart（组题按小题计）
   const moduleStats = {};
   ALL_MODULES.forEach(m => {
-    const mq = questions.filter(q => q.module === m);
-    const mastered = mq.filter(q => q.reviewStatus === '已掌握').length;
-    moduleStats[m] = { total: mq.length, mastered, rate: mq.length ? mastered / mq.length : 0 };
+    const items = allItems().filter(q => q.module === m);
+    const mastered = items.filter(q => q.reviewStatus === '已掌握').length;
+    moduleStats[m] = { total: items.length, mastered, rate: items.length ? mastered / items.length : 0 };
   });
 
   const maxCount = Math.max(...ALL_MODULES.map(m => moduleStats[m].total), 1);
@@ -2566,10 +3169,10 @@ function renderStats() {
     </div>`;
   }).join('');
 
-  // Error reason analysis
+  // Error reason analysis（组题按小题计）
   const reasonCount = {};
   ERROR_REASONS.forEach(r => reasonCount[r] = 0);
-  questions.forEach(q => q.errorReasons.forEach(r => { if (reasonCount[r] !== undefined) reasonCount[r]++; }));
+  allItems().forEach(q => (q.errorReasons||[]).forEach(r => { if (reasonCount[r] !== undefined) reasonCount[r]++; }));
   const maxReason = Math.max(...Object.values(reasonCount), 1);
   const reasonColors = ['#3b82f6','#8b5cf6','#ef4444','#22c55e','#f97316','#06b6d4'];
   let reasonBarsHTML = ERROR_REASONS.map((r, i) => {
@@ -2606,12 +3209,12 @@ function renderStats() {
     </div>`;
   }).join('');
 
-  // Weak knowledge points
+  // Weak knowledge points（组题按小题计）
   const typeStats = {};
-  questions.forEach(q => {
+  allItems().forEach(q => {
     const key = q.type || '未分类';
     if (!typeStats[key]) typeStats[key] = { count: 0, module: q.module };
-    typeStats[key].count += q.errorCount;
+    typeStats[key].count += q.errorCount || 1;
   });
   const weakTypes = Object.entries(typeStats).sort((a,b) => b[1].count - a[1].count).slice(0, 5);
   const suggestions = ['建议重点复习该题型，梳理解题框架','建议整理该题型常见陷阱','建议做专项练习巩固方法','建议回顾笔记中的解题步骤','建议对比相似题型找规律'];
@@ -2823,6 +3426,30 @@ function migrateModules() {
   });
   if (changed) saveQuestionsLocal();
   return changed;
+}
+
+// ==================== 材料组题（资料分析一材料多小题） ====================
+function isGroupQ(q) { return !!(q.subs && q.subs.length); }
+function subDefaults() {
+  return { question:'', optionA:'', optionB:'', optionC:'', optionD:'', myAnswer:'', correctAnswer:'', accuracy:'', errorReasons:[], analysis:'', reviewStatus:'待复习', errorCount:1, lastReviewDate:null };
+}
+// 展开为小题粒度条目：组题返回各小题视图（带 _parent/_subIndex），单题返回自身
+function expandQuestion(q) {
+  if (!isGroupQ(q)) return [q];
+  return q.subs.map((s, i) => Object.assign({}, s, {
+    _parent: q, _subIndex: i,
+    module: q.module, type: q.type, source: q.source, createDate: q.createDate
+  }));
+}
+function allItems() {
+  let out = [];
+  questions.forEach(q => { out = out.concat(expandQuestion(q)); });
+  return out;
+}
+function itemCount(list) {
+  let n = 0;
+  list.forEach(q => { n += isGroupQ(q) ? q.subs.length : 1; });
+  return n;
 }
 
 // ==================== INIT ====================
