@@ -19,7 +19,7 @@
 tailwind.config={theme:{extend:{colors:{primary:'#0c1929','primary-light':'#162544',accent:'#f97316',success:'#22c55e'}}}}
 </script>
 <style>
-:root{--bg:#f0f4f8;--card:#fff;--primary:#0c1929;--primary-light:#162544;--accent:#f97316;--success:#22c55e;--danger:#ef4444;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;--blue:#3b82f6;--purple:#8b5cf6;--red:#ef4444;--green:#22c55e;--orange:#f97316}
+:root{--bg:#f0f4f8;--card:#fff;--primary:#0c1929;--primary-light:#162544;--accent:#f97316;--success:#22c55e;--danger:#ef4444;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;--blue:#3b82f6;--purple:#8b5cf6;--red:#ef4444;--green:#22c55e;--orange:#f97316;--teal:#14b8a6}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
 .page{display:none;padding:16px 16px 150px;animation:fadeIn .25s ease}
@@ -30,7 +30,7 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang 
 .card{background:var(--card);border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.06);padding:16px;margin-bottom:12px;transition:box-shadow .2s}
 .card:active{box-shadow:0 1px 4px rgba(0,0,0,.08)}
 .badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:600;color:#fff;white-space:nowrap}
-.badge-blue{background:var(--blue)}.badge-purple{background:var(--purple)}.badge-red{background:var(--red)}.badge-green{background:var(--green)}.badge-orange{background:var(--orange)}
+.badge-blue{background:var(--blue)}.badge-purple{background:var(--purple)}.badge-red{background:var(--red)}.badge-green{background:var(--green)}.badge-orange{background:var(--orange)}.badge-teal{background:var(--teal)}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;border:none;cursor:pointer;transition:all .15s}
 .btn:active{transform:scale(.96)}
 .btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-light)}
@@ -68,7 +68,6 @@ textarea.input-field{resize:vertical;min-height:80px}
 .stat-bar-track{flex:1;height:22px;border-radius:6px;background:#e2e8f0;overflow:hidden;position:relative}
 .stat-bar-fill{height:100%;border-radius:6px;transition:width .6s ease;display:flex;align-items:center;padding-left:8px;font-size:11px;color:#fff;font-weight:600;min-width:0}
 .photo-thumb{width:56px;height:56px;border-radius:8px;object-fit:cover;border:1.5px solid var(--border);cursor:pointer}
-.chart-box{margin:8px 0 4px;padding:10px;background:#f8fafc;border:1px solid var(--border);border-radius:10px;overflow-x:auto}
 .data-table{border-collapse:collapse;width:100%;font-size:12.5px;background:#fff}
 .data-table th,.data-table td{border:1px solid #cbd5e1;padding:4px 8px;text-align:center;white-space:nowrap}
 .data-table thead th{background:#eef2f7;font-weight:600}
@@ -151,21 +150,22 @@ const SEED_KEY = 'xct_seedLoaded';
 
 const MODULE_COLORS = {
   '言语理解': 'blue', '判断推理': 'purple', '数量关系': 'red',
-  '资料分析': 'green', '常识判断': 'orange'
+  '资料分析': 'green', '图形推理': 'orange', '政治理论': 'teal'
 };
 const MODULE_COLOR_HEX = {
   '言语理解': '#3b82f6', '判断推理': '#8b5cf6', '数量关系': '#ef4444',
-  '资料分析': '#22c55e', '常识判断': '#f97316'
+  '资料分析': '#22c55e', '图形推理': '#f97316', '政治理论': '#14b8a6'
 };
 const MODULE_TYPES = {
   '言语理解': ['中心理解题','标题添加题','细节判断题','语句填空题','语句排序题','逻辑填空题'],
-  '判断推理': ['图形推理','定义判断','类比推理','逻辑判断'],
+  '判断推理': ['逻辑判断-形式逻辑','逻辑判断-论证逻辑','类比推理','定义判断'],
   '数量关系': ['数学运算','数字推理'],
   '资料分析': ['增长率','增长量','比重','平均数','倍数','综合分析'],
-  '常识判断': ['法律','政治','经济','历史','科技','地理']
+  '图形推理': ['图形推理'],
+  '政治理论': ['政治理论']
 };
 const ERROR_REASONS = ['概念理解错误','审题错误','方法忘记','计算错误','粗心','知识遗忘'];
-const ALL_MODULES = ['言语理解','判断推理','数量关系','资料分析','常识判断'];
+const ALL_MODULES = ['言语理解','判断推理','数量关系','资料分析','图形推理','政治理论'];
 
 // ==================== SUPABASE CONFIG ====================
 const SUPABASE_URL = 'https://fibnnedkozagzucqtpzh.supabase.co';
@@ -177,7 +177,6 @@ let sbUserId = null;
 let sbSyncing = false;
 let sbSyncStatus = 'offline'; // offline | syncing | synced | error
 let sbLastSync = null;
-let sbHasChartCol = null; // 云端是否已有 chart 列（null=未知，启动时自动探测）
 let sbLastErrorMsg = null; // 最近一次同步错误的详细信息
 let sbLastTombstoneInfo = ''; // 最近一次拉取的删除标记信息
 
@@ -207,7 +206,6 @@ function qToRow(q) {
     review_status: q.reviewStatus||'待复习', last_review_date: q.lastReviewDate||null,
     is_seed: !!q.isSeed
   };
-  if (sbHasChartCol !== false) row.chart = q.chart||'';
   return row;
 }
 function rowToQ(r) {
@@ -217,7 +215,6 @@ function rowToQ(r) {
     optionC: r.option_c||'', optionD: r.option_d||'', myAnswer: r.my_answer||'',
     correctAnswer: r.correct_answer||'', accuracy: r.accuracy||'',
     errorReasons: r.error_reasons||[], analysis: r.analysis||'', notes: r.notes||'',
-    chart: r.chart||'',
     photos: r.photos||[], createDate: r.create_date||'', errorCount: r.error_count||1,
     reviewStatus: r.review_status||'待复习', lastReviewDate: r.last_review_date||null,
     isSeed: !!r.is_seed
@@ -383,14 +380,9 @@ async function sbInit() {
     if (error) throw error;
     // 不用各设备独立的匿名ID，统一改用固定共享身份
     sbUserId = FIXED_USER_ID;
-    // 探测云端是否有 chart 列（没跑过 ALTER TABLE 时自动降级，不影响其他字段同步）
-    try {
-      const probe = await sb.from('questions').select('chart').limit(1);
-      sbHasChartCol = !probe.error;
-      if (probe.error) console.warn('chart 列不存在，图表字段暂不同步:', probe.error.message);
-    } catch(e) { sbHasChartCol = false; }
-    // 先拉云端数据，再上传本地数据
+    // 先拉云端数据，再迁移旧板块，最后上传本地数据（避免云端旧数据覆盖迁移结果）
     await sbSyncFromCloud();
+    migrateModules();
     await sbSyncToCloud();
   } catch(e) {
     sbSyncStatus = 'error';
@@ -950,42 +942,6 @@ function renderMathInText(text) {
   return out;
 }
 
-// ==================== 图表渲染（资料分析表格/图片） ====================
-function renderChartHtml(chart, forPrint) {
-  if (!chart || !String(chart).trim()) return '';
-  const text = String(chart).trim();
-  // 图片链接
-  if (/^https?:\/\/\S+$/.test(text)) {
-    return `<div class="chart-box"><img src="${escHtml(text)}" style="max-width:100%;border-radius:6px;display:block"${forPrint ? '' : ' onclick="event.stopPropagation();previewPhoto(this.src)"'}></div>`;
-  }
-  // 表格识别：| 分隔 / 制表符（Excel 粘贴）/ 两个以上空格
-  const rawLines = text.split('\n').map(l => l.trim()).filter(l => l);
-  const isSepLine = l => l.includes('-') && /^[\s|:\-]+$/.test(l);
-  const rows = [];
-  rawLines.forEach(l => {
-    if (isSepLine(l)) return;
-    let cells;
-    if (l.includes('|')) cells = l.replace(/^\|/, '').replace(/\|$/, '').split('|');
-    else if (l.includes('\t')) cells = l.split('\t');
-    else if (/\s{2,}|　/.test(l)) cells = l.split(/\s{2,}|　+/);
-    else cells = [l];
-    rows.push(cells.map(c => c.trim()));
-  });
-  const maxCols = rows.length ? Math.max.apply(null, rows.map(r => r.length)) : 0;
-  if (rows.length && maxCols >= 2) {
-    const thead = '<tr>' + rows[0].map(c => '<th>' + renderMathInText(c) + '</th>').join('') + '</tr>';
-    const tbody = rows.slice(1).map(r => '<tr>' + Array.from({length: maxCols}, (_, i) => '<td>' + renderMathInText(r[i] || '') + '</td>').join('') + '</tr>').join('');
-    return `<div class="chart-box"><table class="data-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
-  }
-  // 非表格：按原文保留换行显示
-  return `<div class="chart-box"><pre style="white-space:pre-wrap;margin:0;font-size:12.5px;line-height:1.6;font-family:inherit">${renderMathInText(text)}</pre></div>`;
-}
-
-function chartBlock(chart, forPrint) {
-  if (!chart || !String(chart).trim()) return '';
-  return `<div style="margin-top:8px"><div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:2px"><i class="fas fa-chart-line" style="margin-right:4px"></i>图表 / 表格数据</div>${renderChartHtml(chart, forPrint)}</div>`;
-}
-
 // 渲染题干：把末尾的问句（以：或？结尾）另起一行并加粗
 function renderQuestionText(qtext) {
   if (!qtext) return '';
@@ -1194,13 +1150,9 @@ function renderSingleForm() {
         <div style="margin-top:8px">
           <input type="file" accept="image/*" capture="environment" id="inp-photoInput" style="display:none" onchange="handlePhotoUpload(this)">
           <button class="btn btn-outline btn-sm" onclick="document.getElementById('inp-photoInput').click()"><i class="fas fa-camera"></i> 添加题干照片</button>
-          <p style="font-size:11px;color:var(--muted);margin:6px 0 0">题干可输入文字、也可放照片（二选一或都要）；照片同时留底原图</p>
+          <p style="font-size:11px;color:var(--muted);margin:6px 0 0">题干可输入文字、也可放照片（二选一或都要）；电脑截图后在本页直接 Ctrl/⌘+V 粘贴即可添加；照片同时留底原图</p>
           <div id="inp-photoPreview" style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"></div>
         </div>
-      </div>
-      <div style="margin-bottom:14px">
-        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">图表 / 表格数据（可选，资料分析推荐）</label>
-        <textarea id="inp-chart" class="input-field" rows="3" placeholder="题目带图表/统计表时贴这里：&#10;① 表格文字直接粘贴（Excel 复制的、用 | 分隔的都行），复盘时自动渲染成表格&#10;② 也可以贴图片链接（http 开头），直接显示图片"></textarea>
       </div>
       <div style="margin-bottom:14px">
         <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">选项A</label>
@@ -1273,10 +1225,6 @@ B. 选项B内容
 C. 选项C内容
 D. 选项D内容
 
-【图表】（可选，资料分析推荐）
-题目带表格/图表时贴这里：表格文字直接粘贴
-（Excel 复制的、| 分隔的都行），也可贴图片链接
-
 【考查知识点】……
 【行文脉络】……
 【核心观点】……
@@ -1323,9 +1271,6 @@ A. 选项A内容
 B. 选项B内容
 C. 选项C内容
 D. 选项D内容
-
-【图表】（可选，资料分析推荐）
-表格文字直接粘贴，或贴图片链接
 
 【考查知识点】……
 【行文脉络】……
@@ -1387,22 +1332,15 @@ function parseBatchContent(text) {
         finalLines.push(l);
       }
     });
-    const q = { question: '', optionA: '', optionB: '', optionC: '', optionD: '', myAnswer: '', correctAnswer: '', accuracy: '', type: '', source: '', chart: '', errorReasons: [], analysis: '' };
-    const qLines = [], aLines = [], chartLines = [];
+    const q = { question: '', optionA: '', optionB: '', optionC: '', optionD: '', myAnswer: '', correctAnswer: '', accuracy: '', type: '', source: '', errorReasons: [], analysis: '' };
+    const qLines = [], aLines = [];
     let section = 'question';
     let optSeen = false;
     finalLines.forEach(raw => {
       const line = raw.trim();
       if (!line) return;
-      // 图表区块内的普通数据行直接收录，遇到下一个区块标签才跳出
-      if (section === 'chart') {
-        const labelHit = /^【[^】]+】/.test(line) || /^(?:正确答案|我的答案|错选项及原因|错选项|错选选项|错选|题型|来源|错题来源|题目来源|试题来源|正确率|错误原因|错误类型|解析|选项)\s*[:：]/.test(line);
-        if (!labelHit) { chartLines.push(line); return; }
-        section = 'analysis';
-      }
       let m;
       if (/^(?:【)?选项(?:】)?$/.test(line)) return;
-      if ((m = line.match(/^(?:【)?(?:图表|表格|图表数据|表格数据|统计图表|统计图|图表材料|材料图表|资料图表)(?:】)?\s*[:：]?\s*(.*)$/))) { section = 'chart'; if (m[1].trim()) chartLines.push(m[1].trim()); return; }
       if (!q.optionA && (m = line.match(/^(?:选项A|A)\s*[.、．:：]\s*(.+)$/))) { q.optionA = m[1].trim(); optSeen = true; return; }
       if (!q.optionB && (m = line.match(/^(?:选项B|B)\s*[.、．:：]\s*(.+)$/))) { q.optionB = m[1].trim(); optSeen = true; return; }
       if (!q.optionC && (m = line.match(/^(?:选项C|C)\s*[.、．:：]\s*(.+)$/))) { q.optionC = m[1].trim(); optSeen = true; return; }
@@ -1429,7 +1367,6 @@ function parseBatchContent(text) {
     });
     q.question = qLines.join('\n').trim();
     q.analysis = aLines.join('\n').trim();
-    q.chart = chartLines.join('\n').trim();
     if (q.question && q.myAnswer && q.correctAnswer) results.push(q);
   });
   return results;
@@ -1473,7 +1410,6 @@ function confirmBatchImport() {
       accuracy: p.accuracy || '',
       errorReasons: p.errorReasons.length ? p.errorReasons : [],
       analysis: p.analysis,
-      chart: p.chart || '',
       notes: '',
       photos: [],
       createDate: todayStr,
@@ -1597,6 +1533,64 @@ function handleEditPhotoUpload(input, qid) {
   reader.readAsDataURL(file);
   input.value = '';
 }
+
+// 粘贴截图直接添加照片：录入页粘贴进录入照片，编辑弹窗打开时粘贴进当前编辑题
+let editCurrentId = null;
+
+function processPastedImage(file, mode, qid) {
+  if (mode === 'input') {
+    if (inputPhotos.length >= 3) { showToast('最多上传3张图片'); return; }
+    cropTarget = 'input';
+  } else {
+    const q = questions.find(x => x.id === qid);
+    if (!q) return;
+    if (q.photos.length >= 3) { showToast('最多3张照片'); return; }
+    editDraft = captureEditDraft();
+    cropTarget = { mode: 'edit', id: qid };
+  }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      let w = img.width, h = img.height;
+      const maxSide = 1000;
+      if (w > maxSide || h > maxSide) {
+        if (w > h) { h = Math.round(h * maxSide / w); w = maxSide; }
+        else { w = Math.round(w * maxSide / h); h = maxSide; }
+      }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      openCropModal(canvas.toDataURL('image/jpeg', 0.7));
+      showToast(mode === 'input' ? '已粘贴截图，可裁剪后确认' : '已粘贴截图到编辑题');
+    };
+    img.onerror = function() { showToast('无法识别剪贴板中的图片'); };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+document.addEventListener('paste', function(e) {
+  const items = e.clipboardData && e.clipboardData.items;
+  if (!items) return;
+  for (let i = 0; i < items.length; i++) {
+    if (!items[i].type || items[i].type.indexOf('image') === -1) continue;
+    const file = items[i].getAsFile();
+    if (!file) continue;
+    const modal = document.getElementById('detail-modal');
+    const editOpen = modal && !modal.className.includes('hidden') && document.getElementById('edit-photoInput');
+    if (editOpen && editCurrentId) {
+      e.preventDefault();
+      processPastedImage(file, 'edit', editCurrentId);
+      return;
+    }
+    if (document.getElementById('page-input').classList.contains('active')) {
+      e.preventDefault();
+      processPastedImage(file, 'input', null);
+      return;
+    }
+  }
+});
 
 function refreshEditPhotos(qid) {
   const q = questions.find(x => x.id === qid);
@@ -1789,7 +1783,6 @@ function saveNewQuestion() {
     accuracy: document.getElementById('inp-accuracy').value.trim(),
     errorReasons: reasons,
     analysis: '',
-    chart: document.getElementById('inp-chart') ? document.getElementById('inp-chart').value.trim() : '',
     notes: '',
     photos: [...inputPhotos],
     createDate: new Date().toISOString().slice(0,10),
@@ -1813,9 +1806,9 @@ function renderErrors() {
 }
 
 function renderErrorCategories(el) {
-  const MODULE_ICONS = {'言语理解':'fa-language','判断推理':'fa-puzzle-piece','数量关系':'fa-calculator','资料分析':'fa-chart-line','常识判断':'fa-lightbulb'};
-  const COLOR_VARS = {blue:'var(--blue)',purple:'var(--purple)',red:'var(--red)',green:'var(--green)',orange:'var(--orange)'};
-  const BG_MAP = {blue:'rgba(59,130,246,.12)',purple:'rgba(139,92,246,.12)',red:'rgba(239,68,68,.12)',green:'rgba(34,197,94,.12)',orange:'rgba(249,115,22,.12)'};
+  const MODULE_ICONS = {'言语理解':'fa-language','判断推理':'fa-puzzle-piece','数量关系':'fa-calculator','资料分析':'fa-chart-line','图形推理':'fa-shapes','政治理论':'fa-landmark'};
+  const COLOR_VARS = {blue:'var(--blue)',purple:'var(--purple)',red:'var(--red)',green:'var(--green)',orange:'var(--orange)',teal:'var(--teal)'};
+  const BG_MAP = {blue:'rgba(59,130,246,.12)',purple:'rgba(139,92,246,.12)',red:'rgba(239,68,68,.12)',green:'rgba(34,197,94,.12)',orange:'rgba(249,115,22,.12)',teal:'rgba(20,184,166,.12)'};
   const cards = ALL_MODULES.map(m => {
     const mq = questions.filter(q => q.module === m);
     const mastered = mq.filter(q => q.reviewStatus === '已掌握').length;
@@ -1901,7 +1894,10 @@ function renderErrorList(el) {
     // 指定模块时，使用该模块的标准题型
     allTypes = MODULE_TYPES[errorFilters.module] || [...new Set(questions.filter(q => q.module === errorFilters.module).map(q => q.type).filter(Boolean))];
   }
-  const allSources = [...new Set(questions.map(q => q.source || '未填来源').filter(Boolean))];
+  // 来源筛选只列当前板块已有的来源（全部模块时列全部）
+  const srcPool = errorFilters.module === '全部' ? questions : questions.filter(q => q.module === errorFilters.module);
+  const allSources = [...new Set(srcPool.map(q => q.source || '未填来源').filter(Boolean))];
+  if (errorFilters.source !== '全部' && !allSources.includes(errorFilters.source)) errorFilters.source = '全部';
   const title = errorFilters.module === '全部' ? '全部错题' : errorFilters.module;
   const selCount = Object.keys(batchSelectedIds).length;
 
@@ -1997,7 +1993,6 @@ function exportForPrint() {
         <div style="font-size:13px;line-height:1.5;margin-bottom:4px">
           <span style="font-weight:normal">${globalIdx}. ${qText}</span>
         </div>
-        ${q.chart ? `<div style="margin:4px 0 6px 16px">${renderChartHtml(q.chart, true)}</div>` : ''}
         ${optsHtml ? `<div style="font-size:12.5px;line-height:1.4">${optsHtml}</div>` : ''}
       </div>`;
     }).join('');
@@ -2018,7 +2013,6 @@ function exportForPrint() {
   @page { size: A4; margin: 20mm 20mm 20mm 20mm; }
   * { box-sizing: border-box; }
   body { font-family: "SimSun","宋体","PingFang SC","Microsoft YaHei",serif; font-size: 13px; color: #000; line-height: 1.6; margin: 0; padding: 15px; max-width: 210mm; margin: 0 auto; font-weight: normal; }
-  .chart-box{margin:4px 0;padding:8px;background:#fafafa;border:1px solid #d1d5db;border-radius:6px;overflow-x:auto}
   .data-table{border-collapse:collapse;width:100%;font-size:12px;background:#fff}
   .data-table th,.data-table td{border:1px solid #9ca3af;padding:3px 8px;text-align:center;white-space:nowrap}
   .data-table thead th{background:#f3f4f6;font-weight:600}
@@ -2130,7 +2124,6 @@ function renderErrorCard(q) {
       ${q.accuracy ? `<span style="font-size:11px;color:#059669;background:rgba(5,150,105,.1);padding:2px 8px;border-radius:10px;font-weight:600">${q.accuracy}%</span>` : ''}
       ${q.type ? `<span style="font-size:11px;color:#1e40af;background:rgba(59,130,246,.12);padding:2px 8px;border-radius:10px;font-weight:600">${q.type}</span>` : ''}
       ${q.source ? `<span style="font-size:11px;color:#0f766e;background:rgba(20,184,166,.1);padding:2px 8px;border-radius:10px"><i class="fas fa-book-open" style="margin-right:3px;font-size:10px"></i>${q.source}</span>` : ''}
-      ${q.chart ? `<span style="font-size:11px;color:#7c3aed;background:rgba(139,92,246,.1);padding:2px 8px;border-radius:10px;font-weight:600"><i class="fas fa-chart-line" style="margin-right:3px;font-size:10px"></i>图表</span>` : ''}
       <span style="font-size:11px;color:${statusColor};margin-left:auto;font-weight:600">${q.reviewStatus}</span>
     </div>
     ${hasPhoto ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${q.photos.map(p => `<img src="${p}" style="height:${isExpanded?'160px':'110px'};width:auto;max-width:${q.photos.length>1?'48%':'100%'};object-fit:cover;border-radius:8px;display:block" onclick="event.stopPropagation();previewPhoto('${p}')">`).join('')}</div>` : ''}
@@ -2143,7 +2136,6 @@ function renderErrorCard(q) {
           <span>正确答案：<b style="color:var(--success)">${q.correctAnswer}</b></span>
           <span style="margin-left:auto;font-size:12px;color:var(--muted)">错误${q.errorCount}次</span>
         </div>
-        ${q.chart ? chartBlock(q.chart) : ''}
         ${q.optionA ? `<div class="option-item ${q.myAnswer==='A'?'my-wrong':''} ${q.correctAnswer==='A'?'correct':''}">A. ${renderMathInText(q.optionA)}</div>` : ''}
         ${q.optionB ? `<div class="option-item ${q.myAnswer==='B'?'my-wrong':''} ${q.correctAnswer==='B'?'correct':''}">B. ${renderMathInText(q.optionB)}</div>` : ''}
         ${q.optionC ? `<div class="option-item ${q.myAnswer==='C'?'my-wrong':''} ${q.correctAnswer==='C'?'correct':''}">C. ${renderMathInText(q.optionC)}</div>` : ''}
@@ -2199,9 +2191,8 @@ function viewDetail(id) {
         ${q.type ? `<span style="font-size:11px;color:#1e40af;background:rgba(59,130,246,.12);padding:2px 8px;border-radius:10px;font-weight:600">${q.type}</span>` : ''}
         ${q.errorReasons.map(r=>`<span style="font-size:11px;color:var(--accent);background:rgba(249,115,22,.08);padding:2px 8px;border-radius:10px">${r}</span>`).join('')}
         ${q.source ? `<span style="font-size:11px;color:#0f766e;background:rgba(20,184,166,.1);padding:2px 8px;border-radius:10px"><i class="fas fa-book-open" style="margin-right:3px;font-size:10px"></i>${q.source}</span>` : ''}
-        ${q.chart ? `<span style="font-size:11px;color:#7c3aed;background:rgba(139,92,246,.1);padding:2px 8px;border-radius:10px;font-weight:600"><i class="fas fa-chart-line" style="margin-right:3px;font-size:10px"></i>图表</span>` : ''}
       </div>
-      <div class="detail-section"><h4>题干</h4>${(q.photos && q.photos.length) ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:${q.question?'10px':'0'}">${q.photos.map(p=>`<img src="${p}" style="height:150px;width:auto;max-width:${q.photos.length>1?'48%':'100%'};object-fit:cover;border-radius:8px" onclick="previewPhoto('${p}')">`).join('')}</div>` : ''}${q.question ? `<p style="line-height:1.7">${renderQuestionText(q.question)}</p>` : ''}${q.chart ? chartBlock(q.chart) : ''}</div>
+      <div class="detail-section"><h4>题干</h4>${(q.photos && q.photos.length) ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:${q.question?'10px':'0'}">${q.photos.map(p=>`<img src="${p}" style="height:150px;width:auto;max-width:${q.photos.length>1?'48%':'100%'};object-fit:cover;border-radius:8px" onclick="previewPhoto('${p}')">`).join('')}</div>` : ''}${q.question ? `<p style="line-height:1.7">${renderQuestionText(q.question)}</p>` : ''}</div>
       ${q.optionA?`<div class="option-item ${q.myAnswer==='A'?'my-wrong':''} ${q.correctAnswer==='A'?'correct':''}">A. ${renderMathInText(q.optionA)}</div>`:''}
       ${q.optionB?`<div class="option-item ${q.myAnswer==='B'?'my-wrong':''} ${q.correctAnswer==='B'?'correct':''}">B. ${renderMathInText(q.optionB)}</div>`:''}
       ${q.optionC?`<div class="option-item ${q.myAnswer==='C'?'my-wrong':''} ${q.correctAnswer==='C'?'correct':''}">C. ${renderMathInText(q.optionC)}</div>`:''}
@@ -2221,11 +2212,13 @@ function viewDetail(id) {
 
 function closeDetail() {
   document.getElementById('detail-modal').className = 'hidden';
+  editCurrentId = null;
 }
 
 function editQuestion(id) {
   const q = questions.find(x => x.id === id);
   if (!q) return;
+  editCurrentId = id;
   const el = document.getElementById('detail-modal');
   const stdTypes = MODULE_TYPES[q.module] || [];
   const hasCustomType = q.type && !stdTypes.includes(q.type);
@@ -2259,9 +2252,8 @@ function editQuestion(id) {
         ${q.photos.map((p,i)=>`<div style="position:relative;display:inline-block"><img src="${p}" style="width:84px;height:84px;object-fit:cover;border-radius:8px;display:block" onclick="previewPhoto('${p}')"><button onclick="removeEditPhoto('${q.id}',${i})" style="position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;background:var(--danger);color:#fff;border:2px solid #fff;font-size:13px;line-height:18px;cursor:pointer;padding:0">×</button></div>`).join('') || '<span style="font-size:12px;color:var(--muted)">暂无照片</span>'}
       </div>
       <input type="file" id="edit-photoInput" accept="image/*" capture="environment" style="display:none" onchange="handleEditPhotoUpload(this,'${q.id}')">
-      <button class="btn btn-outline btn-sm" style="margin-bottom:12px" onclick="document.getElementById('edit-photoInput').click()"><i class="fas fa-camera"></i> 添加照片</button>
-      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">图表 / 表格数据（可选，资料分析推荐）</label>
-      <textarea id="edit-chart" class="input-field" rows="3" style="margin-bottom:12px" placeholder="表格文字直接粘贴（Excel 复制的、| 分隔的都行），或贴图片链接">${q.chart||''}</textarea>
+      <button class="btn btn-outline btn-sm" style="margin-bottom:4px" onclick="document.getElementById('edit-photoInput').click()"><i class="fas fa-camera"></i> 添加照片</button>
+      <p style="font-size:11px;color:var(--muted);margin:0 0 12px">电脑截图后直接 Ctrl/⌘+V 粘贴即可添加</p>
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">选项A</label>
       <input id="edit-optA" class="input-field" value="${(q.optionA||'').replace(/"/g,'&quot;')}" style="margin-bottom:8px">
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">选项B</label>
@@ -2325,7 +2317,6 @@ function saveEdit(id) {
   document.querySelectorAll('#edit-reasons .checkbox-item.checked input').forEach(inp => reasons.push(inp.value));
   q.errorReasons = reasons;
   q.analysis = document.getElementById('edit-analysis').value;
-  q.chart = document.getElementById('edit-chart') ? document.getElementById('edit-chart').value.trim() : (q.chart || '');
   saveQuestions();
   showToast('已保存修改');
   closeDetail();
@@ -2408,7 +2399,7 @@ function showReviewQuestion() {
         <span class="badge ${getModuleClass(q.module)}">${q.module}</span>
         ${q.type ? `<span style="font-size:11px;color:#1e40af;background:rgba(59,130,246,.12);padding:2px 8px;border-radius:10px;font-weight:600">${q.type}</span>` : ''}
       </div>
-      <div class="detail-section"><h4>题干</h4>${q.question ? `<p style="line-height:1.7">${renderQuestionText(q.question)}</p>` : ''}${(!q.question && q.photos && q.photos.length) ? `<img src="${q.photos[0]}" style="max-width:100%;max-height:340px;border-radius:8px" onclick="previewPhoto('${q.photos[0]}')">` : ''}${q.chart ? chartBlock(q.chart) : ''}</div>
+      <div class="detail-section"><h4>题干</h4>${q.question ? `<p style="line-height:1.7">${renderQuestionText(q.question)}</p>` : ''}${(!q.question && q.photos && q.photos.length) ? `<img src="${q.photos[0]}" style="max-width:100%;max-height:340px;border-radius:8px" onclick="previewPhoto('${q.photos[0]}')">` : ''}</div>
       ${q.optionA?`<div id="review-opt-A" class="option-item" style="cursor:pointer" onclick="selectReviewOption('A')">A. ${renderMathInText(q.optionA)}</div>`:''}
       ${q.optionB?`<div id="review-opt-B" class="option-item" style="cursor:pointer" onclick="selectReviewOption('B')">B. ${renderMathInText(q.optionB)}</div>`:''}
       ${q.optionC?`<div id="review-opt-C" class="option-item" style="cursor:pointer" onclick="selectReviewOption('C')">C. ${renderMathInText(q.optionC)}</div>`:''}
@@ -2730,7 +2721,7 @@ function renderSettings() {
         <p style="margin:0">面向公考备考人群的错题管理工具</p>
         <p style="margin:0">当前错题总数：${questions.length}</p>
         <p style="margin:0">所有数据存储在本地浏览器中，无内置错题</p>
-        <p style="margin:0">页面版本：<b style="color:var(--primary)">0811l</b>（公式渲染+图表+云同步合并版）</p>
+        <p style="margin:0">页面版本：<b style="color:var(--primary)">0812a</b>（板块调整+粘贴图片+公式渲染+云同步合并版）</p>
       </div>
     </div>
   `;
@@ -2811,6 +2802,29 @@ function restoreSeedData() {
   renderSettings();
 }
 
+// 旧数据迁移：常识判断→政治理论；判断推理中的图形推理独立成板块；判断推理旧逻辑判断类型归入新四类
+function migrateModules() {
+  let changed = 0;
+  questions.forEach(q => {
+    if (q.module === '常识判断') {
+      q.module = '政治理论';
+      if ((MODULE_TYPES['政治理论'] || []).indexOf(q.type) === -1) q.type = '政治理论';
+      changed++;
+    } else if (q.module === '判断推理') {
+      if (q.type === '图形推理') {
+        q.module = '图形推理';
+        changed++;
+      } else if (q.type && q.type.indexOf('逻辑判断') === 0) {
+        const formal = /翻译|形式|三段论|推理规则|真假|矛盾|分析|排列|组合|朴素/.test(q.type);
+        const newType = formal ? '逻辑判断-形式逻辑' : '逻辑判断-论证逻辑';
+        if (q.type !== newType) { q.type = newType; changed++; }
+      }
+    }
+  });
+  if (changed) saveQuestionsLocal();
+  return changed;
+}
+
 // ==================== INIT ====================
 function init() {
   loadQuestions();
@@ -2818,6 +2832,7 @@ function init() {
   loadSeedData();
   backfillTypes();
   classifyVerbalTypes();
+  migrateModules();
 
   // Nav event
   document.querySelectorAll('.nav-item').forEach(item => {
@@ -2845,4 +2860,4 @@ window.__onKatexReady = function() { try { renderPage(currentTab); if (typeof up
 init();
 </script>
 </body>
-<!-- build: 0811l --></html>
+<!-- build: 0812a --></html>
