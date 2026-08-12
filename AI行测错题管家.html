@@ -139,6 +139,9 @@ textarea.input-field{resize:vertical;min-height:80px}
   <div id="confirm-dialog" class="hidden"></div>
   <!-- Toast -->
   <div id="toast-el" class="hidden"></div>
+  <!-- 手写草稿板浮动按钮（支持 iPad Pencil） -->
+  <button id="sketch-fab" onclick="openSketch()" title="手写草稿板" style="position:fixed;right:14px;bottom:92px;z-index:95;width:50px;height:50px;border-radius:50%;background:var(--primary);color:#fff;border:none;box-shadow:0 4px 14px rgba(0,0,0,.28);font-size:19px;cursor:pointer"><i class="fas fa-pen-nib"></i></button>
+  <div id="sketch-overlay" class="hidden"></div>
 </div>
 
 <script>
@@ -212,6 +215,7 @@ function qToRow(q) {
     row.material = q.material||'';
     row.material_photos = q.materialPhotos||[];
     row.subs = q.subs||[];
+    row.analysis_photos = q.analysisPhotos||[];
   }
   return row;
 }
@@ -226,6 +230,7 @@ function rowToQ(r) {
     material: r.material!=null ? r.material : null,
     materialPhotos: r.material_photos!=null ? r.material_photos : null,
     subs: r.subs!=null ? r.subs : null,
+    analysisPhotos: r.analysis_photos!=null ? r.analysis_photos : null,
     photos: r.photos||[], createDate: r.create_date||'', errorCount: r.error_count||1,
     reviewStatus: r.review_status||'待复习', lastReviewDate: r.last_review_date||null,
     isSeed: !!r.is_seed
@@ -326,6 +331,9 @@ async function sbSyncFromCloud() {
         if (local && (cq.subs == null || !cq.subs.length) && isGroupQ(local)) {
           cq.subs = local.subs; cq.material = cq.material != null ? cq.material : (local.material||'');
           cq.materialPhotos = cq.materialPhotos != null ? cq.materialPhotos : (local.materialPhotos||[]);
+        }
+        if (local && cq.analysisPhotos == null && local.analysisPhotos && local.analysisPhotos.length) {
+          cq.analysisPhotos = local.analysisPhotos;
         }
         localMap[cq.id] = cq;
       });
@@ -2170,11 +2178,20 @@ function renderErrorList(el) {
       <button class="btn btn-outline btn-sm" onclick="backToErrorCategories()" style="padding:8px 12px"><i class="fas fa-arrow-left"></i></button>
       <h2 style="font-size:18px;font-weight:700;margin:0">${title}</h2>
       <span style="font-size:12px;color:var(--muted)">${filtered.length} 道</span>
+      ${errorFilters.module === '资料分析' ? `<button class="btn ${combineMode?'btn-accent':'btn-outline'} btn-sm" onclick="toggleCombineMode()"><i class="fas fa-object-group"></i> ${combineMode?'退出组合':'组合成组'}</button>` : ''}
       <button class="btn ${batchDeleteMode?'btn-danger':'btn-outline'} btn-sm" style="margin-left:auto" onclick="toggleBatchDeleteMode()">
         <i class="fas fa-${batchDeleteMode?'times':'trash-alt'}"></i> ${batchDeleteMode?'退出批量':'批量删除'}
       </button>
     </div>
-    ${batchDeleteMode ? `
+    ${combineMode ? `
+    <div class="card" style="margin-bottom:12px;padding:10px 12px;background:rgba(249,115,22,.05);border:1px solid rgba(249,115,22,.3)">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:700;color:var(--accent)">已选 ${selCount} 道单题</span>
+        <button class="btn btn-accent btn-sm" onclick="mergeSelectedToGroup()"><i class="fas fa-object-group"></i> 合并为材料组</button>
+        <button class="btn btn-outline btn-sm" onclick="batchSelectedIds={};renderErrors()">清空选择</button>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin:8px 0 0">勾选同一材料下的各小题后点"合并为材料组"，可随后补充材料文字/截图</p>
+    </div>` : batchDeleteMode ? `
     <div class="card" style="margin-bottom:12px;padding:10px 12px;background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.25)">
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <span style="font-size:13px;font-weight:700;color:var(--danger)">已选 ${selCount} 道</span>
@@ -2206,7 +2223,7 @@ function renderErrorList(el) {
     </div>`}
     <div id="error-cards">
       ${filtered.length === 0 ? '<div class="empty-state"><i class="fas fa-inbox"></i><p>暂无符合条件的错题</p></div>' :
-        filtered.map(q => renderErrorCard(q)).join('')}
+        filtered.map(q => combineMode ? renderCombineCard(q) : renderErrorCard(q)).join('')}
     </div>
   `;
 }
@@ -2331,8 +2348,74 @@ function exportForPrint() {
   win.document.close();
 }
 
+let combineMode = false;
+
+function toggleCombineMode() {
+  combineMode = !combineMode;
+  batchDeleteMode = false;
+  batchSelectedIds = {};
+  expandedCardId = null;
+  renderErrors();
+}
+
+function renderCombineCard(q) {
+  if (isGroupQ(q)) {
+    return `<div class="card" style="padding:12px;opacity:.6">
+      <div style="font-size:13px;color:var(--muted)"><i class="fas fa-layer-group" style="margin-right:4px"></i>已是材料组（${q.subs.length} 小题）</div>
+    </div>`;
+  }
+  const sel = !!batchSelectedIds[q.id];
+  const qText = q.question.length > 40 ? q.question.slice(0, 40) + '…' : q.question;
+  return `<div class="card" style="cursor:pointer;padding:12px;${sel?'box-shadow:0 0 0 2px var(--accent)':''}" onclick="toggleBatchSelect('${q.id}')">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:24px;height:24px;border-radius:50%;border:2px solid ${sel?'var(--accent)':'var(--border)'};background:${sel?'var(--accent)':'#fff'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        ${sel?'<i class="fas fa-check" style="color:#fff;font-size:13px"></i>':''}
+      </div>
+      <div style="flex:1;min-width:0">
+        ${q.question ? `<p style="font-size:13px;line-height:1.5;margin:0 0 4px">${qText}</p>` : (q.photos && q.photos.length ? `<p style="font-size:13px;color:var(--muted);margin:0 0 4px"><i class="fas fa-image"></i> 图片题</p>` : '')}
+        <div style="font-size:12px;color:var(--muted)">${q.type||''} · ${q.createDate}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function mergeSelectedToGroup() {
+  const ids = Object.keys(batchSelectedIds);
+  const picked = questions.filter(q => ids.includes(q.id) && !isGroupQ(q));
+  if (picked.length < 2) { showToast('请至少勾选 2 道单题再合并'); return; }
+  // 按创建日期+录入顺序排，保持小题顺序
+  const order = questions.map(q => q.id);
+  picked.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+  const first = picked[0];
+  const group = {
+    id: genId(), module: first.module || '资料分析', type: first.type || '',
+    source: first.source || '', question: '', optionA:'', optionB:'', optionC:'', optionD:'',
+    myAnswer:'', correctAnswer:'', accuracy:'', errorReasons:[], analysis:'',
+    notes:'', photos:[], material:'', materialPhotos:[],
+    subs: picked.map(q => ({
+      question: q.question || '', optionA: q.optionA||'', optionB: q.optionB||'', optionC: q.optionC||'', optionD: q.optionD||'',
+      myAnswer: q.myAnswer||'', correctAnswer: q.correctAnswer||'', accuracy: q.accuracy||'',
+      errorReasons: q.errorReasons||[], analysis: q.analysis||'', analysisPhotos: q.analysisPhotos||[],
+      reviewStatus: q.reviewStatus||'待复习', errorCount: q.errorCount||1, lastReviewDate: q.lastReviewDate||null
+    })),
+    createDate: new Date().toISOString().slice(0,10), errorCount: 1,
+    reviewStatus: '待复习', lastReviewDate: null, isSeed: false
+  };
+  const removeIds = new Set(picked.map(q => q.id));
+  questions = questions.filter(q => !removeIds.has(q.id));
+  questions.unshift(group);
+  markDeleted([...removeIds]);
+  saveQuestions();
+  batchSelectedIds = {};
+  combineMode = false;
+  expandedCardId = group.id;
+  renderErrors();
+  showToast(`已合并 ${picked.length} 道小题为材料组，可点"编辑"补充材料`);
+}
+
 function toggleBatchDeleteMode() {
   batchDeleteMode = !batchDeleteMode;
+  combineMode = false;
   batchSelectedIds = {};
   expandedCardId = null;
   renderErrors();
@@ -2379,6 +2462,7 @@ function backToErrorCategories() {
   errorFilters.accMin = 0;
   errorFilters.accMax = 100;
   batchDeleteMode = false;
+  combineMode = false;
   batchSelectedIds = {};
   renderErrors();
 }
@@ -2436,7 +2520,7 @@ function renderGroupCard(q) {
                 <span>正确：<b style="color:var(--success)">${s.correctAnswer}</b></span>
                 <span style="color:var(--muted)">错${s.errorCount||1}次</span>
               </div>
-              ${s.analysis ? `<div class="detail-section" style="margin:6px 0 0"><h4>解析</h4><p style="white-space:pre-line">${formatAnalysis(s.analysis)}</p></div>` : ''}
+              <div class="detail-section" style="margin:6px 0 0"><h4>解析</h4>${analysisBlock(s.analysis, s.analysisPhotos, q.id, i)}<button class="btn btn-outline btn-sm" style="margin-top:6px;padding:4px 10px" onclick="event.stopPropagation();openSketch({qid:'${q.id}',subIndex:${i}})"><i class="fas fa-pen-nib"></i> 手写草稿</button></div>
             </div>` : ''}
         </div>`;
       }).join('')}
@@ -2496,7 +2580,7 @@ function renderErrorCard(q) {
         ${q.optionB ? `<div class="option-item ${q.myAnswer==='B'?'my-wrong':''} ${q.correctAnswer==='B'?'correct':''}">B. ${renderMathInText(q.optionB)}</div>` : ''}
         ${q.optionC ? `<div class="option-item ${q.myAnswer==='C'?'my-wrong':''} ${q.correctAnswer==='C'?'correct':''}">C. ${renderMathInText(q.optionC)}</div>` : ''}
         ${q.optionD ? `<div class="option-item ${q.myAnswer==='D'?'my-wrong':''} ${q.correctAnswer==='D'?'correct':''}">D. ${renderMathInText(q.optionD)}</div>` : ''}
-        ${q.analysis ? `<div class="detail-section"><h4>解析</h4><p style="white-space:pre-line">${formatAnalysis(q.analysis)}</p></div>` : ''}
+        <div class="detail-section"><h4>解析</h4>${analysisBlock(q.analysis, q.analysisPhotos, q.id, null)}<button class="btn btn-outline btn-sm" style="margin-top:6px;padding:4px 10px" onclick="event.stopPropagation();openSketch({qid:'${q.id}'})"><i class="fas fa-pen-nib"></i> 手写草稿</button></div>
         <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
           <button class="btn btn-success btn-sm" onclick="event.stopPropagation();markMastered('${q.id}')"><i class="fas fa-check"></i> 标记掌握</button>
           <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();editQuestion('${q.id}')"><i class="fas fa-pen"></i> 编辑</button>
@@ -2561,7 +2645,7 @@ function viewDetail(id) {
         <span>我的答案：<b style="color:var(--danger)">${q.myAnswer}</b></span>
         <span>正确答案：<b style="color:var(--success)">${q.correctAnswer}</b></span>
       </div>
-      ${q.analysis?`<div class="detail-section"><h4>解析</h4><p style="white-space:pre-line">${formatAnalysis(q.analysis)}</p></div>`:''}
+      <div class="detail-section"><h4>解析</h4>${analysisBlock(q.analysis, q.analysisPhotos, q.id, null)}<button class="btn btn-outline btn-sm" style="margin-top:6px;padding:4px 10px" onclick="openSketch({qid:'${q.id}'})"><i class="fas fa-pen-nib"></i> 手写草稿</button></div>
       <div style="font-size:12px;color:var(--muted);margin-top:12px">
         创建日期：${q.createDate} | 错误次数：${q.errorCount} | 状态：${q.reviewStatus}
       </div>
@@ -2607,7 +2691,7 @@ function renderGroupDetail(q, el) {
             <span>我的答案：<b style="color:var(--danger)">${s.myAnswer}</b></span>
             <span>正确答案：<b style="color:var(--success)">${s.correctAnswer}</b></span>
           </div>
-          ${s.analysis ? `<div class="detail-section"><h4>解析</h4><p style="white-space:pre-line">${formatAnalysis(s.analysis)}</p></div>` : ''}
+          <div class="detail-section"><h4>解析</h4>${analysisBlock(s.analysis, s.analysisPhotos, q.id, i)}<button class="btn btn-outline btn-sm" style="margin-top:6px;padding:4px 10px" onclick="openSketch({qid:'${q.id}',subIndex:${i}})"><i class="fas fa-pen-nib"></i> 手写草稿</button></div>
         </div>`).join('')}
       <div style="font-size:12px;color:var(--muted);margin-top:12px">创建日期：${q.createDate}</div>
     </div>
@@ -3053,6 +3137,8 @@ function submitReviewAnswer() {
         <span>正确答案：<b style="color:var(--success)">${q.correctAnswer}</b></span>
       </div>
       ${q.analysis ? `<div style="font-size:13px;color:var(--muted);line-height:1.7;margin:8px 0 0;white-space:pre-line;border-top:1px dashed var(--border);padding-top:10px">${formatAnalysis(q.analysis)}</div>` : ''}
+      ${(q.analysisPhotos && q.analysisPhotos.length) ? `<div style="display:flex;flex-wrap:wrap;margin-top:8px">${q.analysisPhotos.map(p => `<img src="${p}" style="max-width:100%;max-height:200px;border-radius:8px;display:block;margin:4px 6px 0 0" onclick="previewPhoto('${p}')">`).join('')}</div>` : ''}
+      <button class="btn btn-outline btn-sm" style="margin-top:10px;padding:4px 10px" onclick="openSketch({qid:'${q._parent ? q._parent.id : q.id}'${q._parent ? `,subIndex:${q._subIndex}` : ''}})"><i class="fas fa-pen-nib"></i> 手写草稿</button>
     </div>
     ${correct ? `
       <button class="btn btn-success" style="width:100%;margin-top:14px" onclick="reviewMark('已掌握')"><i class="fas fa-check"></i> 答对了，标记已掌握</button>
@@ -3324,7 +3410,7 @@ function renderSettings() {
         <p style="margin:0">面向公考备考人群的错题管理工具</p>
         <p style="margin:0">当前错题总数：${questions.length}</p>
         <p style="margin:0">所有数据存储在本地浏览器中，无内置错题</p>
-        <p style="margin:0">页面版本：<b style="color:var(--primary)">0812a</b>（板块调整+粘贴图片+公式渲染+云同步合并版）</p>
+        <p style="margin:0">页面版本：<b style="color:var(--primary)">0812c</b>（材料组题+组合成组+手写画布+云同步合并版）</p>
       </div>
     </div>
   `;
@@ -3452,6 +3538,176 @@ function itemCount(list) {
   return n;
 }
 
+// ==================== 手写草稿板（iPad Pencil / 触屏 / 鼠标） ====================
+let sketchTarget = null; // null=自由草稿 | {qid, subIndex?} 保存到解析
+let sketchColor = '#1e293b', sketchWidth = 3, sketchEraser = false;
+let sketchUndoStack = [];
+let sketchDrawing = false;
+
+function openSketch(target) {
+  sketchTarget = target || null;
+  sketchUndoStack = [];
+  const el = document.getElementById('sketch-overlay');
+  el.innerHTML = `<div style="position:fixed;inset:0;z-index:120;background:rgba(12,25,41,.55);display:flex;align-items:center;justify-content:center;padding:12px" onclick="if(event.target===this)closeSketch()">
+    <div style="background:#fff;border-radius:16px;width:100%;max-width:900px;height:82vh;display:flex;flex-direction:column;overflow:hidden" onclick="event.stopPropagation()">
+      <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap">
+        <span style="font-size:14px;font-weight:700"><i class="fas fa-pen-nib" style="color:var(--primary);margin-right:4px"></i>手写草稿板</span>
+        <span style="font-size:11px;color:var(--muted)">${sketchTarget ? '保存后放入该题解析' : '自由草稿（不保存）'}</span>
+        <div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          ${['#1e293b','#ef4444','#3b82f6'].map(c => `<button onclick="setSketchColor('${c}')" id="skc-${c.slice(1)}" style="width:24px;height:24px;border-radius:50%;background:${c};border:2px solid ${c===sketchColor?'var(--primary)':'#fff'};cursor:pointer"></button>`).join('')}
+          <select id="sk-width" onchange="sketchWidth=Number(this.value)" style="font-size:12px;padding:2px 4px;border:1px solid var(--border);border-radius:6px">
+            <option value="2">细</option><option value="3" selected>中</option><option value="6">粗</option>
+          </select>
+          <button class="btn btn-outline btn-sm" id="sk-eraser" onclick="toggleSketchEraser()" style="padding:4px 10px">橡皮</button>
+          <button class="btn btn-outline btn-sm" onclick="sketchUndo()" style="padding:4px 10px">撤销</button>
+          <button class="btn btn-outline btn-sm" onclick="sketchClear()" style="padding:4px 10px">清空</button>
+          ${sketchTarget ? `<button class="btn btn-success btn-sm" onclick="saveSketch()" style="padding:4px 12px"><i class="fas fa-save"></i> 保存到解析</button>` : ''}
+          <button class="btn btn-outline btn-sm" onclick="closeSketch()" style="padding:4px 10px"><i class="fas fa-times"></i></button>
+        </div>
+      </div>
+      <div style="flex:1;position:relative;background:#fdfdfd">
+        <canvas id="sketch-canvas" style="position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair"></canvas>
+      </div>
+    </div>
+  </div>`;
+  el.className = '';
+  const cv = document.getElementById('sketch-canvas');
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  const rect = cv.parentElement.getBoundingClientRect();
+  cv.width = Math.round(rect.width * dpr);
+  cv.height = Math.round(rect.height * dpr);
+  const ctx = cv.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  bindSketchEvents(cv);
+}
+
+function bindSketchEvents(cv) {
+  cv.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    cv.setPointerCapture(e.pointerId);
+    sketchDrawing = true;
+    pushSketchUndo();
+    const ctx = cv.getContext('2d');
+    const p = sketchPos(cv, e);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(p.x + 0.01, p.y + 0.01);
+    applySketchStyle(ctx);
+    ctx.stroke();
+  });
+  cv.addEventListener('pointermove', e => {
+    if (!sketchDrawing) return;
+    e.preventDefault();
+    const ctx = cv.getContext('2d');
+    const p = sketchPos(cv, e);
+    ctx.lineTo(p.x, p.y);
+    applySketchStyle(ctx);
+    ctx.stroke();
+  });
+  const stop = e => { sketchDrawing = false; };
+  cv.addEventListener('pointerup', stop);
+  cv.addEventListener('pointercancel', stop);
+}
+function sketchPos(cv, e) {
+  const r = cv.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+function applySketchStyle(ctx) {
+  ctx.lineWidth = sketchEraser ? sketchWidth * 6 : sketchWidth;
+  ctx.strokeStyle = sketchColor;
+  ctx.globalCompositeOperation = sketchEraser ? 'destination-out' : 'source-over';
+}
+function setSketchColor(c) {
+  sketchColor = c; sketchEraser = false;
+  const eb = document.getElementById('sk-eraser');
+  if (eb) eb.style.background = '';
+  ['1e293b','ef4444','3b82f6'].forEach(k => {
+    const b = document.getElementById('skc-' + k);
+    if (b) b.style.borderColor = ('#' + k) === c ? 'var(--primary)' : '#fff';
+  });
+}
+function toggleSketchEraser() {
+  sketchEraser = !sketchEraser;
+  const eb = document.getElementById('sk-eraser');
+  if (eb) eb.style.background = sketchEraser ? 'var(--primary)' : '';
+  if (eb) eb.style.color = sketchEraser ? '#fff' : '';
+}
+function pushSketchUndo() {
+  const cv = document.getElementById('sketch-canvas');
+  if (!cv) return;
+  if (sketchUndoStack.length > 15) sketchUndoStack.shift();
+  sketchUndoStack.push(cv.toDataURL());
+}
+function sketchUndo() {
+  const cv = document.getElementById('sketch-canvas');
+  if (!cv || !sketchUndoStack.length) return;
+  const url = sketchUndoStack.pop();
+  const img = new Image();
+  img.onload = function() {
+    const ctx = cv.getContext('2d');
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(img, 0, 0);
+    ctx.restore();
+  };
+  img.src = url;
+}
+function sketchClear() {
+  const cv = document.getElementById('sketch-canvas');
+  if (!cv) return;
+  const ctx = cv.getContext('2d');
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.restore();
+  sketchUndoStack = [];
+}
+function saveSketch() {
+  if (!sketchTarget) return;
+  const cv = document.getElementById('sketch-canvas');
+  if (!cv) return;
+  const url = cv.toDataURL('image/jpeg', 0.85);
+  const q = questions.find(x => x.id === sketchTarget.qid);
+  if (!q) { showToast('题目不存在'); return; }
+  if (sketchTarget.subIndex != null) {
+    const s = q.subs[sketchTarget.subIndex];
+    if (!s) return;
+    s.analysisPhotos = s.analysisPhotos || [];
+    s.analysisPhotos.push(url);
+  } else {
+    q.analysisPhotos = q.analysisPhotos || [];
+    q.analysisPhotos.push(url);
+  }
+  saveQuestions();
+  closeSketch();
+  renderErrors();
+  showToast('手写草稿已保存到解析');
+}
+function closeSketch() {
+  document.getElementById('sketch-overlay').className = 'hidden';
+  sketchTarget = null;
+}
+
+// 解析区块渲染（文字+手写图片），subIndex 传 null 表示单题
+function analysisBlock(text, photos, qid, subIndex) {
+  const si = subIndex == null ? 'null' : subIndex;
+  const imgs = (photos || []).map((p, i) => `<div style="position:relative;display:inline-block;margin:6px 6px 0 0"><img src="${p}" style="max-width:100%;max-height:220px;border-radius:8px;display:block" onclick="event.stopPropagation();previewPhoto('${p}')"><button onclick="event.stopPropagation();removeAnalysisPhotoFor('${qid}',${si},${i})" style="position:absolute;top:-8px;right:-8px;width:22px;height:22px;border-radius:50%;background:var(--danger);color:#fff;border:2px solid #fff;font-size:12px;line-height:18px;cursor:pointer;padding:0">×</button></div>`).join('');
+  return `${text ? `<p style="white-space:pre-line">${formatAnalysis(text)}</p>` : ''}${(photos && photos.length) ? `<div style="display:flex;flex-wrap:wrap">${imgs}</div>` : ''}`;
+}
+function removeAnalysisPhotoFor(qid, subIndex, i) {
+  const q = questions.find(x => x.id === qid);
+  if (!q) return;
+  if (subIndex != null) { const s = q.subs[subIndex]; if (s && s.analysisPhotos) s.analysisPhotos.splice(i, 1); }
+  else if (q.analysisPhotos) q.analysisPhotos.splice(i, 1);
+  saveQuestions();
+  renderErrors();
+  showToast('已删除手写图片');
+}
+
 // ==================== INIT ====================
 function init() {
   loadQuestions();
@@ -3487,4 +3743,4 @@ window.__onKatexReady = function() { try { renderPage(currentTab); if (typeof up
 init();
 </script>
 </body>
-<!-- build: 0812a --></html>
+<!-- build: 0812c --></html>
