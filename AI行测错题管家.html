@@ -954,10 +954,28 @@ function plainLatex(t) {
   return s.replace(/[ \t]{2,}/g, ' ');
 }
 
+// 修复"反斜杠丢失/混乱"的裸 LaTeX：
+// ① \\( \\) 归一为 \( \)；② 给 times/frac/text 等裸命令补回反斜杠；③ 把含公式特征的片段包进 \( … \) 交给 KaTeX
+function repairBareLatex(s) {
+  if (!s) return s;
+  let t = String(s);
+  t = t.replace(/\\\\\(/g, "\\(").replace(/\\\\\)/g, "\\)").replace(/\\\\\[/g, "\\[").replace(/\\\\\]/g, "\\]");
+  const stash = [];
+  const PH = "\u0000";
+  t = t.replace(/\$\$[\s\S]+?\$\$|\\\[[\s\S]*?\\\]|\\\((?:[^\\]|\\[^()])*?\\\)|\$(?=[^$\n]*[\\_^])[^$\n]+?\$/g, function(m0) { stash.push(m0); return PH + (stash.length - 1) + PH; });
+  t = t.replace(/(^|[^\\a-zA-Z])(times|div|cdot|approx|equiv|implies|Rightarrow|Longrightarrow|longrightarrow|rightarrow|leq|geq|neq|pm|mp|propto|infty|percent|frac|sqrt|text|mathrm|left|right|sum|circ|degree|sim)(?![a-zA-Z])/g, "$1\\$2");
+  t = t.replace(/((?:=|\\[a-zA-Z]+)[^。；;，,\n]*?(?:\\[a-zA-Z]+|[_^]\{|\{[_^a-zA-Z0-9])[^。；;，,\n]*)/g, function(seg) {
+    if (seg.indexOf("\\(") !== -1) return seg;
+    return "\\(" + seg.trim() + "\\)";
+  });
+  t = t.replace(new RegExp(PH + "(\\d+)" + PH, "g"), function(m0, n) { return stash[+n]; });
+  return t;
+}
+
 // 把含 LaTeX 的文本渲染成 HTML：\(…\) \[…\] $$…$$ $…$ 交给 KaTeX，其余部分转义并做符号兜底
 function renderMathInText(text) {
   if (text == null) return '';
-  let s = String(text);
+  let s = repairBareLatex(String(text));
   if (s.indexOf('\\') === -1 && s.indexOf('$') === -1) return escHtml(s);
   // 兼容脏格式：① "\ times" 这类被空格拆开的已知命令先合并；② "\ r" 这类乱入的孤立反斜杠直接去掉（保留原字符）
   s = s.replace(/\\\s+(times|div|cdot|approx|equiv|implies|Longrightarrow|Rightarrow|longrightarrow|rightarrow|to|leq|geq|neq|pm|mp|sim|propto|infty|frac|sqrt|text|mathrm|left|right|percent)\b/g, '\\$1');
@@ -1552,10 +1570,20 @@ function parseBatchText() {
   pv.innerHTML = `
     <div class="card">
       <p style="font-size:14px;font-weight:700;margin:0 0 10px"><i class="fas fa-check-circle" style="color:var(--success)"></i> 解析成功 ${batchParsed.length} 道题</p>
-      ${batchParsed.map((q,i) => `<div style="padding:8px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5">
-        <span style="color:var(--muted)">第${i+1}题</span> ${q.question.slice(0,30)}${q.question.length>30?'…':''}
-        <span style="margin-left:6px;white-space:nowrap">我答<b style="color:var(--danger)">${q.myAnswer}</b> → 正确<b style="color:var(--success)">${q.correctAnswer}</b></span>
-      </div>`).join('')}
+      ${batchParsed.map((q,i) => {
+        const isGroup = q.material && q.subs && q.subs.length;
+        const qHtml = isGroup
+          ? `<div style="color:var(--muted);margin:2px 0">材料组题（${q.subs.length} 小题）</div>` + q.subs.map((s,si) => `<div style="margin:3px 0;line-height:1.6">${si+1}. ${renderMathInText(s.question)}</div>`).join('')
+          : renderMathInText(q.question).replace(/\n/g,'<br>');
+        const ansLine = isGroup ? '' : `<span style="margin-left:6px;white-space:nowrap">我答<b style="color:var(--danger)">${q.myAnswer}</b> → 正确<b style="color:var(--success)">${q.correctAnswer}</b></span>`;
+        const anaHtml = isGroup
+          ? q.subs.filter(s=>s.analysis).slice(0,1).map(s=>`<div style="color:var(--muted);margin-top:4px">小题解析预览：${formatAnalysis(s.analysis)}</div>`).join('')
+          : (q.analysis ? `<div style="color:var(--muted);margin-top:4px">解析预览：${formatAnalysis(q.analysis)}</div>` : '');
+        return `<div style="padding:8px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5">
+        <span style="color:var(--muted)">第${i+1}题</span>${ansLine}
+        <div style="margin:4px 0 2px;line-height:1.6">${qHtml}</div>${anaHtml}
+      </div>`;
+      }).join('')}
       <button class="btn btn-success" style="width:100%;margin-top:12px" onclick="confirmBatchImport()"><i class="fas fa-file-import"></i> 确认导入 ${batchParsed.length} 道错题</button>
     </div>`;
 }
@@ -3416,7 +3444,7 @@ function renderSettings() {
         <p style="margin:0">面向公考备考人群的错题管理工具</p>
         <p style="margin:0">当前错题总数：${questions.length}</p>
         <p style="margin:0">所有数据存储在本地浏览器中，无内置错题</p>
-        <p style="margin:0">页面版本：<b style="color:var(--primary)">0812d</b>（材料组题+组合成组+手写画布带题目参照+云同步合并版）</p>
+        <p style="margin:0">页面版本：<b style="color:var(--primary)">0817a</b>（材料组题+组合成组+手写画布+公式渲染修复+云同步合并版）</p>
       </div>
     </div>
   `;
@@ -3814,4 +3842,4 @@ window.__onKatexReady = function() { try { renderPage(currentTab); if (typeof up
 init();
 </script>
 </body>
-<!-- build: 0812d --></html>
+<!-- build: 0817a --></html>
