@@ -45,6 +45,10 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang 
 body.sk-dragging{user-select:none;-webkit-user-select:none;cursor:ns-resize}
 body.sk-dragging.sk-vertical{cursor:ew-resize}
 @media(min-width:900px){.sk-body{flex-direction:row}.sk-question{max-height:none;width:38%;border-bottom:none;border-right:1px solid var(--border)}.sk-canvas-wrap{width:62%}}
+.sk-q-inner{position:relative}
+.sk-ink-canvas{position:absolute;inset:0;touch-action:none;cursor:crosshair;pointer-events:none}
+.sk-opt{cursor:pointer;border:1.5px solid var(--border);border-radius:8px;padding:6px 10px;margin:5px 0;background:#fff}
+.sk-opt.sel{border-color:var(--accent);background:rgba(249,115,22,.08);font-weight:600}
 #sketch-overlay, #sketch-overlay *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;border:none;cursor:pointer;transition:all .15s}
 .btn:active{transform:scale(.96)}
@@ -3119,7 +3123,7 @@ function showReviewQuestion() {
       ${q.optionC?`<div id="review-opt-C" class="option-item" style="cursor:pointer" onclick="selectReviewOption('C')">C. ${renderMathInText(q.optionC)}</div>`:''}
       ${q.optionD?`<div id="review-opt-D" class="option-item" style="cursor:pointer" onclick="selectReviewOption('D')">D. ${renderMathInText(q.optionD)}</div>`:''}
       <div style="margin-top:12px;text-align:center">
-        <button class="btn btn-outline btn-sm" onclick="openSketch({qid:'${q._parent ? q._parent.id : q.id}'${q._parent ? `,subIndex:${q._subIndex}` : ''}})"><i class="fas fa-pen-nib"></i> 手写草稿</button>
+        <button class="btn btn-outline btn-sm" onclick="openSketch({qid:'${q._parent ? q._parent.id : q.id}'${q._parent ? `,subIndex:${q._subIndex}` : ''},review:true})"><i class="fas fa-pen-nib"></i> 手写草稿</button>
       </div>
       <div id="review-answer-area" style="margin-top:16px;text-align:center">
         <p style="font-size:13px;color:var(--muted);margin-bottom:10px">先选出你的答案，再提交查看对错与解析</p>
@@ -3184,7 +3188,7 @@ function submitReviewAnswer() {
       </div>
       ${q.analysis ? `<div style="font-size:13px;color:var(--muted);line-height:1.7;margin:8px 0 0;white-space:pre-line;border-top:1px dashed var(--border);padding-top:10px">${formatAnalysis(q.analysis)}</div>` : ''}
       ${(q.analysisPhotos && q.analysisPhotos.length) ? `<div style="display:flex;flex-wrap:wrap;margin-top:8px">${q.analysisPhotos.map(p => `<img src="${p}" style="max-width:100%;max-height:200px;border-radius:8px;display:block;margin:4px 6px 0 0" onclick="previewPhoto('${p}')">`).join('')}</div>` : ''}
-      <button class="btn btn-outline btn-sm" style="margin-top:10px;padding:4px 10px" onclick="openSketch({qid:'${q._parent ? q._parent.id : q.id}'${q._parent ? `,subIndex:${q._subIndex}` : ''}})"><i class="fas fa-pen-nib"></i> 手写草稿</button>
+      <button class="btn btn-outline btn-sm" style="margin-top:10px;padding:4px 10px" onclick="openSketch({qid:'${q._parent ? q._parent.id : q.id}'${q._parent ? `,subIndex:${q._subIndex}` : ''},review:true})"><i class="fas fa-pen-nib"></i> 手写草稿</button>
     </div>
     ${correct ? `
       <button class="btn btn-success" style="width:100%;margin-top:14px" onclick="reviewMark('已掌握')"><i class="fas fa-check"></i> 答对了，标记已掌握</button>
@@ -3224,6 +3228,7 @@ function reviewMark(status) {
   reviewResults.push({ id: (q._parent ? q._parent.id + '#s' + q._subIndex : q.id), status });
   if (status === '还是不会') reviewQueue.push(q);
   reviewIndex++;
+  closeSketch();
   showReviewQuestion();
 }
 
@@ -3456,7 +3461,7 @@ function renderSettings() {
         <p style="margin:0">面向公考备考人群的错题管理工具</p>
         <p style="margin:0">当前错题总数：${questions.length}</p>
         <p style="margin:0">所有数据存储在本地浏览器中，无内置错题</p>
-        <p style="margin:0">页面版本：<b style="color:var(--primary)">0819a</b>（复习手写草稿+参照面板拉宽+云同步合并版）</p>
+        <p style="margin:0">页面版本：<b style="color:var(--primary)">0819b</b>（草稿板内勾选作答+题干标记+云同步合并版）</p>
       </div>
     </div>
   `;
@@ -3604,19 +3609,31 @@ function buildSketchQuestionHtml(qid, subIndex) {
     if (q.material) parts.push(`<div style="white-space:pre-line;margin-bottom:6px">${renderMathInText(q.material)}</div>`);
     parts.push(`<div style="font-weight:700;margin:4px 0">第 ${subIndex+1} 小题</div>`);
     if (s.question) parts.push(`<div>${renderQuestionText(s.question)}</div>`);
-    const opts = [['A',s.optionA],['B',s.optionB],['C',s.optionC],['D',s.optionD]].filter(o => o[1]);
-    if (opts.length) parts.push(opts.map(o => `<div style="padding:2px 0">${o[0]}. ${renderMathInText(o[1])}</div>`).join(''));
+    parts.push(skOptsHtml([['A',s.optionA],['B',s.optionB],['C',s.optionC],['D',s.optionD]].filter(o => o[1])));
+    parts.push(skReviewAreaHtml());
   } else if (!isGroupQ(q)) {
     if (q.photos && q.photos.length) {
       parts.push(`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">${q.photos.map(p => `<img src="${p}" style="max-width:100%;max-height:220px;border-radius:6px;display:block">`).join('')}</div>`);
     }
     if (q.question) parts.push(`<div>${renderQuestionText(q.question)}</div>`);
-    const opts = [['A',q.optionA],['B',q.optionB],['C',q.optionC],['D',q.optionD]].filter(o => o[1]);
-    if (opts.length) parts.push(opts.map(o => `<div style="padding:2px 0">${o[0]}. ${renderMathInText(o[1])}</div>`).join(''));
+    parts.push(skOptsHtml([['A',q.optionA],['B',q.optionB],['C',q.optionC],['D',q.optionD]].filter(o => o[1])));
+    parts.push(skReviewAreaHtml());
   } else {
     return '';
   }
   return parts.join('');
+}
+
+// 复习模式：选项可点击；非复习：静态展示
+function skOptsHtml(opts) {
+  if (!opts.length) return '';
+  const isReview = !!(sketchTarget && sketchTarget.review);
+  if (!isReview) return opts.map(o => `<div style="padding:2px 0">${o[0]}. ${renderMathInText(o[1])}</div>`).join('');
+  return opts.map(o => `<div class="sk-opt" id="skopt-${o[0]}" onclick="skSelectOption('${o[0]}')">${o[0]}. ${renderMathInText(o[1])}</div>`).join('');
+}
+function skReviewAreaHtml() {
+  if (!(sketchTarget && sketchTarget.review)) return '';
+  return `<div id="sk-review-area" style="margin-top:10px"><button class="btn btn-accent btn-sm" style="width:100%" onclick="skSubmitReview()"><i class="fas fa-paper-plane"></i> 提交答案</button></div>`;
 }
 
 function openSketch(target) {
@@ -3629,7 +3646,7 @@ function openSketch(target) {
       <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap">
         <span style="font-size:14px;font-weight:700"><i class="fas fa-pen-nib" style="color:var(--primary);margin-right:4px"></i>手写草稿板</span>
         <span style="font-size:11px;color:var(--muted)">${sketchTarget ? '保存后放入该题解析' : '自由草稿（不保存）'}</span>
-        ${qHtml ? `<button class="btn btn-outline btn-sm" onclick="toggleSketchQuestion()" style="padding:4px 10px"><i class="fas fa-eye"></i> 显示/隐藏题目</button>` : ''}
+        ${qHtml ? `<button class="btn btn-outline btn-sm" onclick="toggleSketchQuestion()" style="padding:4px 10px"><i class="fas fa-eye"></i> 显示/隐藏题目</button><button class="btn btn-outline btn-sm" id="sk-ink-btn" onclick="toggleSketchInk()" style="padding:4px 10px"><i class="fas fa-highlighter"></i> 题干标记</button>` : ''}
         <div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
           ${['#1e293b','#ef4444','#3b82f6'].map(c => `<button onclick="setSketchColor('${c}')" id="skc-${c.slice(1)}" style="width:24px;height:24px;border-radius:50%;background:${c};border:2px solid ${c===sketchColor?'var(--primary)':'#fff'};cursor:pointer"></button>`).join('')}
           <select id="sk-width" onchange="sketchWidth=Number(this.value)" style="font-size:12px;padding:2px 4px;border:1px solid var(--border);border-radius:6px">
@@ -3643,7 +3660,7 @@ function openSketch(target) {
         </div>
       </div>
       <div class="sk-body">
-        ${qHtml ? `<div class="sk-question" id="sk-question">${qHtml}</div><div class="sk-resizer" id="sk-resizer"></div>` : ''}
+        ${qHtml ? `<div class="sk-question" id="sk-question"><div class="sk-q-inner" id="sk-q-inner">${qHtml}<canvas id="sk-ink-canvas" class="sk-ink-canvas"></canvas></div></div><div class="sk-resizer" id="sk-resizer"></div>` : ''}
         <div class="sk-canvas-wrap">
           <canvas id="sketch-canvas" style="position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair"></canvas>
         </div>
@@ -3661,6 +3678,8 @@ function openSketch(target) {
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   bindSketchEvents(cv);
   initSketchResizer();
+  if (qHtml) initSketchInk();
+  sketchInkOn = false;
 }
 
 function resizeSketchCanvasKeep() {
@@ -3735,11 +3754,122 @@ function initSketchResizer() {
       rz.removeEventListener('pointerup', up);
       rz.removeEventListener('pointercancel', up);
       resizeSketchCanvasKeep();
+      resizeInkCanvasKeep(true);
     };
     rz.addEventListener('pointermove', move);
     rz.addEventListener('pointerup', up);
     rz.addEventListener('pointercancel', up);
   });
+}
+
+let sketchInkOn = false;
+let sketchInkDrawing = false;
+
+function skSelectOption(L) {
+  if (reviewSubmitted) return;
+  reviewSelected = L;
+  ['A','B','C','D'].forEach(x => {
+    const el = document.getElementById('skopt-' + x);
+    if (!el) return;
+    if (x === L) el.classList.add('sel'); else el.classList.remove('sel');
+    const rel = document.getElementById('review-opt-' + x);
+    if (rel) { rel.style.borderColor = x===L ? 'var(--accent)' : ''; rel.style.background = x===L ? 'rgba(249,115,22,.08)' : ''; }
+  });
+}
+
+function skSubmitReview() {
+  if (!reviewSelected || reviewSubmitted) { if (!reviewSelected) showToast('请先选择一个答案'); return; }
+  reviewSubmitted = true;
+  const q = reviewQueue[reviewIndex];
+  const correct = reviewSelected === q.correctAnswer;
+  ['A','B','C','D'].forEach(x => {
+    const el = document.getElementById('skopt-' + x);
+    if (!el) return;
+    el.onclick = null; el.style.cursor = 'default';
+    if (x === q.correctAnswer) { el.style.borderColor = 'var(--success)'; el.style.background = 'rgba(34,197,94,.1)'; el.style.fontWeight = '600'; }
+    else if (x === reviewSelected) { el.style.borderColor = 'var(--danger)'; el.style.background = 'rgba(239,68,68,.08)'; el.style.fontWeight = '600'; }
+  });
+  const rel = document.getElementById('review-opt-' + q.correctAnswer);
+  if (rel) { rel.style.borderColor = 'var(--success)'; rel.style.background = 'rgba(34,197,94,.1)'; }
+  const area = document.getElementById('sk-review-area');
+  if (area) area.innerHTML = `
+    <div style="background:${correct ? 'rgba(34,197,94,.08)' : 'rgba(239,68,68,.06)'};border-radius:10px;padding:12px;text-align:left">
+      <div style="font-size:14px;font-weight:700;margin-bottom:8px;color:${correct ? 'var(--success)' : 'var(--danger)'}">
+        <i class="fas fa-${correct ? 'check-circle' : 'times-circle'}"></i> ${correct ? '回答正确！' : '回答错误'}（正确 ${q.correctAnswer}）
+      </div>
+      ${q.analysis ? `<div style="font-size:12px;color:var(--muted);line-height:1.6;white-space:pre-line">${formatAnalysis(q.analysis)}</div>` : ''}
+      <div style="margin-top:10px">
+        ${correct ? `<button class="btn btn-success btn-sm" style="width:100%" onclick="reviewMark('已掌握')">答对了，标记已掌握</button>`
+        : `<button class="btn btn-danger btn-sm" onclick="reviewMark('还是不会')">还是不会（本轮重做）</button>
+           <button class="btn btn-accent btn-sm" onclick="reviewMark('模糊')">有点模糊（下轮再复）</button>`}
+      </div>
+    </div>`;
+  const relArea = document.getElementById('review-answer-area');
+  if (relArea) relArea.innerHTML = `<p style="font-size:12px;color:var(--muted)">已在草稿板内作答，关闭草稿板可继续</p>`;
+}
+
+function toggleSketchInk() {
+  sketchInkOn = !sketchInkOn;
+  const cv = document.getElementById('sk-ink-canvas');
+  const btn = document.getElementById('sk-ink-btn');
+  if (cv) cv.style.pointerEvents = sketchInkOn ? 'auto' : 'none';
+  if (btn) { btn.style.background = sketchInkOn ? 'var(--primary)' : ''; btn.style.color = sketchInkOn ? '#fff' : ''; }
+  if (sketchInkOn) resizeInkCanvasKeep(false);
+}
+
+function resizeInkCanvasKeep(restore) {
+  const cv = document.getElementById('sk-ink-canvas');
+  if (!cv) return;
+  const inner = document.getElementById('sk-q-inner');
+  if (!inner) return;
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  const w = inner.scrollWidth, h = inner.scrollHeight;
+  let snap = null;
+  if (restore !== false) snap = cv.toDataURL();
+  cv.style.width = w + 'px';
+  cv.style.height = h + 'px';
+  cv.width = Math.round(w * dpr);
+  cv.height = Math.round(h * dpr);
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.scale(dpr, dpr);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if (snap) {
+    const img = new Image();
+    img.onload = function() { ctx.drawImage(img, 0, 0, w, h); };
+    img.src = snap;
+  }
+}
+
+function initSketchInk() {
+  const cv = document.getElementById('sk-ink-canvas');
+  if (!cv || cv.__bound) return;
+  cv.__bound = true;
+  cv.style.pointerEvents = 'none';
+  ['selectstart','contextmenu'].forEach(t => cv.addEventListener(t, e => e.preventDefault()));
+  setTimeout(() => resizeInkCanvasKeep(false), 50);
+  cv.addEventListener('pointerdown', e => {
+    if (!sketchInkOn) return;
+    e.preventDefault(); e.stopPropagation();
+    cv.setPointerCapture(e.pointerId);
+    sketchInkDrawing = true;
+    const ctx = cv.getContext('2d');
+    const r = cv.getBoundingClientRect();
+    const x = e.clientX - r.left, y = e.clientY - r.top;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 0.01, y + 0.01);
+    applySketchStyle(ctx); ctx.stroke();
+  });
+  cv.addEventListener('pointermove', e => {
+    if (!sketchInkOn || !sketchInkDrawing) return;
+    e.preventDefault();
+    const ctx = cv.getContext('2d');
+    const r = cv.getBoundingClientRect();
+    ctx.lineTo(e.clientX - r.left, e.clientY - r.top);
+    applySketchStyle(ctx); ctx.stroke();
+  });
+  const stop = () => { sketchInkDrawing = false; };
+  cv.addEventListener('pointerup', stop);
+  cv.addEventListener('pointercancel', stop);
 }
 
 function bindSketchEvents(cv) {
@@ -3910,4 +4040,4 @@ window.__onKatexReady = function() { try { renderPage(currentTab); if (typeof up
 init();
 </script>
 </body>
-<!-- build: 0819a --></html>
+<!-- build: 0819b --></html>
