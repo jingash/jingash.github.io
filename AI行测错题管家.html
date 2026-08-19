@@ -3090,49 +3090,9 @@ function showReviewQuestion() {
   reviewSelected = null;
   reviewSubmitted = false;
   const q = reviewQueue[reviewIndex];
-  const el = document.getElementById('review-modal');
-  const hasPhoto = q.photos && q.photos.length > 0;
-  // 材料组题的小题：顶部展示所属材料（可折叠）
-  const parent = q._parent;
-  const materialHtml = parent ? `
-    <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:12px">
-      <div style="display:flex;align-items:center;gap:6px;cursor:pointer" onclick="toggleReviewMaterial()">
-        <i class="fas fa-chart-line" style="color:var(--green);font-size:12px"></i>
-        <span style="font-size:12px;font-weight:700;color:var(--muted)">材料（第 ${q._subIndex+1} 小题）</span>
-        <i id="review-material-arrow" class="fas fa-chevron-down" style="margin-left:auto;font-size:11px;color:var(--muted)"></i>
-      </div>
-      <div id="review-material-body" style="margin-top:8px">
-        ${parent.materialPhotos && parent.materialPhotos.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">${parent.materialPhotos.map(p=>`<img src="${p}" style="max-width:100%;max-height:280px;border-radius:8px;display:block" onclick="previewPhoto('${p}')">`).join('')}</div>` : ''}
-        ${parent.material ? `<p style="font-size:13px;line-height:1.7;margin:0;white-space:pre-line">${renderMathInText(parent.material)}</p>` : ''}
-      </div>
-    </div>` : '';
-  el.innerHTML = `<div class="modal-overlay modal-full" style="align-items:stretch">
-    <div class="modal-content" style="padding-top:16px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-        <h3 style="font-size:16px;font-weight:700;margin:0">复习模式 <span style="font-size:13px;color:var(--muted);font-weight:400">${reviewIndex+1}/${reviewQueue.length}</span></h3>
-        <button class="btn btn-outline btn-sm" onclick="endReview()"><i class="fas fa-times"></i> 退出</button>
-      </div>
-      <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
-        <span class="badge ${getModuleClass(q.module)}">${q.module}</span>
-        ${q.type ? `<span style="font-size:11px;color:#1e40af;background:rgba(59,130,246,.12);padding:2px 8px;border-radius:10px;font-weight:600">${q.type}</span>` : ''}
-      </div>
-      ${materialHtml}
-      <div class="detail-section"><h4>题干</h4>${q.question ? `<p style="line-height:1.7">${renderQuestionText(q.question)}</p>` : ''}${(!q.question && q.photos && q.photos.length) ? `<img src="${q.photos[0]}" style="max-width:100%;max-height:340px;border-radius:8px" onclick="previewPhoto('${q.photos[0]}')">` : ''}</div>
-      ${q.optionA?`<div id="review-opt-A" class="option-item" style="cursor:pointer" onclick="selectReviewOption('A')">A. ${renderMathInText(q.optionA)}</div>`:''}
-      ${q.optionB?`<div id="review-opt-B" class="option-item" style="cursor:pointer" onclick="selectReviewOption('B')">B. ${renderMathInText(q.optionB)}</div>`:''}
-      ${q.optionC?`<div id="review-opt-C" class="option-item" style="cursor:pointer" onclick="selectReviewOption('C')">C. ${renderMathInText(q.optionC)}</div>`:''}
-      ${q.optionD?`<div id="review-opt-D" class="option-item" style="cursor:pointer" onclick="selectReviewOption('D')">D. ${renderMathInText(q.optionD)}</div>`:''}
-      <div style="margin-top:12px;text-align:center">
-        <button class="btn btn-outline btn-sm" onclick="openSketch({qid:'${q._parent ? q._parent.id : q.id}'${q._parent ? `,subIndex:${q._subIndex}` : ''},review:true})"><i class="fas fa-pen-nib"></i> 手写草稿</button>
-      </div>
-      <div id="review-answer-area" style="margin-top:16px;text-align:center">
-        <p style="font-size:13px;color:var(--muted);margin-bottom:10px">先选出你的答案，再提交查看对错与解析</p>
-        <button id="review-submit-btn" class="btn btn-accent" style="opacity:.5;pointer-events:none" onclick="submitReviewAnswer()"><i class="fas fa-paper-plane"></i> 提交答案</button>
-      </div>
-      ${hasPhoto ? `<div style="margin-top:12px"><button class="btn btn-outline btn-sm" onclick="toggleReviewPhoto()"><i class="fas fa-image"></i> 查看照片</button><div id="review-photos" class="hidden" style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">${q.photos.map(p=>`<img src="${p}" class="photo-thumb" onclick="previewPhoto('${p}')">`).join('')}</div></div>` : ''}
-    </div>
-  </div>`;
-  el.className = '';
+  // 一体化手写板样式：复习不再叠传统弹窗，左看题作答、右手写演算
+  document.getElementById('review-modal').className = 'hidden';
+  openSketch({ qid: q._parent ? q._parent.id : q.id, subIndex: q._parent ? q._subIndex : null, review: true });
 }
 
 function toggleReviewPhoto() {
@@ -3241,6 +3201,7 @@ function endReview() {
 
   if (total === 0) { el.className = 'hidden'; return; }
 
+  el.className = '';
   el.innerHTML = `<div class="modal-overlay" style="align-items:center" onclick="if(event.target===this){closeReviewModal()}">
     <div class="modal-content" style="border-radius:20px;max-height:80vh;text-align:center" onclick="event.stopPropagation()">
       <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--success));margin:0 auto 16px;display:flex;align-items:center;justify-content:center">
@@ -3461,7 +3422,7 @@ function renderSettings() {
         <p style="margin:0">面向公考备考人群的错题管理工具</p>
         <p style="margin:0">当前错题总数：${questions.length}</p>
         <p style="margin:0">所有数据存储在本地浏览器中，无内置错题</p>
-        <p style="margin:0">页面版本：<b style="color:var(--primary)">0819b</b>（草稿板内勾选作答+题干标记+云同步合并版）</p>
+        <p style="margin:0">页面版本：<b style="color:var(--primary)">0819c</b>（复习一体化手写板+题干标记+云同步合并版）</p>
       </div>
     </div>
   `;
@@ -3644,8 +3605,9 @@ function openSketch(target) {
   el.innerHTML = `<div class="sk-root" style="position:fixed;inset:0;z-index:120;background:rgba(12,25,41,.55);display:flex;align-items:center;justify-content:center;padding:12px" onclick="if(event.target===this)closeSketch()">
     <div style="background:#fff;border-radius:16px;width:100%;max-width:1100px;height:86vh;display:flex;flex-direction:column;overflow:hidden" onclick="event.stopPropagation()">
       <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border);flex-wrap:wrap">
-        <span style="font-size:14px;font-weight:700"><i class="fas fa-pen-nib" style="color:var(--primary);margin-right:4px"></i>手写草稿板</span>
-        <span style="font-size:11px;color:var(--muted)">${sketchTarget ? '保存后放入该题解析' : '自由草稿（不保存）'}</span>
+        <span style="font-size:14px;font-weight:700">${sketchTarget && sketchTarget.review ? `<i class="fas fa-redo" style="color:var(--accent);margin-right:4px"></i>复习模式 <span style="font-size:12px;color:var(--muted);font-weight:400">${reviewIndex+1}/${reviewQueue.length}</span>` : `<i class="fas fa-pen-nib" style="color:var(--primary);margin-right:4px"></i>手写草稿板`}</span>
+        <span style="font-size:11px;color:var(--muted)">${sketchTarget ? (sketchTarget.review ? '左侧看题作答，右侧手写演算' : '保存后放入该题解析') : '自由草稿（不保存）'}</span>
+        ${sketchTarget && sketchTarget.review ? `<button class="btn btn-outline btn-sm" onclick="skEndReview()" style="padding:4px 10px"><i class="fas fa-times"></i> 退出</button>` : ''}
         ${qHtml ? `<button class="btn btn-outline btn-sm" onclick="toggleSketchQuestion()" style="padding:4px 10px"><i class="fas fa-eye"></i> 显示/隐藏题目</button><button class="btn btn-outline btn-sm" id="sk-ink-btn" onclick="toggleSketchInk()" style="padding:4px 10px"><i class="fas fa-highlighter"></i> 题干标记</button>` : ''}
         <div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
           ${['#1e293b','#ef4444','#3b82f6'].map(c => `<button onclick="setSketchColor('${c}')" id="skc-${c.slice(1)}" style="width:24px;height:24px;border-radius:50%;background:${c};border:2px solid ${c===sketchColor?'var(--primary)':'#fff'};cursor:pointer"></button>`).join('')}
@@ -3700,6 +3662,8 @@ function resizeSketchCanvasKeep() {
     img.src = snap;
   }, 30);
 }
+
+function skEndReview() { closeSketch(); endReview(); }
 
 function toggleSketchQuestion() {
   const el = document.getElementById('sk-question');
@@ -4040,4 +4004,4 @@ window.__onKatexReady = function() { try { renderPage(currentTab); if (typeof up
 init();
 </script>
 </body>
-<!-- build: 0819b --></html>
+<!-- build: 0819c --></html>
