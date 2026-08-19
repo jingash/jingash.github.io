@@ -35,6 +35,15 @@ body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang 
 .sk-body{display:flex;flex-direction:column;flex:1;min-height:0}
 .sk-question{max-height:30vh;overflow:auto;border-bottom:1px solid var(--border);background:#fffdf5;padding:10px 14px;font-size:13px;line-height:1.6}
 .sk-canvas-wrap{flex:1;position:relative;background:#fdfdfd;min-height:0}
+.sk-resizer{flex:0 0 auto;width:100%;height:12px;cursor:ns-resize;display:flex;align-items:center;justify-content:center;background:#fff;border-bottom:1px solid var(--border)}
+.sk-resizer::after{content:'';width:42px;height:4px;border-radius:2px;background:#cbd5e1}
+.sk-resizer:hover::after,.sk-resizer:active::after{background:var(--primary)}
+.sk-resizer.sk-vertical{width:12px;height:auto;cursor:ew-resize;border-bottom:none;border-right:1px solid var(--border)}
+.sk-resizer.sk-vertical::after{width:4px;height:42px}
+@media(min-width:900px){.sk-resizer:not(.sk-vertical){display:none}}
+@media(max-width:899.98px){.sk-resizer.sk-vertical{display:none}}
+body.sk-dragging{user-select:none;-webkit-user-select:none;cursor:ns-resize}
+body.sk-dragging.sk-vertical{cursor:ew-resize}
 @media(min-width:900px){.sk-body{flex-direction:row}.sk-question{max-height:none;width:38%;border-bottom:none;border-right:1px solid var(--border)}.sk-canvas-wrap{width:62%}}
 #sketch-overlay, #sketch-overlay *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;border:none;cursor:pointer;transition:all .15s}
@@ -3109,6 +3118,9 @@ function showReviewQuestion() {
       ${q.optionB?`<div id="review-opt-B" class="option-item" style="cursor:pointer" onclick="selectReviewOption('B')">B. ${renderMathInText(q.optionB)}</div>`:''}
       ${q.optionC?`<div id="review-opt-C" class="option-item" style="cursor:pointer" onclick="selectReviewOption('C')">C. ${renderMathInText(q.optionC)}</div>`:''}
       ${q.optionD?`<div id="review-opt-D" class="option-item" style="cursor:pointer" onclick="selectReviewOption('D')">D. ${renderMathInText(q.optionD)}</div>`:''}
+      <div style="margin-top:12px;text-align:center">
+        <button class="btn btn-outline btn-sm" onclick="openSketch({qid:'${q._parent ? q._parent.id : q.id}'${q._parent ? `,subIndex:${q._subIndex}` : ''}})"><i class="fas fa-pen-nib"></i> 手写草稿</button>
+      </div>
       <div id="review-answer-area" style="margin-top:16px;text-align:center">
         <p style="font-size:13px;color:var(--muted);margin-bottom:10px">先选出你的答案，再提交查看对错与解析</p>
         <button id="review-submit-btn" class="btn btn-accent" style="opacity:.5;pointer-events:none" onclick="submitReviewAnswer()"><i class="fas fa-paper-plane"></i> 提交答案</button>
@@ -3444,7 +3456,7 @@ function renderSettings() {
         <p style="margin:0">面向公考备考人群的错题管理工具</p>
         <p style="margin:0">当前错题总数：${questions.length}</p>
         <p style="margin:0">所有数据存储在本地浏览器中，无内置错题</p>
-        <p style="margin:0">页面版本：<b style="color:var(--primary)">0817a</b>（材料组题+组合成组+手写画布+公式渲染修复+云同步合并版）</p>
+        <p style="margin:0">页面版本：<b style="color:var(--primary)">0819a</b>（复习手写草稿+参照面板拉宽+云同步合并版）</p>
       </div>
     </div>
   `;
@@ -3631,7 +3643,7 @@ function openSketch(target) {
         </div>
       </div>
       <div class="sk-body">
-        ${qHtml ? `<div class="sk-question" id="sk-question">${qHtml}</div>` : ''}
+        ${qHtml ? `<div class="sk-question" id="sk-question">${qHtml}</div><div class="sk-resizer" id="sk-resizer"></div>` : ''}
         <div class="sk-canvas-wrap">
           <canvas id="sketch-canvas" style="position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair"></canvas>
         </div>
@@ -3648,14 +3660,10 @@ function openSketch(target) {
   ctx.scale(dpr, dpr);
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   bindSketchEvents(cv);
+  initSketchResizer();
 }
 
-function toggleSketchQuestion() {
-  const el = document.getElementById('sk-question');
-  if (!el) return;
-  const hide = el.style.display !== 'none';
-  el.style.display = hide ? 'none' : '';
-  // 重新计算画布尺寸
+function resizeSketchCanvasKeep() {
   setTimeout(() => {
     const cv = document.getElementById('sketch-canvas');
     if (!cv) return;
@@ -3672,6 +3680,66 @@ function toggleSketchQuestion() {
     img.onload = function() { ctx.drawImage(img, 0, 0, rect.width, rect.height); };
     img.src = snap;
   }, 30);
+}
+
+function toggleSketchQuestion() {
+  const el = document.getElementById('sk-question');
+  if (!el) return;
+  const hide = el.style.display !== 'none';
+  el.style.display = hide ? 'none' : '';
+  const rz = document.getElementById('sk-resizer');
+  if (rz) rz.style.display = hide ? 'none' : '';
+  // 重新计算画布尺寸
+  resizeSketchCanvasKeep();
+}
+
+function initSketchResizer() {
+  const rz = document.getElementById('sk-resizer');
+  if (!rz) return;
+  const mq = window.matchMedia('(min-width:900px)');
+  const applyMode = () => { rz.classList.toggle('sk-vertical', mq.matches); };
+  applyMode();
+  if (mq.addEventListener) mq.addEventListener('change', applyMode); else mq.addListener(applyMode);
+  rz.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    rz.setPointerCapture(e.pointerId);
+    const qEl = document.getElementById('sk-question');
+    if (!qEl) return;
+    const wrap = qEl.closest('.sk-body').querySelector('.sk-canvas-wrap');
+    const vertical = rz.classList.contains('sk-vertical'); // 宽屏=横向拉宽
+    document.body.classList.add('sk-dragging');
+    if (vertical) document.body.classList.add('sk-vertical');
+    const start = vertical ? e.clientX : e.clientY;
+    const qRect = qEl.getBoundingClientRect();
+    const bodyRect = qEl.closest('.sk-body').getBoundingClientRect();
+    const startSize = vertical ? qRect.width : qRect.height;
+    const move = ev => {
+      if (vertical) {
+        let w = startSize + (ev.clientX - start);
+        w = Math.min(Math.max(w, bodyRect.width * 0.2), bodyRect.width * 0.72);
+        qEl.style.flex = '0 0 auto';
+        qEl.style.width = w + 'px';
+        qEl.style.maxHeight = 'none';
+        if (wrap) wrap.style.width = 'auto';
+      } else {
+        let h = startSize + (ev.clientY - start);
+        h = Math.min(Math.max(h, 90), bodyRect.height * 0.68);
+        qEl.style.flex = '0 0 auto';
+        qEl.style.height = h + 'px';
+        qEl.style.maxHeight = 'none';
+      }
+    };
+    const up = () => {
+      document.body.classList.remove('sk-dragging', 'sk-vertical');
+      rz.removeEventListener('pointermove', move);
+      rz.removeEventListener('pointerup', up);
+      rz.removeEventListener('pointercancel', up);
+      resizeSketchCanvasKeep();
+    };
+    rz.addEventListener('pointermove', move);
+    rz.addEventListener('pointerup', up);
+    rz.addEventListener('pointercancel', up);
+  });
 }
 
 function bindSketchEvents(cv) {
@@ -3842,4 +3910,4 @@ window.__onKatexReady = function() { try { renderPage(currentTab); if (typeof up
 init();
 </script>
 </body>
-<!-- build: 0817a --></html>
+<!-- build: 0819a --></html>
