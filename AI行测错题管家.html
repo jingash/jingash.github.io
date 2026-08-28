@@ -1415,9 +1415,9 @@ B. 增加了6个
         <i class="fas fa-wand-magic-sparkles" style="color:var(--accent)"></i>
         <span style="font-size:14px;font-weight:700">AI 识图上传</span>
       </div>
-      <p style="font-size:12px;color:var(--muted);margin:0 0 10px">拍/截整页错题（含手写批注），AI 自动识别成结构化内容填入下方，支持一次选多张图。需通义千问或自定义多模态接口（设置页配置）。</p>
-      <input type="file" accept="image/*" multiple id="ai-recognize-input" style="display:none" onchange="aiOnRecognizeFiles(this)">
-      <button id="ai-recognize-btn" class="btn btn-accent btn-sm" style="width:100%" onclick="document.getElementById('ai-recognize-input').click()"><i class="fas fa-camera"></i> 拍照/选图，AI 自动识别</button>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 10px">拍/截整页错题或上传 PDF 试卷（含手写批注），AI 自动识别题型、题干、选项、答案与解析；资料分析材料组会按现有组题逻辑识别，材料中的图表/表格自动截图保留。需通义千问或自定义多模态接口（设置页配置）。</p>
+      <input type="file" accept="image/*,application/pdf" multiple id="ai-recognize-input" style="display:none" onchange="aiOnRecognizeFiles(this)">
+      <button id="ai-recognize-btn" class="btn btn-accent btn-sm" style="width:100%" onclick="document.getElementById('ai-recognize-input').click()"><i class="fas fa-camera"></i> 拍照/选图片或 PDF，AI 自动识别</button>
     </div>
     <div class="card">
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">粘贴错题内容（多题用【题目1】【题目2】依次分隔）</label>
@@ -1590,13 +1590,27 @@ function parseBatchText() {
   if (!batchModule) { showToast('请先选择本批错题的模块'); return; }
   if (!batchText.trim()) { showToast('请粘贴错题内容'); return; }
   batchParsed = parseBatchContent(batchText);
+  batchParsed.forEach(p => { if (p._origType === undefined) p._origType = p.type || ''; });
   if (!batchParsed.length) {
     pv.innerHTML = '<div class="card"><p style="color:var(--danger);font-size:13px;margin:0">没有解析出有效题目。请检查：每道题以【题目1】开头，且包含题干、我的答案、正确答案三项。</p></div>';
     return;
   }
+  const stdTypes = MODULE_TYPES[batchModule] || [];
+  const selTypes = batchParsed.map(q => q.type || '').filter(Boolean);
+  const commonType = selTypes.length && selTypes.every(t => t === selTypes[0]) ? selTypes[0] : '';
+  const prevSource = (document.getElementById('batch-unify-source')||{}).value || '';
   pv.innerHTML = `
     <div class="card">
       <p style="font-size:14px;font-weight:700;margin:0 0 10px"><i class="fas fa-check-circle" style="color:var(--success)"></i> 解析成功 ${batchParsed.length} 道题</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <select id="batch-unify-type" class="input-field" style="flex:1;min-width:140px;padding:6px 28px 6px 10px;font-size:13px" onchange="batchApplyType(this.value)">
+          <option value="">题型不统一（按每题识别值）</option>
+          ${stdTypes.map(t => `<option value="${t}" ${commonType===t?'selected':''}>统一为：${t}</option>`).join('')}
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+        <input id="batch-unify-source" class="input-field" placeholder="全部题目来源（如：2025联考真题），导入时统一填入" value="${escHtml(prevSource)}" style="flex:1">
+      </div>
       ${batchParsed.map((q,i) => {
         const isGroup = q.material && q.subs && q.subs.length;
         const qHtml = isGroup
@@ -1606,8 +1620,9 @@ function parseBatchText() {
         const anaHtml = isGroup
           ? q.subs.filter(s=>s.analysis).slice(0,1).map(s=>`<div style="color:var(--muted);margin-top:4px">小题解析预览：${formatAnalysis(s.analysis)}</div>`).join('')
           : (q.analysis ? `<div style="color:var(--muted);margin-top:4px">解析预览：${formatAnalysis(q.analysis)}</div>` : '');
+        const typeTag = q.type ? `<span style="font-size:11px;color:#1e40af;background:rgba(59,130,246,.12);padding:1px 7px;border-radius:9px;margin-left:6px;font-weight:600">${q.type}</span>` : '';
         return `<div style="padding:8px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5">
-        <span style="color:var(--muted)">第${i+1}题</span>${ansLine}
+        <span style="color:var(--muted)">第${i+1}题</span>${typeTag}${ansLine}
         <div style="margin:4px 0 2px;line-height:1.6">${qHtml}</div>${anaHtml}
       </div>`;
       }).join('')}
@@ -1615,19 +1630,37 @@ function parseBatchText() {
     </div>`;
 }
 
+function batchApplyType(t) {
+  if (!batchParsed) return;
+  batchParsed.forEach(q => { q.type = t || (q._origType || ''); });
+  parseBatchText();
+  const sel = document.getElementById('batch-unify-type');
+  if (sel) sel.value = t || '';
+}
+
 function confirmBatchImport() {
   if (!batchParsed || !batchParsed.length) return;
   const todayStr = new Date().toISOString().slice(0,10);
+  const unifySourceEl = document.getElementById('batch-unify-source');
+  const unifySource = unifySourceEl ? unifySourceEl.value.trim() : '';
+  const unifyTypeEl = document.getElementById('batch-unify-type');
+  const unifyType = unifyTypeEl ? unifyTypeEl.value : '';
+  let groupIdx = 0;
   let added = 0;
   batchParsed.forEach(p => {
     if (p.material && p.subs && p.subs.length) {
-      // 材料组题
+      // 材料组题：挂载 AI 识别裁剪的材料图表截图（如有）
+      let matPhotos = p.materialPhotos || [];
+      if (!matPhotos.length && aiPendingGroupPhotos && aiPendingGroupPhotos[groupIdx]) {
+        matPhotos = aiPendingGroupPhotos[groupIdx].materialPhotos || [];
+      }
+      groupIdx++;
       questions.push({
-        id: genId(), module: batchModule, type: p.type || '', source: p.source || '',
+        id: genId(), module: batchModule, type: unifyType || p.type || '', source: unifySource || p.source || '',
         question: '', optionA:'', optionB:'', optionC:'', optionD:'',
         myAnswer:'', correctAnswer:'', accuracy:'', errorReasons:[], analysis:'',
         notes:'', photos:[],
-        material: p.material, materialPhotos: p.materialPhotos || [], subs: p.subs,
+        material: p.material, materialPhotos: matPhotos, subs: p.subs,
         createDate: todayStr, errorCount: 1, reviewStatus: '待复习', lastReviewDate: null, isSeed: false
       });
       added += p.subs.length;
@@ -1635,8 +1668,8 @@ function confirmBatchImport() {
       questions.push({
         id: genId(),
         module: batchModule,
-        type: p.type || '',
-        source: p.source || '',
+        type: unifyType || p.type || '',
+        source: unifySource || p.source || '',
         question: p.question,
         optionA: p.optionA, optionB: p.optionB, optionC: p.optionC, optionD: p.optionD,
         myAnswer: p.myAnswer,
@@ -1660,6 +1693,7 @@ function confirmBatchImport() {
   updateDailyStat('newErrors', added);
   showToast(`成功导入 ${added} 道错题`);
   batchParsed = null; batchText = '';
+  aiPendingGroupPhotos = null;
   errorsViewMode = 'categories';
   switchTab('errors');
 }
@@ -3546,6 +3580,7 @@ function aiGenAnalysisHtml(prefix) {
 
 // ==================== AI 识图批量录入 ====================
 let aiRecognizing = false;
+let aiPendingGroupPhotos = null; // AI 识别时裁剪出的材料图表截图，按材料组顺序对应
 
 function aiCompressImage(file, maxSide) {
   return new Promise((resolve, reject) => {
@@ -3572,23 +3607,76 @@ function aiCompressImage(file, maxSide) {
   });
 }
 
-async function aiRecognizeQuestions(files) {
+function aiCompressDataUrl(dataUrl, maxSide) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = function() {
+      let w = img.width, h = img.height;
+      maxSide = maxSide || 1600;
+      if (w > maxSide || h > maxSide) {
+        if (w > h) { h = Math.round(h * maxSide / w); w = maxSide; }
+        else { w = Math.round(w * maxSide / h); h = maxSide; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = function() { reject(new Error('图片处理失败')); };
+    img.src = dataUrl;
+  });
+}
+
+function aiLoadPdfLib() {
+  return new Promise((resolve, reject) => {
+    if (window.pdfjsLib) return resolve(window.pdfjsLib);
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    s.onload = function() {
+      if (window.pdfjsLib) {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        resolve(window.pdfjsLib);
+      } else reject(new Error('PDF 组件加载异常'));
+    };
+    s.onerror = function() { reject(new Error('PDF 组件加载失败，请检查网络')); };
+    document.head.appendChild(s);
+  });
+}
+
+async function aiPdfToImages(file, maxPages) {
+  const lib = await aiLoadPdfLib();
+  const buf = await file.arrayBuffer();
+  const pdf = await lib.getDocument({ data: buf }).promise;
+  const total = pdf.numPages;
+  const n = Math.min(total, maxPages || 10);
+  if (total > n) showToast('PDF 共 ' + total + ' 页，本次仅识别前 ' + n + ' 页');
+  const imgs = [];
+  for (let p = 1; p <= n; p++) {
+    const page = await pdf.getPage(p);
+    const vp = page.getViewport({ scale: 2 });
+    const canvas = document.createElement('canvas');
+    canvas.width = vp.width; canvas.height = vp.height;
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+    imgs.push(canvas.toDataURL('image/jpeg', 0.85));
+  }
+  return imgs;
+}
+
+function aiCheckVisionReady() {
   const ep = aiVisionEndpoint(aiConfig);
   if (!ep || !ep.url) throw new Error('识图功能需要通义千问或自定义多模态接口（DeepSeek 暂不支持识图）');
   if (!aiConfig.key) throw new Error('请先在设置页配置 API Key');
-  const contents = [];
-  for (const f of files) {
-    const dataUrl = await aiCompressImage(f, 1600);
-    contents.push({ type: 'image_url', image_url: { url: dataUrl } });
-  }
-  contents.push({ type: 'text', text: '这些图片是公务员行测考试的错题整理内容。请逐题识别并严格按以下格式输出，不要输出任何多余说明：\n\n每道题以"第 N 题："开头（N 从 1 递增）。\n先输出题干（保留原有文字，多行照实输出）。\n选项每行一个，格式：A. 内容\n如果有手写或打印的"我的答案/我选"标注，输出：我的答案：X\n如果有圈出的正确答案，输出：正确答案：X\n如果图片上有手写解析/批注/标注内容，在【解析】后输出这些内容（整理成通顺文字）。\n多道题之间空一行。\n如果同一张图是一道材料分析题（一段共用材料 + 多个小题），先输出材料原文，然后每个小题以"第 N 题："单独成块，题干中不要重复材料。' });
+  return ep;
+}
+
+async function aiCallVision(ep, contents, systemMsg) {
   const resp = await fetch(ep.url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + aiConfig.key },
     body: JSON.stringify({
       model: ep.model,
       messages: [
-        { role: 'system', content: '你是精准的试卷文字识别助手，忠实识别图中文字，不做改写、不补充、不遗漏。' },
+        { role: 'system', content: systemMsg },
         { role: 'user', content: contents }
       ]
     })
@@ -3604,29 +3692,149 @@ async function aiRecognizeQuestions(files) {
   return text;
 }
 
-function aiOnRecognizeFiles(input) {
+function aiTypeHint(moduleHint) {
+  if (moduleHint && MODULE_TYPES[moduleHint]) {
+    return '当前模块为"' + moduleHint + '"，type 字段只能从以下取值中选择：' + MODULE_TYPES[moduleHint].join(' / ') + '。';
+  }
+  return 'type 字段填最可能的题型：资料分析从 增长率/增长量/比重/平均数/倍数/综合分析 中选；言语理解从 中心理解题/标题添加题/细节判断题/语句填空题/语句排序题/逻辑填空题 中选；判断推理从 逻辑判断-形式逻辑/逻辑判断-论证逻辑/类比推理/定义判断 中选；数量关系从 数学运算/数字推理 中选；图形推理填 图形推理；政治理论填 政治理论。';
+}
+
+async function aiRecognizeStructured(compressed, moduleHint) {
+  const ep = aiCheckVisionReady();
+  const contents = [];
+  compressed.forEach(u => contents.push({ type: 'image_url', image_url: { url: u } }));
+  contents.push({ type: 'text', text: '这些是公务员考试行测的错题整理图片，按上传顺序编号，imageIndex 从 0 开始。请识别其中所有题目，并只输出一个严格 JSON（不要输出任何其他字符、不要用 markdown 代码块）：\n{"groups":[{"material":"共用材料文字（没有则空字符串；文字内容逐字转写；若材料只有图表没有文字则留空）","figures":[{"imageIndex":0,"bbox":[x1,y1,x2,y2]}],"type":"题型","subs":[{"stem":"题干","options":["选项A内容","选项B内容","选项C内容","选项D内容"],"myAnswer":"A 或空字符串","correctAnswer":"B 或空字符串","accuracy":"数字或空字符串","analysis":"解析或手写批注（没有则空字符串）"}]}]}\n规则：\n1. figures 只列出需要保留为图片的图表/表格/统计图区域（如资料分析的统计表、统计图），bbox 是该区域在 imageIndex 对应图片上的像素坐标 [左上x, 左上y, 右下x, 右下y]，没有图表则 figures 为空数组。\n2. 材料组题（如资料分析：一段共用材料带多个小题）放在同一个 group：material 填材料文字，subs 按顺序列出各小题，小题题干不要重复材料；独立题各自一个 group，material 为空。\n3. ' + aiTypeHint(moduleHint) + '在 group 的 type 字段给出。\n4. 能看到"我的答案/我选/错选"的手写或打印标注时填 myAnswer，能看到圈出的正确答案时填 correctAnswer（大写字母）。\n5. accuracy 只有图上明确写出正确率数字时才填。' });
+  const raw = await aiCallVision(ep, contents, '你是精准的试卷识别助手，忠实识别图中文字，不改写、不补充、不遗漏，输出合法 JSON。');
+  const cleaned = String(raw).replace(/```json/gi, '').replace(/```/g, '').trim();
+  const m = cleaned.match(/\{[\s\S]*\}/);
+  if (!m) throw new Error('structured parse failed');
+  const j = JSON.parse(m[0]);
+  if (!j || !Array.isArray(j.groups) || !j.groups.length) throw new Error('structured parse failed');
+  return j;
+}
+
+async function aiRecognizePlain(compressed, moduleHint) {
+  const ep = aiCheckVisionReady();
+  const contents = [];
+  compressed.forEach(u => contents.push({ type: 'image_url', image_url: { url: u } }));
+  contents.push({ type: 'text', text: '这些图片是公务员行测考试的错题整理内容。请逐题识别并严格按以下格式输出，不要输出任何多余说明：\n\n每道题以"第 N 题："开头（N 从 1 递增）。\n先输出题干（保留原有文字，多行照实输出）。\n选项每行一个，格式：A. 内容\n如果有手写或打印的"我的答案/我选"标注，输出：我的答案：X\n如果有圈出的正确答案，输出：正确答案：X\n如果图片上有手写解析/批注内容，在【解析】后输出（整理成通顺文字）。\n题型：填最可能的题型。' + aiTypeHint(moduleHint) + '\n多道题之间空一行。\n如果是材料组题（一段共用材料 + 多个小题，如资料分析）：该题块先输出【材料】行再输出材料原文，然后每个小题用【小题1】【小题2】依次分隔，小题内含题干、选项、我的答案、正确答案。' });
+  return aiCallVision(ep, contents, '你是精准的试卷文字识别助手，忠实识别图中文字，不做改写、不补充、不遗漏。');
+}
+
+function aiSubLines(s) {
+  let out = String(s.stem || '').trim() + '\n';
+  (s.options || []).forEach((o, oi) => {
+    if (oi > 3) return;
+    out += String.fromCharCode(65 + oi) + '. ' + String(o).replace(/^[A-D]\s*[.、．:：]\s*/, '') + '\n';
+  });
+  if (s.myAnswer) out += '【我的答案】' + s.myAnswer + '\n';
+  if (s.correctAnswer) out += '【正确答案】' + s.correctAnswer + '\n';
+  if (s.accuracy) out += '【正确率】' + s.accuracy + '\n';
+  if (s.analysis) out += '【解析】' + s.analysis + '\n';
+  return out;
+}
+
+async function aiBuildFromJson(j, compressed) {
+  const blocks = [];
+  const groupPhotos = [];
+  let n = 0;
+  for (const g of (j.groups || [])) {
+    const subs = (g.subs || []).filter(s => s && String(s.stem || '').trim());
+    if (!subs.length) continue;
+    const material = String(g.material || '').trim();
+    if (material) {
+      n++;
+      let block = '';
+      if (g.type) block += '题型：' + g.type + '\n';
+      block += '【材料】\n' + material + '\n\n';
+      subs.forEach((s, i) => { block += '【小题' + (i + 1) + '】\n' + aiSubLines(s) + '\n'; });
+      blocks.push(block.trim());
+      groupPhotos.push({ materialPhotos: await aiCropFigures(compressed, g.figures) });
+    } else {
+      for (const s of subs) {
+        n++;
+        let block = '第 ' + n + ' 题：\n' + aiSubLines(s);
+        if (g.type) block += '题型：' + g.type + '\n';
+        blocks.push(block.trim());
+      }
+    }
+  }
+  return { text: blocks.join('\n\n---\n\n'), groupPhotos };
+}
+
+async function aiCropFigures(compressedUrls, figures) {
+  const out = [];
+  for (const f of figures || []) {
+    const url = compressedUrls[f.imageIndex];
+    if (!url || !f.bbox || f.bbox.length !== 4) continue;
+    try {
+      const img = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = url; });
+      const W = img.naturalWidth, H = img.naturalHeight;
+      const b = f.bbox.map(v => Number(v) || 0);
+      let x1 = b[0], y1 = b[1], x2 = b[2], y2 = b[3];
+      let sx, sy, sw, sh;
+      if (x2 <= W && y2 <= H && x2 - x1 > 20 && y2 - y1 > 20) {
+        sx = x1; sy = y1; sw = x2 - x1; sh = y2 - y1;
+      } else {
+        sx = x1 / 1000 * W; sy = y1 / 1000 * H; sw = (x2 - x1) / 1000 * W; sh = (y2 - y1) / 1000 * H;
+      }
+      sx = Math.max(0, sx); sy = Math.max(0, sy);
+      sw = Math.min(sw, W - sx); sh = Math.min(sh, H - sy);
+      if (sw < 30 || sh < 30) continue;
+      const c = document.createElement('canvas');
+      c.width = Math.round(sw); c.height = Math.round(sh);
+      c.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
+      out.push(c.toDataURL('image/jpeg', 0.85));
+    } catch (e) { /* 单张裁剪失败跳过 */ }
+  }
+  return out.slice(0, 3);
+}
+
+async function aiOnRecognizeFiles(input) {
   const files = Array.from(input.files || []);
   input.value = '';
   if (!files.length) return;
   if (aiRecognizing) { showToast('正在识别中…'); return; }
   aiRecognizing = true;
-  const btn = document.getElementById('ai-recognize-btn');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> AI 识别中…'; }
-  showToast('已选择 ' + files.length + ' 张图片，AI 识别中…');
-  aiRecognizeQuestions(files).then(text => {
+  const setBtn = t => { const b = document.getElementById('ai-recognize-btn'); if (b) { b.disabled = !!t; b.innerHTML = t || '<i class="fas fa-camera"></i> 拍照/选图片或 PDF，AI 自动识别'; } };
+  setBtn('<i class="fas fa-spinner fa-spin"></i> 预处理中…');
+  try {
+    const moduleHint = document.getElementById('batch-module') ? document.getElementById('batch-module').value : '';
+    const compressed = [];
+    for (const f of files) {
+      if (f.type === 'application/pdf' || /\.pdf$/i.test(f.name)) {
+        setBtn('<i class="fas fa-spinner fa-spin"></i> PDF 转换中：' + f.name + ' …');
+        const pageImgs = await aiPdfToImages(f, 10);
+        for (const d of pageImgs) compressed.push(await aiCompressDataUrl(d, 1600));
+      } else {
+        compressed.push(await aiCompressImage(f, 1600));
+      }
+    }
+    if (!compressed.length) throw new Error('没有可识别的图片内容');
+    setBtn('<i class="fas fa-spinner fa-spin"></i> AI 识别 ' + compressed.length + ' 张图中…');
+    let text = null;
+    try {
+      const j = await aiRecognizeStructured(compressed, moduleHint);
+      const built = await aiBuildFromJson(j, compressed);
+      text = built.text;
+      aiPendingGroupPhotos = built.groupPhotos;
+      if (!text.trim()) throw new Error('empty');
+    } catch (e) {
+      aiPendingGroupPhotos = null;
+      text = await aiRecognizePlain(compressed, moduleHint);
+    }
     inputMode = 'batch';
     renderInput();
     const ta = document.getElementById('batch-text');
     if (ta) ta.value = text;
     parseBatchText();
-    showToast('识别完成，请检查解析结果后确认导入');
-  }).catch(e => {
+    showToast('识别完成，请检查解析结果并统一设置来源后导入');
+  } catch (e) {
     showToast('识别失败：' + e.message);
-  }).finally(() => {
+  } finally {
     aiRecognizing = false;
-    const b = document.getElementById('ai-recognize-btn');
-    if (b) { b.disabled = false; b.innerHTML = '<i class="fas fa-camera"></i> 拍照/选图，AI 自动识别'; }
-  });
+    setBtn(null);
+  }
 }
 
 function renderSettings() {
@@ -3729,7 +3937,7 @@ function renderSettings() {
         <p style="margin:0">面向公考备考人群的错题管理工具</p>
         <p style="margin:0">当前错题总数：${questions.length}</p>
         <p style="margin:0">所有数据存储在本地浏览器中，无内置错题</p>
-        <p style="margin:0">页面版本：<b style="color:var(--primary)">0828b</b>（AI 识图上传+AI 解析生成+复习一体化手写板+云同步合并版）</p>
+        <p style="margin:0">页面版本：<b style="color:var(--primary)">0828c</b>（AI 识图升级：题型识别+PDF+材料截图+统一来源）</p>
       </div>
     </div>
   `;
@@ -4311,4 +4519,4 @@ window.__onKatexReady = function() { try { renderPage(currentTab); if (typeof up
 init();
 </script>
 </body>
-<!-- build: 0828b --></html>
+<!-- build: 0828c --></html>
