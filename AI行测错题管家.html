@@ -1278,6 +1278,11 @@ function renderSingleForm() {
         </div>
       </div>
       <div style="margin-bottom:14px">
+        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">解析</label>
+        <textarea id="inp-analysis" class="input-field" rows="3" placeholder="解析、解题思路、知识点（可用 AI 一键生成）"></textarea>
+        ${aiGenAnalysisHtml('inp')}
+      </div>
+      <div style="margin-bottom:14px">
         <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">正确率（%）</label>
         <input id="inp-accuracy" class="input-field" type="number" min="0" max="100" placeholder="如：65">
       </div>
@@ -2099,7 +2104,7 @@ function saveNewQuestion() {
     correctAnswer: correctAns,
     accuracy: document.getElementById('inp-accuracy').value.trim(),
     errorReasons: reasons,
-    analysis: '',
+    analysis: (document.getElementById('inp-analysis')||{}).value || '',
     notes: '',
     photos: [...inputPhotos],
     createDate: new Date().toISOString().slice(0,10),
@@ -2805,7 +2810,8 @@ function renderGroupSubEditor(prefix, i, s, onRemove) {
       <select id="${prefix}-${i}-correctAns" class="input-field"><option value="">正确</option>${['A','B','C','D'].map(o=>`<option ${o===s.correctAnswer?'selected':''}>${o}</option>`).join('')}</select>
       <input id="${prefix}-${i}-accuracy" class="input-field" type="number" min="0" max="100" placeholder="正确率" value="${s.accuracy||''}">
     </div>
-    <textarea id="${prefix}-${i}-analysis" class="input-field" rows="2" placeholder="解析" style="margin-bottom:6px">${escHtml(s.analysis||'')}</textarea>
+    <textarea id="${prefix}-${i}-analysis" class="input-field" rows="2" placeholder="解析（可用 AI 生成）" style="margin-bottom:6px">${escHtml(s.analysis||'')}</textarea>
+      ${aiGenAnalysisHtml(prefix + '-' + i)}
     <select id="${prefix}-${i}-status" class="input-field"><option value="待复习" ${s.reviewStatus==='待复习'?'selected':''}>待复习</option><option value="模糊" ${s.reviewStatus==='模糊'?'selected':''}>模糊</option><option value="已掌握" ${s.reviewStatus==='已掌握'?'selected':''}>已掌握</option></select>
   </div>`;
 }
@@ -2983,7 +2989,9 @@ function editQuestion(id) {
         ${ERROR_REASONS.map(r => `<div class="checkbox-item ${q.errorReasons.includes(r)?'checked':''}" onclick="toggleReason(this)"><input type="checkbox" value="${r}" ${q.errorReasons.includes(r)?'checked':''}><span>${r}</span></div>`).join('')}
       </div>
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">解析</label>
-      <textarea id="edit-analysis" class="input-field" rows="6" style="margin-bottom:16px">${q.analysis||''}</textarea>
+      <textarea id="edit-analysis" class="input-field" rows="6" style="margin-bottom:6px">${q.analysis||''}</textarea>
+        ${aiGenAnalysisHtml('edit')}
+        <div style="margin-bottom:16px"></div>
       <button class="btn btn-primary" style="width:100%" onclick="saveEdit('${q.id}')"><i class="fas fa-save"></i> 保存修改</button>
     </div>
   </div>`;
@@ -3356,6 +3364,169 @@ function renderStats() {
 }
 
 // ==================== SETTINGS PAGE ====================
+
+// ==================== AI 解析生成 ====================
+let aiConfig = { provider: localStorage.getItem('XCT_AI_PROVIDER') || 'deepseek', model: localStorage.getItem('XCT_AI_MODEL') || '', key: localStorage.getItem('XCT_AI_KEY') || '', customUrl: localStorage.getItem('XCT_AI_CUSTOM_URL') || '' };
+let aiBusy = false;
+
+function aiEndpoints(cfg) {
+  if (cfg.provider === 'deepseek') return { url: 'https://api.deepseek.com/v1/chat/completions', model: cfg.model || 'deepseek-chat' };
+  if (cfg.provider === 'dashscope') return { url: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', model: cfg.model || 'qwen-plus' };
+  return { url: cfg.customUrl || '', model: cfg.model };
+}
+
+function saveAiConfig() {
+  aiConfig.provider = document.getElementById('ai-provider').value;
+  aiConfig.model = document.getElementById('ai-model').value.trim();
+  aiConfig.key = document.getElementById('ai-key').value.trim();
+  aiConfig.customUrl = document.getElementById('ai-custom-url') ? document.getElementById('ai-custom-url').value.trim() : '';
+  localStorage.setItem('XCT_AI_PROVIDER', aiConfig.provider);
+  localStorage.setItem('XCT_AI_MODEL', aiConfig.model);
+  localStorage.setItem('XCT_AI_KEY', aiConfig.key);
+  localStorage.setItem('XCT_AI_CUSTOM_URL', aiConfig.customUrl || '');
+  showToast('AI 配置已保存');
+  renderSettings();
+}
+
+function toggleAiKeyVisible() {
+  const el = document.getElementById('ai-key');
+  el.type = el.type === 'password' ? 'text' : 'password';
+}
+
+async function aiChatStream(cfg, userMsg, onDelta) {
+  const ep = aiEndpoints(cfg);
+  if (!ep.url) throw new Error('请先在设置页配置 AI 服务地址');
+  if (!cfg.key) throw new Error('请先在设置页配置 API Key');
+  const resp = await fetch(ep.url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.key },
+    body: JSON.stringify({
+      model: ep.model,
+      stream: true,
+      messages: [
+        { role: 'system', content: '你是公考行测备考辅导专家。根据用户提供的错题信息，生成一份简洁实用的解析，使用纯文本输出（可分行），依次包含：\n【考查知识点】\n【错误原因】（结合"我的答案"与"正确答案"的差异分析）\n【解题步骤】（只列关键步骤和公式，公式使用 \\(...\\) 定界）\n【注意点】一句话提醒\n直接输出内容，不要客套开头。' },
+        { role: 'user', content: userMsg }
+      ]
+    })
+  });
+  if (!resp.ok) {
+    let msg = 'HTTP ' + resp.status;
+    try { const j = await resp.json(); msg += '：' + (j.error && j.error.message || j.message || ''); } catch (e) {}
+    throw new Error(msg);
+  }
+  const reader = resp.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split('\n');
+    buf = lines.pop();
+    for (const line of lines) {
+      if (!line.startsWith('data:')) continue;
+      const d = line.slice(5).trim();
+      if (d === '[DONE]') continue;
+      try {
+        const j = JSON.parse(d);
+        const delta = j.choices && j.choices[0] && j.choices[0].delta && j.choices[0].delta.content;
+        if (delta) onDelta(delta);
+      } catch (e) {}
+    }
+  }
+}
+
+function aiBuildPrompt(ctx) {
+  let s = '';
+  if (ctx.material) s += '【共用材料】\n' + ctx.material + '\n\n';
+  if (ctx.module) s += '板块：' + ctx.module + (ctx.type ? ' · ' + ctx.type : '') + '\n';
+  if (ctx.question) s += '题干：' + ctx.question + '\n';
+  ['optionA','optionB','optionC','optionD'].forEach((k, i) => { if (ctx[k]) s += String.fromCharCode(65+i) + '. ' + ctx[k] + '\n'; });
+  if (ctx.myAnswer) s += '我的答案：' + ctx.myAnswer + '\n';
+  if (ctx.correctAnswer) s += '正确答案：' + ctx.correctAnswer + '\n';
+  if (ctx.errorReasons && ctx.errorReasons.length) s += '错误类型：' + ctx.errorReasons.join('、') + '\n';
+  return s;
+}
+
+function aiGetTargetCtx(prefix) {
+  if (prefix === 'inp') {
+    return {
+      module: document.getElementById('inp-module') ? document.getElementById('inp-module').value : '',
+      type: document.getElementById('inp-type') ? document.getElementById('inp-type').value : '',
+      question: document.getElementById('inp-question') ? document.getElementById('inp-question').value.trim() : '',
+      optionA: document.getElementById('inp-optA') ? document.getElementById('inp-optA').value.trim() : '',
+      optionB: document.getElementById('inp-optB') ? document.getElementById('inp-optB').value.trim() : '',
+      optionC: document.getElementById('inp-optC') ? document.getElementById('inp-optC').value.trim() : '',
+      optionD: document.getElementById('inp-optD') ? document.getElementById('inp-optD').value.trim() : '',
+      myAnswer: document.getElementById('inp-myAns') ? document.getElementById('inp-myAns').value : '',
+      correctAnswer: document.getElementById('inp-correctAns') ? document.getElementById('inp-correctAns').value : ''
+    };
+  }
+  if (prefix === 'edit') {
+    return {
+      module: document.getElementById('edit-module') ? document.getElementById('edit-module').value : '',
+      type: document.getElementById('edit-type') ? document.getElementById('edit-type').value : '',
+      question: document.getElementById('edit-question') ? document.getElementById('edit-question').value.trim() : '',
+      optionA: document.getElementById('edit-optA') ? document.getElementById('edit-optA').value.trim() : '',
+      optionB: document.getElementById('edit-optB') ? document.getElementById('edit-optB').value.trim() : '',
+      optionC: document.getElementById('edit-optC') ? document.getElementById('edit-optC').value.trim() : '',
+      optionD: document.getElementById('edit-optD') ? document.getElementById('edit-optD').value.trim() : '',
+      myAnswer: document.getElementById('edit-myAns') ? document.getElementById('edit-myAns').value : '',
+      correctAnswer: document.getElementById('edit-correctAns') ? document.getElementById('edit-correctAns').value : ''
+    };
+  }
+  const m = prefix.match(/^(gsub|insub)-(\d+)$/);
+  if (m) {
+    const p = m[1], i = m[2];
+    const ctx = {
+      question: document.getElementById(p+'-'+i+'-question') ? document.getElementById(p+'-'+i+'-question').value.trim() : '',
+      optionA: document.getElementById(p+'-'+i+'-optA') ? document.getElementById(p+'-'+i+'-optA').value.trim() : '',
+      optionB: document.getElementById(p+'-'+i+'-optB') ? document.getElementById(p+'-'+i+'-optB').value.trim() : '',
+      optionC: document.getElementById(p+'-'+i+'-optC') ? document.getElementById(p+'-'+i+'-optC').value.trim() : '',
+      optionD: document.getElementById(p+'-'+i+'-optD') ? document.getElementById(p+'-'+i+'-optD').value.trim() : '',
+      myAnswer: document.getElementById(p+'-'+i+'-myAns') ? document.getElementById(p+'-'+i+'-myAns').value : '',
+      correctAnswer: document.getElementById(p+'-'+i+'-correctAns') ? document.getElementById(p+'-'+i+'-correctAns').value : ''
+    };
+    if (p === 'gsub') {
+      ctx.module = '资料分析';
+      ctx.material = document.getElementById('gedit-material') ? document.getElementById('gedit-material').value.trim() : '';
+    } else {
+      ctx.module = document.getElementById('inp-module') ? document.getElementById('inp-module').value : '';
+      ctx.material = document.getElementById('inp-material') ? document.getElementById('inp-material').value.trim() : '';
+    }
+    return ctx;
+  }
+  return null;
+}
+
+async function aiGenAnalysis(prefix) {
+  if (aiBusy) { showToast('AI 正在生成中…'); return; }
+  const ta = document.getElementById(prefix === 'inp' ? 'inp-analysis' : prefix + '-analysis');
+  if (!ta) return;
+  const ctx = aiGetTargetCtx(prefix);
+  if (!ctx) return;
+  if (!ctx.question && !ctx.material) { showToast('请先填写题干或材料'); return; }
+  if (!aiConfig.key) { showToast('请先在设置页配置 AI Key'); showPage('settings'); return; }
+  aiBusy = true;
+  const btn = document.getElementById('ai-btn-' + prefix);
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中…'; }
+  ta.value = '';
+  try {
+    await aiChatStream(aiConfig, aiBuildPrompt(ctx), d => { ta.value += d; ta.scrollTop = ta.scrollHeight; });
+    showToast('解析已生成');
+  } catch (e) {
+    ta.value += (ta.value ? '\n\n' : '') + '【生成失败】' + e.message;
+    showToast('生成失败：' + e.message);
+  } finally {
+    aiBusy = false;
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> AI 生成解析'; }
+  }
+}
+
+function aiGenAnalysisHtml(prefix) {
+  return '<button type="button" id="ai-btn-' + prefix + '" class="btn btn-accent btn-sm" style="margin-top:6px;padding:4px 12px" onclick="event.stopPropagation();aiGenAnalysis(\'' + prefix + '\')"><i class="fas fa-wand-magic-sparkles"></i> AI 生成解析</button>';
+}
+
 function renderSettings() {
   const el = document.getElementById('page-settings');
   const syncStatusText = {offline:'未连接',syncing:'同步中…',synced:'已同步',error:'同步失败'};
@@ -3386,6 +3557,36 @@ function renderSettings() {
         <button class="btn btn-outline btn-sm" onclick="sbResetTombstones()"><i class="fas fa-undo"></i> 重置删除标记</button>
       </div>
       <p style="font-size:11px;color:var(--muted);margin:10px 0 0;line-height:1.6">每次录入/编辑/删除错题后会自动上传，删除操作会同步到云端（其他设备拉取后也会删除）。打开页面时会自动拉取云端数据并与本地合并。若云端有删不掉的残留数据，点"清理云端残留"；若拉取后数据为 0 但云端有数据，点"重置删除标记"。</p>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <i class="fas fa-wand-magic-sparkles" style="font-size:18px;color:var(--accent)"></i>
+        <h3 style="font-size:15px;font-weight:700;margin:0">AI 解析生成</h3>
+      </div>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 12px">配置你自己的大模型 API Key 后，录入/编辑错题时可一键生成知识点、错因、解题步骤分析。Key 只保存在本浏览器，不会上传云端。</p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div>
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">AI 服务</label>
+          <select id="ai-provider" class="input-field" onchange="document.getElementById('ai-custom-url').style.display=this.value==='custom'?'':'none'">
+            <option value="deepseek" ${aiConfig.provider==='deepseek'?'selected':''}>DeepSeek（推荐，便宜）</option>
+            <option value="dashscope" ${aiConfig.provider==='dashscope'?'selected':''}>阿里云通义千问</option>
+            <option value="custom" ${aiConfig.provider==='custom'?'selected':''}>自定义（OpenAI 兼容接口）</option>
+          </select>
+        </div>
+        <input id="ai-custom-url" class="input-field" placeholder="自定义接口地址，如 https://xxx.com/v1/chat/completions" value="${escHtml(aiConfig.customUrl||'')}" style="display:${aiConfig.provider==='custom'?'':'none'}">
+        <div>
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">模型名称（可留空用默认）</label>
+          <input id="ai-model" class="input-field" placeholder="默认：deepseek-chat / qwen-plus" value="${escHtml(aiConfig.model||'')}">
+        </div>
+        <div>
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">API Key</label>
+          <div style="display:flex;gap:8px">
+            <input id="ai-key" type="password" class="input-field" placeholder="粘贴你的 API Key" value="${escHtml(aiConfig.key||'')}" style="flex:1">
+            <button class="btn btn-outline btn-sm" onclick="toggleAiKeyVisible()"><i class="fas fa-eye"></i></button>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="saveAiConfig()"><i class="fas fa-floppy-disk"></i> 保存 AI 配置</button>
+      </div>
     </div>
     <div class="card">
       <h3 style="font-size:15px;font-weight:700;margin:0 0 12px">数据导出</h3>
@@ -3422,7 +3623,7 @@ function renderSettings() {
         <p style="margin:0">面向公考备考人群的错题管理工具</p>
         <p style="margin:0">当前错题总数：${questions.length}</p>
         <p style="margin:0">所有数据存储在本地浏览器中，无内置错题</p>
-        <p style="margin:0">页面版本：<b style="color:var(--primary)">0820a</b>（复习一体化手写板+防误触关闭+云同步合并版）</p>
+        <p style="margin:0">页面版本：<b style="color:var(--primary)">0828a</b>（AI 解析生成+复习一体化手写板+云同步合并版）</p>
       </div>
     </div>
   `;
@@ -4004,4 +4205,4 @@ window.__onKatexReady = function() { try { renderPage(currentTab); if (typeof up
 init();
 </script>
 </body>
-<!-- build: 0820a --></html>
+<!-- build: 0828a --></html>
