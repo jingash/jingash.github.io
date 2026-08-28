@@ -1410,6 +1410,15 @@ B. 增加了6个
 来源：2025联考真题
 正确率：65</pre>
     </div>
+    <div class="card" style="border:1.5px dashed var(--accent);background:rgba(249,115,22,.03)">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <i class="fas fa-wand-magic-sparkles" style="color:var(--accent)"></i>
+        <span style="font-size:14px;font-weight:700">AI 识图上传</span>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 10px">拍/截整页错题（含手写批注），AI 自动识别成结构化内容填入下方，支持一次选多张图。需通义千问或自定义多模态接口（设置页配置）。</p>
+      <input type="file" accept="image/*" multiple id="ai-recognize-input" style="display:none" onchange="aiOnRecognizeFiles(this)">
+      <button id="ai-recognize-btn" class="btn btn-accent btn-sm" style="width:100%" onclick="document.getElementById('ai-recognize-input').click()"><i class="fas fa-camera"></i> 拍照/选图，AI 自动识别</button>
+    </div>
     <div class="card">
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">粘贴错题内容（多题用【题目1】【题目2】依次分隔）</label>
       <textarea id="batch-text" class="input-field" rows="12" placeholder="按上方模板粘贴，可一次粘贴多道题">${batchText}</textarea>
@@ -3366,7 +3375,7 @@ function renderStats() {
 // ==================== SETTINGS PAGE ====================
 
 // ==================== AI 解析生成 ====================
-let aiConfig = { provider: localStorage.getItem('XCT_AI_PROVIDER') || 'deepseek', model: localStorage.getItem('XCT_AI_MODEL') || '', key: localStorage.getItem('XCT_AI_KEY') || '', customUrl: localStorage.getItem('XCT_AI_CUSTOM_URL') || '' };
+let aiConfig = { provider: localStorage.getItem('XCT_AI_PROVIDER') || 'deepseek', model: localStorage.getItem('XCT_AI_MODEL') || '', key: localStorage.getItem('XCT_AI_KEY') || '', customUrl: localStorage.getItem('XCT_AI_CUSTOM_URL') || '', visionModel: localStorage.getItem('XCT_AI_VISION_MODEL') || '' };
 let aiBusy = false;
 
 function aiEndpoints(cfg) {
@@ -3375,15 +3384,23 @@ function aiEndpoints(cfg) {
   return { url: cfg.customUrl || '', model: cfg.model };
 }
 
+function aiVisionEndpoint(cfg) {
+  if (cfg.provider === 'deepseek') return null;
+  if (cfg.provider === 'dashscope') return { url: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', model: cfg.visionModel || 'qwen-vl-plus' };
+  return { url: cfg.customUrl || '', model: cfg.visionModel || 'gpt-4o-mini' };
+}
+
 function saveAiConfig() {
   aiConfig.provider = document.getElementById('ai-provider').value;
   aiConfig.model = document.getElementById('ai-model').value.trim();
   aiConfig.key = document.getElementById('ai-key').value.trim();
   aiConfig.customUrl = document.getElementById('ai-custom-url') ? document.getElementById('ai-custom-url').value.trim() : '';
+  aiConfig.visionModel = document.getElementById('ai-vision-model') ? document.getElementById('ai-vision-model').value.trim() : '';
   localStorage.setItem('XCT_AI_PROVIDER', aiConfig.provider);
   localStorage.setItem('XCT_AI_MODEL', aiConfig.model);
   localStorage.setItem('XCT_AI_KEY', aiConfig.key);
   localStorage.setItem('XCT_AI_CUSTOM_URL', aiConfig.customUrl || '');
+  localStorage.setItem('XCT_AI_VISION_MODEL', aiConfig.visionModel || '');
   showToast('AI 配置已保存');
   renderSettings();
 }
@@ -3527,6 +3544,91 @@ function aiGenAnalysisHtml(prefix) {
   return '<button type="button" id="ai-btn-' + prefix + '" class="btn btn-accent btn-sm" style="margin-top:6px;padding:4px 12px" onclick="event.stopPropagation();aiGenAnalysis(\'' + prefix + '\')"><i class="fas fa-wand-magic-sparkles"></i> AI 生成解析</button>';
 }
 
+// ==================== AI 识图批量录入 ====================
+let aiRecognizing = false;
+
+function aiCompressImage(file, maxSide) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const img = new Image();
+      img.onload = function() {
+        let w = img.width, h = img.height;
+        maxSide = maxSide || 1600;
+        if (w > maxSide || h > maxSide) {
+          if (w > h) { h = Math.round(h * maxSide / w); w = maxSide; }
+          else { w = Math.round(w * maxSide / h); h = maxSide; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = function() { reject(new Error('图片读取失败')); };
+      img.src = e.target.result;
+    };
+    reader.onerror = function() { reject(new Error('文件读取失败')); };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function aiRecognizeQuestions(files) {
+  const ep = aiVisionEndpoint(aiConfig);
+  if (!ep || !ep.url) throw new Error('识图功能需要通义千问或自定义多模态接口（DeepSeek 暂不支持识图）');
+  if (!aiConfig.key) throw new Error('请先在设置页配置 API Key');
+  const contents = [];
+  for (const f of files) {
+    const dataUrl = await aiCompressImage(f, 1600);
+    contents.push({ type: 'image_url', image_url: { url: dataUrl } });
+  }
+  contents.push({ type: 'text', text: '这些图片是公务员行测考试的错题整理内容。请逐题识别并严格按以下格式输出，不要输出任何多余说明：\n\n每道题以"第 N 题："开头（N 从 1 递增）。\n先输出题干（保留原有文字，多行照实输出）。\n选项每行一个，格式：A. 内容\n如果有手写或打印的"我的答案/我选"标注，输出：我的答案：X\n如果有圈出的正确答案，输出：正确答案：X\n如果图片上有手写解析/批注/标注内容，在【解析】后输出这些内容（整理成通顺文字）。\n多道题之间空一行。\n如果同一张图是一道材料分析题（一段共用材料 + 多个小题），先输出材料原文，然后每个小题以"第 N 题："单独成块，题干中不要重复材料。' });
+  const resp = await fetch(ep.url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + aiConfig.key },
+    body: JSON.stringify({
+      model: ep.model,
+      messages: [
+        { role: 'system', content: '你是精准的试卷文字识别助手，忠实识别图中文字，不做改写、不补充、不遗漏。' },
+        { role: 'user', content: contents }
+      ]
+    })
+  });
+  if (!resp.ok) {
+    let msg = 'HTTP ' + resp.status;
+    try { const j = await resp.json(); msg += '：' + (j.error && j.error.message || j.message || ''); } catch (e) {}
+    throw new Error(msg);
+  }
+  const j = await resp.json();
+  const text = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+  if (!text) throw new Error('识别结果为空，请重试');
+  return text;
+}
+
+function aiOnRecognizeFiles(input) {
+  const files = Array.from(input.files || []);
+  input.value = '';
+  if (!files.length) return;
+  if (aiRecognizing) { showToast('正在识别中…'); return; }
+  aiRecognizing = true;
+  const btn = document.getElementById('ai-recognize-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> AI 识别中…'; }
+  showToast('已选择 ' + files.length + ' 张图片，AI 识别中…');
+  aiRecognizeQuestions(files).then(text => {
+    inputMode = 'batch';
+    renderInput();
+    const ta = document.getElementById('batch-text');
+    if (ta) ta.value = text;
+    parseBatchText();
+    showToast('识别完成，请检查解析结果后确认导入');
+  }).catch(e => {
+    showToast('识别失败：' + e.message);
+  }).finally(() => {
+    aiRecognizing = false;
+    const b = document.getElementById('ai-recognize-btn');
+    if (b) { b.disabled = false; b.innerHTML = '<i class="fas fa-camera"></i> 拍照/选图，AI 自动识别'; }
+  });
+}
+
 function renderSettings() {
   const el = document.getElementById('page-settings');
   const syncStatusText = {offline:'未连接',syncing:'同步中…',synced:'已同步',error:'同步失败'};
@@ -3579,6 +3681,10 @@ function renderSettings() {
           <input id="ai-model" class="input-field" placeholder="默认：deepseek-chat / qwen-plus" value="${escHtml(aiConfig.model||'')}">
         </div>
         <div>
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">识图模型名称（可留空用默认）</label>
+          <input id="ai-vision-model" class="input-field" placeholder="用于 AI 识图录入；默认：qwen-vl-plus（通义）或 gpt-4o-mini" value="${escHtml(aiConfig.visionModel||'')}">
+        </div>
+        <div>
           <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">API Key</label>
           <div style="display:flex;gap:8px">
             <input id="ai-key" type="password" class="input-field" placeholder="粘贴你的 API Key" value="${escHtml(aiConfig.key||'')}" style="flex:1">
@@ -3623,7 +3729,7 @@ function renderSettings() {
         <p style="margin:0">面向公考备考人群的错题管理工具</p>
         <p style="margin:0">当前错题总数：${questions.length}</p>
         <p style="margin:0">所有数据存储在本地浏览器中，无内置错题</p>
-        <p style="margin:0">页面版本：<b style="color:var(--primary)">0828a</b>（AI 解析生成+复习一体化手写板+云同步合并版）</p>
+        <p style="margin:0">页面版本：<b style="color:var(--primary)">0828b</b>（AI 识图上传+AI 解析生成+复习一体化手写板+云同步合并版）</p>
       </div>
     </div>
   `;
@@ -4205,4 +4311,4 @@ window.__onKatexReady = function() { try { renderPage(currentTab); if (typeof up
 init();
 </script>
 </body>
-<!-- build: 0828a --></html>
+<!-- build: 0828b --></html>
