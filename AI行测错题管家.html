@@ -195,6 +195,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 // 固定共享身份：所有设备用同一身份读写，保证跨设备同步
 const FIXED_USER_ID = '00000000-0000-4000-8000-000000000001';
 let sbHasGroupCols = false; // 云端是否已有 material/subs 列（未跑过 ALTER TABLE 时降级不同步组题字段）
+let sbHasMatWidthCol = false; // 云端是否已有 material_img_widths 列
 let sb = null;
 let sbUserId = null;
 let sbSyncing = false;
@@ -236,6 +237,7 @@ function qToRow(q) {
     row.subs = q.subs||[];
     row.analysis_photos = q.analysisPhotos||[];
   }
+  if (sbHasMatWidthCol) row.material_img_widths = q.materialImgWidths||[];
   return row;
 }
 function rowToQ(r) {
@@ -250,6 +252,7 @@ function rowToQ(r) {
     materialPhotos: r.material_photos!=null ? r.material_photos : null,
     subs: r.subs!=null ? r.subs : null,
     analysisPhotos: r.analysis_photos!=null ? r.analysis_photos : null,
+    materialImgWidths: r.material_img_widths!=null ? r.material_img_widths : null,
     photos: r.photos||[], createDate: r.create_date||'', errorCount: r.error_count||1,
     reviewStatus: r.review_status||'待复习', lastReviewDate: r.last_review_date||null,
     isSeed: !!r.is_seed
@@ -354,6 +357,9 @@ async function sbSyncFromCloud() {
         if (local && cq.analysisPhotos == null && local.analysisPhotos && local.analysisPhotos.length) {
           cq.analysisPhotos = local.analysisPhotos;
         }
+        if (local && cq.materialImgWidths == null && local.materialImgWidths && local.materialImgWidths.length) {
+          cq.materialImgWidths = local.materialImgWidths;
+        }
         localMap[cq.id] = cq;
       });
       questions = Object.values(localMap);
@@ -431,6 +437,10 @@ async function sbInit() {
       sbHasGroupCols = !probe.error;
       if (probe.error) console.warn('subs 列不存在，材料组题字段暂不同步（请在 Supabase 执行 ALTER TABLE）:', probe.error.message);
     } catch(e) { sbHasGroupCols = false; }
+    try {
+      const probeW = await sb.from('questions').select('material_img_widths').limit(1);
+      sbHasMatWidthCol = !probeW.error;
+    } catch(e) { sbHasMatWidthCol = false; }
     // 先拉云端数据，再迁移旧板块，最后上传本地数据（避免云端旧数据覆盖迁移结果）
     await sbSyncFromCloud();
     migrateModules();
@@ -1178,22 +1188,14 @@ function renderInput() {
   batchText = '';
   batchParsed = null;
   el.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <div style="margin-bottom:16px">
       <h2 style="font-size:18px;font-weight:700;margin:0">录入错题</h2>
-      <button class="btn ${inputMode==='batch'?'btn-primary':'btn-outline'} btn-sm" onclick="toggleInputMode()">
-        <i class="fas fa-${inputMode==='batch'?'pen':'list'}"></i> ${inputMode==='batch'?'切换单条录入':'切换批量录入'}
-      </button>
+      <p style="font-size:12px;color:var(--muted);margin:4px 0 0">单题粘贴一段文字即可（下方模板格式）；多题一次粘贴多段；资料分析请按材料组格式粘贴（1 组 1 道或多道小题均可）</p>
     </div>
-    ${inputMode==='batch' ? renderBatchForm() : renderSingleForm()}
+    ${renderBatchForm()}
     <div id="batch-preview" style="margin-top:14px"></div>
   `;
-  if (inputMode === 'single') updateSubTypes();
-}
-
-function toggleInputMode() {
-  inputMode = inputMode === 'single' ? 'batch' : 'single';
-  batchParsed = null;
-  renderInput();
+  updateBatchModuleHint(batchModule);
 }
 
 function renderSingleForm() {
@@ -1355,7 +1357,7 @@ function renderBatchForm() {
     <div class="card" style="margin-bottom:12px">
       <div style="margin-bottom:12px">
         <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">本批错题所属模块 <span style="color:var(--danger)">*</span></label>
-        <select id="batch-module" class="input-field">
+        <select id="batch-module" class="input-field" onchange="onBatchModuleChange(this.value)">
           <option value="">请选择模块</option>
           ${ALL_MODULES.map(m => `<option value="${m}" ${batchModule===m?'selected':''}>${m}</option>`).join('')}
         </select>
@@ -1367,6 +1369,7 @@ function renderBatchForm() {
           <button class="btn btn-outline btn-sm" onclick="copyBatchTemplate()"><i class="fas fa-copy"></i> 复制</button>
         </div>
       </div>
+      <div id="batch-module-hint" style="margin-top:8px"></div>
       <pre id="batch-template" style="display:none;font-size:11.5px;background:var(--bg);padding:10px;border-radius:8px;line-height:1.7;margin:10px 0 0;white-space:pre-wrap;color:var(--muted)">第 1 题：（第 1 页）
 这里写题干内容……
 这段文字意在强调：
@@ -1415,9 +1418,10 @@ B. 增加了6个
         <i class="fas fa-wand-magic-sparkles" style="color:var(--accent)"></i>
         <span style="font-size:14px;font-weight:700">AI 识图上传</span>
       </div>
-      <p style="font-size:12px;color:var(--muted);margin:0 0 10px">拍/截整页错题或上传 PDF 试卷（含手写批注），AI 自动识别题型、题干、选项、答案与解析；资料分析材料组会按现有组题逻辑识别，材料中的图表/表格自动截图保留。需通义千问或自定义多模态接口（设置页配置）。</p>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 10px">拍照/选图/上传 PDF 试卷（含手写批注），也可截图后在本页直接 Ctrl/⌘+V 粘贴。AI 按统一模板识别题型、题干、选项、答案与解析（不保留原题号）；资料分析按材料组逻辑识别，材料中的图表/表格自动截图为材料截图（识别为纯文字图片时直接 OCR 文字入库）。需通义千问或自定义多模态接口（设置页配置）。</p>
       <input type="file" accept="image/*,application/pdf" multiple id="ai-recognize-input" style="display:none" onchange="aiOnRecognizeFiles(this)">
       <button id="ai-recognize-btn" class="btn btn-accent btn-sm" style="width:100%" onclick="document.getElementById('ai-recognize-input').click()"><i class="fas fa-camera"></i> 拍照/选图片或 PDF，AI 自动识别</button>
+      <p style="font-size:11px;color:var(--muted);margin:6px 0 0">提示：电脑截图后无需选文件，在本页面直接粘贴（⌘/Ctrl+V）即自动开始识别</p>
     </div>
     <div class="card">
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">粘贴错题内容（多题用【题目1】【题目2】依次分隔）</label>
@@ -1425,6 +1429,49 @@ B. 增加了6个
       <button class="btn btn-primary" style="width:100%;margin-top:10px" onclick="parseBatchText()"><i class="fas fa-magic"></i> 解析并预览</button>
     </div>`;
 }
+
+function onBatchModuleChange(mod) {
+  batchModule = mod;
+  updateBatchModuleHint(mod);
+  // 切换到资料分析且粘贴框为空时，自动填入材料组模板方便修改
+  const ta = document.getElementById('batch-text');
+  if (mod === '资料分析' && ta && !ta.value.trim()) {
+    ta.value = '【材料】\n（材料/表格文字贴这里）\n\n【小题1】\n与2022年相比，2023年……（ ）。\nA. 减少了4个\nB. 增加了6个\nC. 减少了6个\nD. 增加了4个\n【我的答案】A\n【正确答案】B\n【正确率】60\n【解析】……';
+  }
+}
+
+function batchGroupTemplateText() {
+  return '【材料】\n2023年，某省实现地区生产总值1000亿元，同比增长5.2%。其中，第一产业增加值……\n\n【小题1】\n2022年，该省地区生产总值约为多少亿元？（ ）\nA. 900\nB. 930\nC. 950\nD. 980\n【我的答案】A\n【正确答案】C\n【正确率】60\n【解析】基期量 = 现期量 /（1+增长率）= 1000/1.052 ≈ 950 亿元。\n\n【小题2】\n（第二小题题干……）\nA. 选项A\nB. 选项B\nC. 选项C\nD. 选项D\n【我的答案】B\n【正确答案】D\n【解析】……\n\n来源：2025联考真题';
+}
+
+function batchSingleTemplateText(mod) {
+  const typeLine = mod && MODULE_TYPES[mod] && MODULE_TYPES[mod].length ? '题型：' + MODULE_TYPES[mod][0] : '题型：（选填）';
+  return '第 1 题：（第 1 页）\n这里写题干内容（单题就粘贴一段即可）\n\n【选项】\nA. 选项A内容\nB. 选项B内容\nC. 选项C内容\nD. 选项D内容\n\n【我的答案】B\n【正确答案】D\n【正确率】60\n【解析】解析内容……\n\n' + typeLine + '\n来源：2025联考真题\n\n（多题：空一行后写"第 2 题："继续粘贴，或用 --- 分隔）';
+}
+
+function updateBatchModuleHint(mod) {
+  const el = document.getElementById('batch-module-hint');
+  if (!el) return;
+  if (!mod) { el.innerHTML = ''; return; }
+  const fill = (tpl) => {
+    const ta = document.getElementById('batch-text');
+    if (ta) ta.value = tpl;
+    showToast('模板已填入，直接修改即可');
+  };
+  if (mod === '资料分析') {
+    el.innerHTML = `<div style="font-size:12px;color:var(--accent);background:rgba(249,115,22,.08);padding:8px 10px;border-radius:8px;line-height:1.6">
+      资料分析按<b>材料组</b>录入：【材料】+ 若干【小题N】（一组可以只有 1 道小题）。
+      <button class="btn btn-outline btn-sm" style="margin-left:6px;padding:2px 10px" onclick="fillMaterialGroupTpl()"><i class="fas fa-file-import"></i> 填入材料组模板</button>
+    </div>`;
+  } else {
+    el.innerHTML = `<div style="font-size:12px;color:var(--primary);background:rgba(59,130,246,.06);padding:8px 10px;border-radius:8px;line-height:1.6">
+      ${mod}按统一模板录入，单题粘贴一段即可，多题依次粘贴。
+      <button class="btn btn-outline btn-sm" style="margin-left:6px;padding:2px 10px" onclick="fillSingleTpl()"><i class="fas fa-file-import"></i> 填入单题模板</button>
+    </div>`;
+  }
+}
+function fillMaterialGroupTpl() { const ta = document.getElementById('batch-text'); if (ta) { ta.value = batchGroupTemplateText(); showToast('材料组模板已填入'); } }
+function fillSingleTpl() { const mod = document.getElementById('batch-module') ? document.getElementById('batch-module').value : ''; const ta = document.getElementById('batch-text'); if (ta) { ta.value = batchSingleTemplateText(mod); showToast('单题模板已填入'); } }
 
 function toggleBatchTemplate() {
   const pre = document.getElementById('batch-template');
@@ -1467,6 +1514,15 @@ function fallbackCopy(text) {
   ta.value = text; document.body.appendChild(ta); ta.select();
   try { document.execCommand('copy'); showToast('模板已复制'); } catch(e) { showToast('复制失败，请手动长按模板复制'); }
   document.body.removeChild(ta);
+}
+
+// 去掉题干开头的题号（"第1题：（第1页）"整行、"1.""（1）"等行首序号）
+function stripQuestionNo(text) {
+  if (!text) return text;
+  let t = String(text).trim();
+  t = t.replace(/^第?\s*\d+\s*题[：:].*(?:\n|$)/, '');
+  t = t.replace(/^\s*(?:第?\s*\d+\s*题|\(\s*\d+\s*\)|（\s*\d+\s*）)\s*[：:、.．]?\s*/, '');
+  return t.trim();
 }
 
 function parseBatchContent(text) {
@@ -1569,9 +1625,10 @@ function parseBatchContent(text) {
       if (optSeen) { aLines.push(line); return; }
       qLines.push(line);
     });
-    q.question = qLines.join('\n').trim();
+    q.question = stripQuestionNo(qLines.join('\n').trim());
     q.analysis = aLines.join('\n').trim();
     q.material = matLines.join('\n').trim();
+    q.subs.forEach(s => { s.question = stripQuestionNo(s.question); });
     // 有效小题：至少有题干且填了两个答案
     q.subs = q.subs.filter(s => s.question && s.myAnswer && s.correctAnswer);
     if (q.material && q.subs.length) {
@@ -1664,6 +1721,20 @@ function confirmBatchImport() {
         createDate: todayStr, errorCount: 1, reviewStatus: '待复习', lastReviewDate: null, isSeed: false
       });
       added += p.subs.length;
+    } else if (batchModule === '资料分析') {
+      // 资料分析统一按材料组形式：无共用材料时材料留空，题目作为唯一小题成组
+      questions.push({
+        id: genId(), module: batchModule, type: unifyType || p.type || '', source: unifySource || p.source || '',
+        question: '', optionA:'', optionB:'', optionC:'', optionD:'',
+        myAnswer:'', correctAnswer:'', accuracy:'', errorReasons:[], analysis:'',
+        notes:'', photos:[],
+        material: '', materialPhotos: [], materialImgWidths: [],
+        subs: [{ question: p.question, optionA: p.optionA, optionB: p.optionB, optionC: p.optionC, optionD: p.optionD,
+          myAnswer: p.myAnswer, correctAnswer: p.correctAnswer, accuracy: p.accuracy||'',
+          errorReasons: p.errorReasons||[], analysis: p.analysis, reviewStatus:'待复习', errorCount:1, lastReviewDate:null }],
+        createDate: todayStr, errorCount: 1, reviewStatus: '待复习', lastReviewDate: null, isSeed: false
+      });
+      added += 1;
     } else {
       questions.push({
         id: genId(),
@@ -1881,6 +1952,8 @@ document.addEventListener('paste', function(e) {
             canvas.getContext('2d').drawImage(img, 0, 0, w, h);
             gq.materialPhotos = gq.materialPhotos || [];
             gq.materialPhotos.push(canvas.toDataURL('image/jpeg', 0.7));
+            gq.materialImgWidths = gq.materialImgWidths || [];
+            gq.materialImgWidths.push(150);
             rerenderGroupEdit(gq);
             showToast('已粘贴材料截图');
           };
@@ -1896,33 +1969,9 @@ document.addEventListener('paste', function(e) {
       return;
     }
     if (document.getElementById('page-input').classList.contains('active')) {
+      // 录入页粘贴图片：交给 AI 识图（统一入口）
       e.preventDefault();
-      // 组题模式下粘贴进材料截图
-      if (inputGroupOn) {
-        if (inputMatPhotos.length >= 3) { showToast('材料截图最多3张'); return; }
-        const r = new FileReader();
-        r.onload = function(ev) {
-          const img = new Image();
-          img.onload = function() {
-            const canvas = document.createElement('canvas');
-            let w = img.width, h = img.height;
-            const maxSide = 1000;
-            if (w > maxSide || h > maxSide) {
-              if (w > h) { h = Math.round(h * maxSide / w); w = maxSide; }
-              else { w = Math.round(w * maxSide / h); h = maxSide; }
-            }
-            canvas.width = w; canvas.height = h;
-            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-            inputMatPhotos.push(canvas.toDataURL('image/jpeg', 0.7));
-            updateInputMatPreview();
-            showToast('已粘贴材料截图');
-          };
-          img.src = ev.target.result;
-        };
-        r.readAsDataURL(file);
-      } else {
-        processPastedImage(file, 'input', null);
-      }
+      aiRecognizePastedImage(file);
       return;
     }
   }
@@ -2590,7 +2639,7 @@ function renderGroupCard(q) {
       ${q.source ? `<span style="font-size:11px;color:#0f766e;background:rgba(20,184,166,.1);padding:2px 8px;border-radius:10px"><i class="fas fa-book-open" style="margin-right:3px;font-size:10px"></i>${q.source}</span>` : ''}
       <span style="font-size:11px;color:var(--muted);margin-left:auto;font-weight:600">${q.createDate}</span>
     </div>
-    ${q.materialPhotos && q.materialPhotos.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${q.materialPhotos.map(p => `<img src="${p}" style="height:${isExpanded?'160px':'90px'};width:auto;max-width:${q.materialPhotos.length>1?'48%':'100%'};object-fit:cover;border-radius:8px;display:block" onclick="event.stopPropagation();previewPhoto('${p}')">`).join('')}</div>` : ''}
+    ${q.materialPhotos && q.materialPhotos.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${q.materialPhotos.map((p,i) => {const w=(q.materialImgWidths||[])[i];return `<img src="${p}" style="${w?`width:${w}px;max-width:100%;height:auto;`:`height:${isExpanded?'160px':'90px'};width:auto;max-width:${q.materialPhotos.length>1?'48%':'100%'};`}object-fit:cover;border-radius:8px;display:block" onclick="event.stopPropagation();previewPhoto('${p}')">`}).join('')}</div>` : ''}
     ${q.material ? `<p style="font-size:13px;line-height:1.6;margin:0 0 8px;color:${isExpanded?'var(--text)':'var(--muted)'}">${isExpanded ? renderMathInText(q.material).replace(/\n/g,'<br>') : escHtml((q.material||'').slice(0,60)) + '…'}</p>` : ''}
     <div style="border-top:1px solid var(--border);padding-top:8px">
       ${q.subs.map((s, i) => {
@@ -2767,7 +2816,7 @@ function renderGroupDetail(q, el) {
         <span style="font-size:11px;color:#7c3aed;background:rgba(139,92,246,.1);padding:2px 8px;border-radius:10px;font-weight:600">已掌握 ${mastered}/${q.subs.length}</span>
       </div>
       <div class="detail-section"><h4>材料</h4>
-        ${q.materialPhotos && q.materialPhotos.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${q.materialPhotos.map(p=>`<img src="${p}" style="max-width:100%;max-height:300px;border-radius:8px;display:block;object-fit:contain" onclick="previewPhoto('${p}')">`).join('')}</div>` : ''}
+        ${q.materialPhotos && q.materialPhotos.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${q.materialPhotos.map((p,i)=>{const w=(q.materialImgWidths||[])[i];return `<img src="${p}" style="width:${w?w+'px':'auto'};max-width:100%;border-radius:8px;display:block;object-fit:contain" onclick="previewPhoto('${p}')">`}).join('')}</div>` : ''}
         ${q.material ? `<p style="line-height:1.7;white-space:pre-line">${renderMathInText(q.material)}</p>` : ''}
       </div>
       ${q.subs.map((s, i) => `
@@ -2818,9 +2867,9 @@ function editGroup(id) {
       <input id="gedit-source" class="input-field" value="${(q.source||'').replace(/"/g,'&quot;')}" style="margin-bottom:12px">
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">材料文字</label>
       <textarea id="gedit-material" class="input-field" rows="4" style="margin-bottom:8px">${escHtml(q.material||'')}</textarea>
-      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">材料截图（最多3张）</label>
-      <div id="gedit-matPreview" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">
-        ${(q.materialPhotos||[]).map((p,i)=>`<div style="position:relative;display:inline-block"><img src="${p}" style="width:84px;height:84px;object-fit:cover;border-radius:8px;display:block" onclick="previewPhoto('${p}')"><button onclick="removeGroupMatPhoto(${i})" style="position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;background:var(--danger);color:#fff;border:2px solid #fff;font-size:13px;line-height:18px;cursor:pointer;padding:0">×</button></div>`).join('') || '<span style="font-size:12px;color:var(--muted)">暂无截图（可粘贴添加）</span>'}
+      <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">材料截图（最多3张，拖动滑块调整展示宽度）</label>
+      <div id="gedit-matPreview" style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px">
+        ${(q.materialPhotos||[]).map((p,i)=>{const w=(q.materialImgWidths||[])[i]||150;return `<div style="display:inline-block;text-align:center;max-width:100%"><div style="position:relative;display:inline-block"><img data-matimg="${i}" src="${p}" style="width:${w}px;max-width:100%;height:auto;border-radius:8px;display:block" onclick="previewPhoto('${p}')"><button onclick="removeGroupMatPhoto(${i})" style="position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;background:var(--danger);color:#fff;border:2px solid #fff;font-size:13px;line-height:18px;cursor:pointer;padding:0">×</button></div><input type="range" min="80" max="400" step="10" value="${w}" style="width:${Math.min(Math.max(w,120),220)}px;margin-top:4px;display:block" oninput="setMatImgWidth(${i}, this.value)"></div>`}).join('') || '<span style="font-size:12px;color:var(--muted)">暂无截图（可粘贴添加）</span>'}
       </div>
       <input type="file" id="gedit-matInput" accept="image/*" style="display:none" onchange="handleGroupMatUpload(this)">
       <button class="btn btn-outline btn-sm" style="margin-bottom:14px" onclick="document.getElementById('gedit-matInput').click()"><i class="fas fa-camera"></i> 添加材料截图</button>
@@ -2917,6 +2966,8 @@ function handleGroupMatUpload(input) {
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
       q.materialPhotos = q.materialPhotos || [];
       q.materialPhotos.push(canvas.toDataURL('image/jpeg', 0.7));
+      q.materialImgWidths = q.materialImgWidths || [];
+      q.materialImgWidths.push(150);
       rerenderGroupEdit(q);
     };
     img.src = e.target.result;
@@ -2928,7 +2979,18 @@ function removeGroupMatPhoto(i) {
   const q = questions.find(x => x.id === editCurrentId);
   if (!q) return;
   q.materialPhotos.splice(i, 1);
+  if (q.materialImgWidths) q.materialImgWidths.splice(i, 1);
+  saveQuestions();
   rerenderGroupEdit(q);
+}
+function setMatImgWidth(i, w) {
+  const q = questions.find(x => x.id === editCurrentId);
+  if (!q) return;
+  q.materialImgWidths = q.materialImgWidths || [];
+  q.materialImgWidths[i] = Number(w);
+  saveQuestions();
+  const img = document.querySelector('#gedit-matPreview img[data-matimg="' + i + '"]');
+  if (img) img.style.width = w + 'px';
 }
 // 把当前编辑表单内容收进 q（不保存）
 function collectGroupEditInto(q) {
@@ -3703,7 +3765,7 @@ async function aiRecognizeStructured(compressed, moduleHint) {
   const ep = aiCheckVisionReady();
   const contents = [];
   compressed.forEach(u => contents.push({ type: 'image_url', image_url: { url: u } }));
-  contents.push({ type: 'text', text: '这些是公务员考试行测的错题整理图片，按上传顺序编号，imageIndex 从 0 开始。请识别其中所有题目，并只输出一个严格 JSON（不要输出任何其他字符、不要用 markdown 代码块）：\n{"groups":[{"material":"共用材料文字（没有则空字符串；文字内容逐字转写；若材料只有图表没有文字则留空）","figures":[{"imageIndex":0,"bbox":[x1,y1,x2,y2]}],"type":"题型","subs":[{"stem":"题干","options":["选项A内容","选项B内容","选项C内容","选项D内容"],"myAnswer":"A 或空字符串","correctAnswer":"B 或空字符串","accuracy":"数字或空字符串","analysis":"解析或手写批注（没有则空字符串）"}]}]}\n规则：\n1. figures 只列出需要保留为图片的图表/表格/统计图区域（如资料分析的统计表、统计图），bbox 是该区域在 imageIndex 对应图片上的像素坐标 [左上x, 左上y, 右下x, 右下y]，没有图表则 figures 为空数组。\n2. 材料组题（如资料分析：一段共用材料带多个小题）放在同一个 group：material 填材料文字，subs 按顺序列出各小题，小题题干不要重复材料；独立题各自一个 group，material 为空。\n3. ' + aiTypeHint(moduleHint) + '在 group 的 type 字段给出。\n4. 能看到"我的答案/我选/错选"的手写或打印标注时填 myAnswer，能看到圈出的正确答案时填 correctAnswer（大写字母）。\n5. accuracy 只有图上明确写出正确率数字时才填。' });
+  contents.push({ type: 'text', text: '这些是公务员考试行测的错题整理图片，按上传顺序编号，imageIndex 从 0 开始。请识别其中所有题目，并只输出一个严格 JSON（不要输出任何其他字符、不要用 markdown 代码块）：\n{"groups":[{"material":"共用材料文字（没有则空字符串；文字内容逐字转写；若材料只有图表没有文字则留空）","figures":[{"imageIndex":0,"bbox":[x1,y1,x2,y2]}],"type":"题型","subs":[{"stem":"题干","options":["选项A内容","选项B内容","选项C内容","选项D内容"],"myAnswer":"A 或空字符串","correctAnswer":"B 或空字符串","accuracy":"数字或空字符串","analysis":"解析或手写批注（没有则空字符串）"}]}]}\n规则：\n1. figures 只列出需要保留为图片的图表/表格/统计图区域（如资料分析的统计表、统计图），bbox 是该区域在 imageIndex 对应图片上的像素坐标 [左上x, 左上y, 右下x, 右下y]，没有图表则 figures 为空数组。\n2. 材料组题（如资料分析：一段共用材料带一个或多个小题）放在同一个 group：material 只填材料本身的文字（统计数据、表格转写内容），题干所问的问题一律放进对应小题的 stem；即使只有 1 道小题也必须成组；小题题干不要重复材料；独立题（非材料组）各自一个 group，material 为空。\n3. ' + aiTypeHint(moduleHint) + '在 group 的 type 字段给出。\n4. 能看到"我的答案/我选/错选"的手写或打印标注时填 myAnswer，能看到圈出的正确答案时填 correctAnswer（大写字母）。\n5. accuracy 只有图上明确写出正确率数字时才填。\n6. stem/material 等文字内容一律去掉原题号（如"第1题""1.""（1）"等序号），题干直接从题目内容开始。' });
   const raw = await aiCallVision(ep, contents, '你是精准的试卷识别助手，忠实识别图中文字，不改写、不补充、不遗漏，输出合法 JSON。');
   const cleaned = String(raw).replace(/```json/gi, '').replace(/```/g, '').trim();
   const m = cleaned.match(/\{[\s\S]*\}/);
@@ -3717,12 +3779,15 @@ async function aiRecognizePlain(compressed, moduleHint) {
   const ep = aiCheckVisionReady();
   const contents = [];
   compressed.forEach(u => contents.push({ type: 'image_url', image_url: { url: u } }));
-  contents.push({ type: 'text', text: '这些图片是公务员行测考试的错题整理内容。请逐题识别并严格按以下格式输出，不要输出任何多余说明：\n\n每道题以"第 N 题："开头（N 从 1 递增）。\n先输出题干（保留原有文字，多行照实输出）。\n选项每行一个，格式：A. 内容\n如果有手写或打印的"我的答案/我选"标注，输出：我的答案：X\n如果有圈出的正确答案，输出：正确答案：X\n如果图片上有手写解析/批注内容，在【解析】后输出（整理成通顺文字）。\n题型：填最可能的题型。' + aiTypeHint(moduleHint) + '\n多道题之间空一行。\n如果是材料组题（一段共用材料 + 多个小题，如资料分析）：该题块先输出【材料】行再输出材料原文，然后每个小题用【小题1】【小题2】依次分隔，小题内含题干、选项、我的答案、正确答案。' });
+  contents.push({ type: 'text', text: '这些图片是公务员行测考试的错题整理内容。请逐题识别并严格按以下格式输出，不要输出任何多余说明：\n\n每道题以"第 N 题："开头（N 从 1 递增）。\n先输出题干（保留原有文字，多行照实输出）。\n选项每行一个，格式：A. 内容\n如果有手写或打印的"我的答案/我选"标注，输出：我的答案：X\n如果有圈出的正确答案，输出：正确答案：X\n如果图片上有手写解析/批注内容，在【解析】后输出（整理成通顺文字）。\n题型：填最可能的题型。' + aiTypeHint(moduleHint) + '\n多道题之间空一行。\n如果是材料组题（一段共用材料 + 一个或多个小题，如资料分析）：该题块先输出【材料】行再输出材料原文，然后每个小题用【小题1】【小题2】依次分隔，小题内含题干、选项、我的答案、正确答案；即使只有 1 道小题也要成组。材料只放共用材料文字，题干所问放进小题；所有题干内容去掉原题号。' });
   return aiCallVision(ep, contents, '你是精准的试卷文字识别助手，忠实识别图中文字，不做改写、不补充、不遗漏。');
 }
 
+function aiStripQuestionNo(text) {
+  return String(text || '').replace(/^\s*(?:第\s*\d+\s*题|\d+[.、．)）]|\(\d+\)|（\d+）)\s*[:：]?\s*/, '').trim();
+}
 function aiSubLines(s) {
-  let out = String(s.stem || '').trim() + '\n';
+  let out = aiStripQuestionNo(s.stem).replace(/^\s*\d+[.、．)）]\s*/, '') + '\n';
   (s.options || []).forEach((o, oi) => {
     if (oi > 3) return;
     out += String.fromCharCode(65 + oi) + '. ' + String(o).replace(/^[A-D]\s*[.、．:：]\s*/, '') + '\n';
@@ -3753,7 +3818,7 @@ async function aiBuildFromJson(j, compressed) {
     } else {
       for (const s of subs) {
         n++;
-        let block = '第 ' + n + ' 题：\n' + aiSubLines(s);
+        let block = '第 ' + n + ' 题：\n' + aiSubLines(s).replace(/^\s*\d+[.、．)）]\s*/, '');
         if (g.type) block += '题型：' + g.type + '\n';
         blocks.push(block.trim());
       }
@@ -3790,6 +3855,27 @@ async function aiCropFigures(compressedUrls, figures) {
   return out.slice(0, 3);
 }
 
+async function aiRunRecognitionPipeline(compressed, statusFn) {
+  const moduleHint = document.getElementById('batch-module') ? document.getElementById('batch-module').value : '';
+  if (!compressed.length) throw new Error('没有可识别的图片内容');
+  statusFn('<i class="fas fa-spinner fa-spin"></i> AI 识别 ' + compressed.length + ' 张图中…');
+  let text = null;
+  try {
+    const j = await aiRecognizeStructured(compressed, moduleHint);
+    const built = await aiBuildFromJson(j, compressed);
+    text = built.text;
+    aiPendingGroupPhotos = built.groupPhotos;
+    if (!text.trim()) throw new Error('empty');
+  } catch (e) {
+    aiPendingGroupPhotos = null;
+    text = await aiRecognizePlain(compressed, moduleHint);
+  }
+  const ta = document.getElementById('batch-text');
+  if (ta) ta.value = text;
+  parseBatchText();
+  showToast('识别完成，请检查解析结果并统一设置来源后导入');
+}
+
 async function aiOnRecognizeFiles(input) {
   const files = Array.from(input.files || []);
   input.value = '';
@@ -3799,7 +3885,6 @@ async function aiOnRecognizeFiles(input) {
   const setBtn = t => { const b = document.getElementById('ai-recognize-btn'); if (b) { b.disabled = !!t; b.innerHTML = t || '<i class="fas fa-camera"></i> 拍照/选图片或 PDF，AI 自动识别'; } };
   setBtn('<i class="fas fa-spinner fa-spin"></i> 预处理中…');
   try {
-    const moduleHint = document.getElementById('batch-module') ? document.getElementById('batch-module').value : '';
     const compressed = [];
     for (const f of files) {
       if (f.type === 'application/pdf' || /\.pdf$/i.test(f.name)) {
@@ -3810,25 +3895,23 @@ async function aiOnRecognizeFiles(input) {
         compressed.push(await aiCompressImage(f, 1600));
       }
     }
-    if (!compressed.length) throw new Error('没有可识别的图片内容');
-    setBtn('<i class="fas fa-spinner fa-spin"></i> AI 识别 ' + compressed.length + ' 张图中…');
-    let text = null;
-    try {
-      const j = await aiRecognizeStructured(compressed, moduleHint);
-      const built = await aiBuildFromJson(j, compressed);
-      text = built.text;
-      aiPendingGroupPhotos = built.groupPhotos;
-      if (!text.trim()) throw new Error('empty');
-    } catch (e) {
-      aiPendingGroupPhotos = null;
-      text = await aiRecognizePlain(compressed, moduleHint);
-    }
-    inputMode = 'batch';
-    renderInput();
-    const ta = document.getElementById('batch-text');
-    if (ta) ta.value = text;
-    parseBatchText();
-    showToast('识别完成，请检查解析结果并统一设置来源后导入');
+    await aiRunRecognitionPipeline(compressed, setBtn);
+  } catch (e) {
+    showToast('识别失败：' + e.message);
+  } finally {
+    aiRecognizing = false;
+    setBtn(null);
+  }
+}
+
+async function aiRecognizePastedImage(file) {
+  if (aiRecognizing) { showToast('正在识别中…'); return; }
+  aiRecognizing = true;
+  const setBtn = t => { const b = document.getElementById('ai-recognize-btn'); if (b) { b.disabled = !!t; b.innerHTML = t || '<i class="fas fa-camera"></i> 拍照/选图片或 PDF，AI 自动识别'; } };
+  setBtn('<i class="fas fa-spinner fa-spin"></i> 粘贴图片识别中…');
+  try {
+    const compressed = [await aiCompressImage(file, 1600)];
+    await aiRunRecognitionPipeline(compressed, setBtn);
   } catch (e) {
     showToast('识别失败：' + e.message);
   } finally {
@@ -3937,7 +4020,7 @@ function renderSettings() {
         <p style="margin:0">面向公考备考人群的错题管理工具</p>
         <p style="margin:0">当前错题总数：${questions.length}</p>
         <p style="margin:0">所有数据存储在本地浏览器中，无内置错题</p>
-        <p style="margin:0">页面版本：<b style="color:var(--primary)">0828c</b>（AI 识图升级：题型识别+PDF+材料截图+统一来源）</p>
+        <p style="margin:0">页面版本：<b style="color:var(--primary)">0901a</b>（录入整合+资料分析强制成组+识图粘贴+图片宽度调整）</p>
       </div>
     </div>
   `;
@@ -4080,7 +4163,7 @@ function buildSketchQuestionHtml(qid, subIndex) {
     const s = q.subs[subIndex];
     if (!s) return '';
     if (q.materialPhotos && q.materialPhotos.length) {
-      parts.push(`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">${q.materialPhotos.map(p => `<img src="${p}" style="max-width:100%;max-height:220px;border-radius:6px;display:block">`).join('')}</div>`);
+      parts.push(`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">${q.materialPhotos.map((p,i) => {const w=(q.materialImgWidths||[])[i];return `<img src="${p}" style="${w?`width:${w}px;max-width:100%;`:'max-width:100%;max-height:220px;'}border-radius:6px;display:block">`}).join('')}</div>`);
     }
     if (q.material) parts.push(`<div style="white-space:pre-line;margin-bottom:6px">${renderMathInText(q.material)}</div>`);
     parts.push(`<div style="font-weight:700;margin:4px 0">第 ${subIndex+1} 小题</div>`);
@@ -4519,4 +4602,4 @@ window.__onKatexReady = function() { try { renderPage(currentTab); if (typeof up
 init();
 </script>
 </body>
-<!-- build: 0828c --></html>
+<!-- build: 0901a --></html>
