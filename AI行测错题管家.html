@@ -1318,14 +1318,14 @@ function handleInputMatUpload(input) {
     img.onload = function() {
       const canvas = document.createElement('canvas');
       let w = img.width, h = img.height;
-      const maxSide = 1000;
+      const maxSide = 2400; // 材料截图保留原图清晰度（仅超 2400px 才缩放）
       if (w > maxSide || h > maxSide) {
         if (w > h) { h = Math.round(h * maxSide / w); w = maxSide; }
         else { w = Math.round(w * maxSide / h); h = maxSide; }
       }
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      inputMatPhotos.push(canvas.toDataURL('image/jpeg', 0.7));
+      inputMatPhotos.push(canvas.toDataURL('image/jpeg', 0.9));
       updateInputMatPreview();
     };
     img.src = e.target.result;
@@ -1418,10 +1418,21 @@ B. 增加了6个
         <i class="fas fa-wand-magic-sparkles" style="color:var(--accent)"></i>
         <span style="font-size:14px;font-weight:700">AI 识图上传</span>
       </div>
-      <p style="font-size:12px;color:var(--muted);margin:0 0 10px">拍照/选图/上传 PDF 试卷（含手写批注），也可截图后在本页直接 Ctrl/⌘+V 粘贴。AI 按统一模板识别题型、题干、选项、答案与解析（不保留原题号）；资料分析按材料组逻辑识别，材料中的图表/表格自动截图为材料截图（识别为纯文字图片时直接 OCR 文字入库）。需通义千问或自定义多模态接口（设置页配置）。</p>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 10px">拍照/选图/上传 PDF 试卷（含手写批注）。图片先加入待识别列表，确认没问题再点「开始识别」。AI 按统一模板识别题型、题干、选项、答案与解析（不保留原题号）；资料分析按材料组逻辑识别，图片中为表格/图表的部分不再文字转写，仅保留原图并识别题目文字内容。需通义千问或自定义多模态接口（设置页配置）。</p>
       <input type="file" accept="image/*,application/pdf" multiple id="ai-recognize-input" style="display:none" onchange="aiOnRecognizeFiles(this)">
-      <button id="ai-recognize-btn" class="btn btn-accent btn-sm" style="width:100%" onclick="document.getElementById('ai-recognize-input').click()"><i class="fas fa-camera"></i> 拍照/选图片或 PDF，AI 自动识别</button>
-      <p style="font-size:11px;color:var(--muted);margin:6px 0 0">提示：电脑截图后无需选文件，在本页面直接粘贴（⌘/Ctrl+V）即自动开始识别</p>
+      <div style="display:flex;gap:8px">
+        <button id="ai-recognize-btn" class="btn btn-accent btn-sm" style="flex:1" onclick="document.getElementById('ai-recognize-input').click()"><i class="fas fa-camera"></i> 拍照/选图片或 PDF</button>
+        <button id="ai-paste-btn" class="btn btn-primary btn-sm" style="flex:1" onclick="aiPasteFromClipboard()"><i class="fas fa-clipboard"></i> 粘贴已复制的图片</button>
+      </div>
+      <div id="ai-pending-wrap" class="hidden" style="margin-top:10px">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+          <span style="font-size:12px;font-weight:700;color:var(--accent)">待识别图片（点击小图可移除）</span>
+          <button class="btn btn-outline btn-sm" style="margin-left:auto;padding:2px 10px" onclick="aiClearPending()">清空</button>
+        </div>
+        <div id="ai-pending-preview" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+        <button id="ai-start-recognize-btn" class="btn btn-success btn-sm" style="width:100%;margin-top:10px" onclick="aiStartRecognition()"><i class="fas fa-play"></i> 开始识别</button>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin:6px 0 0">iPad：截图复制后点上方「粘贴已复制的图片」加入；电脑：也可直接 ⌘/Ctrl+V 粘贴。图片均原图保留，导入后可在编辑中裁剪调整。</p>
     </div>
     <div class="card">
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">粘贴错题内容（多题用【题目1】【题目2】依次分隔）</label>
@@ -1943,7 +1954,7 @@ document.addEventListener('paste', function(e) {
           img.onload = function() {
             const canvas = document.createElement('canvas');
             let w = img.width, h = img.height;
-            const maxSide = 1000;
+            const maxSide = 2400; // 材料截图保留原图清晰度（仅超 2400px 才缩放）
             if (w > maxSide || h > maxSide) {
               if (w > h) { h = Math.round(h * maxSide / w); w = maxSide; }
               else { w = Math.round(w * maxSide / h); h = maxSide; }
@@ -1951,7 +1962,7 @@ document.addEventListener('paste', function(e) {
             canvas.width = w; canvas.height = h;
             canvas.getContext('2d').drawImage(img, 0, 0, w, h);
             gq.materialPhotos = gq.materialPhotos || [];
-            gq.materialPhotos.push(canvas.toDataURL('image/jpeg', 0.7));
+            gq.materialPhotos.push(canvas.toDataURL('image/jpeg', 0.9));
             gq.materialImgWidths = gq.materialImgWidths || [];
             gq.materialImgWidths.push(150);
             rerenderGroupEdit(gq);
@@ -1969,9 +1980,14 @@ document.addEventListener('paste', function(e) {
       return;
     }
     if (document.getElementById('page-input').classList.contains('active')) {
-      // 录入页粘贴图片：交给 AI 识图（统一入口）
+      // 录入页粘贴图片：加入待识别列表，确认后再识别（原图保留）
       e.preventDefault();
-      aiRecognizePastedImage(file);
+      const r = new FileReader();
+      r.onload = function(ev) {
+        aiAddPendingDataUrl(ev.target.result);
+        showToast('已添加 1 张图片，确认无误后点"开始识别"');
+      };
+      r.readAsDataURL(file);
       return;
     }
   }
@@ -2079,11 +2095,12 @@ function resetCrop() {
 }
 
 function cancelCrop() {
-  const fromEdit = cropTarget && cropTarget.mode === 'edit';
-  const qid = fromEdit ? cropTarget.id : null;
+  const cropMode = cropTarget && cropTarget.mode;
+  const qid = (cropMode === 'edit' || cropMode === 'mat') ? cropTarget.id : null;
   cropState = null; cropTarget = null;
   closeDetail();
-  if (fromEdit) { editQuestion(qid); setTimeout(restoreEditDraft, 0); }
+  if (cropMode === 'edit') { editQuestion(qid); setTimeout(restoreEditDraft, 0); }
+  else if (cropMode === 'mat') { editGroup(qid); }
 }
 
 function confirmCrop() {
@@ -2115,6 +2132,13 @@ function confirmCrop() {
       editQuestion(target.id);
       setTimeout(restoreEditDraft, 0);
       showToast('照片已添加');
+    } else if (target && target.mode === 'mat') {
+      const q = questions.find(x => x.id === target.id);
+      if (q) { q.materialPhotos = q.materialPhotos || []; q.materialPhotos[target.index] = base64; saveQuestions(); }
+      cropTarget = null;
+      closeDetail();
+      editGroup(target.id);
+      showToast('材料截图已裁剪');
     } else {
       inputPhotos.push(base64);
       renderPhotoPreview();
@@ -2869,7 +2893,7 @@ function editGroup(id) {
       <textarea id="gedit-material" class="input-field" rows="4" style="margin-bottom:8px">${escHtml(q.material||'')}</textarea>
       <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">材料截图（最多3张，拖动滑块调整展示宽度）</label>
       <div id="gedit-matPreview" style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px">
-        ${(q.materialPhotos||[]).map((p,i)=>{const w=(q.materialImgWidths||[])[i]||150;return `<div style="display:inline-block;text-align:center;max-width:100%"><div style="position:relative;display:inline-block"><img data-matimg="${i}" src="${p}" style="width:${w}px;max-width:100%;height:auto;border-radius:8px;display:block" onclick="previewPhoto('${p}')"><button onclick="removeGroupMatPhoto(${i})" style="position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;background:var(--danger);color:#fff;border:2px solid #fff;font-size:13px;line-height:18px;cursor:pointer;padding:0">×</button></div><input type="range" min="80" max="400" step="10" value="${w}" style="width:${Math.min(Math.max(w,120),220)}px;margin-top:4px;display:block" oninput="setMatImgWidth(${i}, this.value)"></div>`}).join('') || '<span style="font-size:12px;color:var(--muted)">暂无截图（可粘贴添加）</span>'}
+        ${(q.materialPhotos||[]).map((p,i)=>{const w=(q.materialImgWidths||[])[i]||150;return `<div style="display:inline-block;text-align:center;max-width:100%"><div style="position:relative;display:inline-block"><img data-matimg="${i}" src="${p}" style="width:${w}px;max-width:100%;height:auto;border-radius:8px;display:block" onclick="previewPhoto('${p}')"><button onclick="removeGroupMatPhoto(${i})" style="position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;background:var(--danger);color:#fff;border:2px solid #fff;font-size:13px;line-height:18px;cursor:pointer;padding:0">×</button></div><input type="range" min="80" max="400" step="10" value="${w}" style="width:${Math.min(Math.max(w,120),220)}px;margin-top:4px;display:block" oninput="setMatImgWidth(${i}, this.value)"><button class="btn btn-outline btn-sm" style="margin-top:4px;padding:2px 10px" onclick="cropMatPhoto(${i})"><i class="fas fa-crop-alt"></i> 裁剪</button></div>`}).join('') || '<span style="font-size:12px;color:var(--muted)">暂无截图（可粘贴添加）</span>'}
       </div>
       <input type="file" id="gedit-matInput" accept="image/*" style="display:none" onchange="handleGroupMatUpload(this)">
       <button class="btn btn-outline btn-sm" style="margin-bottom:14px" onclick="document.getElementById('gedit-matInput').click()"><i class="fas fa-camera"></i> 添加材料截图</button>
@@ -2965,7 +2989,7 @@ function handleGroupMatUpload(input) {
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
       q.materialPhotos = q.materialPhotos || [];
-      q.materialPhotos.push(canvas.toDataURL('image/jpeg', 0.7));
+      q.materialPhotos.push(canvas.toDataURL('image/jpeg', 0.9));
       q.materialImgWidths = q.materialImgWidths || [];
       q.materialImgWidths.push(150);
       rerenderGroupEdit(q);
@@ -2983,6 +3007,13 @@ function removeGroupMatPhoto(i) {
   saveQuestions();
   rerenderGroupEdit(q);
 }
+function cropMatPhoto(i) {
+  const q = questions.find(x => x.id === editCurrentId);
+  if (!q || !(q.materialPhotos||[])[i]) return;
+  cropTarget = { mode: 'mat', id: q.id, index: i };
+  openCropModal(q.materialPhotos[i]);
+}
+
 function setMatImgWidth(i, w) {
   const q = questions.find(x => x.id === editCurrentId);
   if (!q) return;
@@ -3765,7 +3796,7 @@ async function aiRecognizeStructured(compressed, moduleHint) {
   const ep = aiCheckVisionReady();
   const contents = [];
   compressed.forEach(u => contents.push({ type: 'image_url', image_url: { url: u } }));
-  contents.push({ type: 'text', text: '这些是公务员考试行测的错题整理图片，按上传顺序编号，imageIndex 从 0 开始。请识别其中所有题目，并只输出一个严格 JSON（不要输出任何其他字符、不要用 markdown 代码块）：\n{"groups":[{"material":"共用材料文字（没有则空字符串；文字内容逐字转写；若材料只有图表没有文字则留空）","figures":[{"imageIndex":0,"bbox":[x1,y1,x2,y2]}],"type":"题型","subs":[{"stem":"题干","options":["选项A内容","选项B内容","选项C内容","选项D内容"],"myAnswer":"A 或空字符串","correctAnswer":"B 或空字符串","accuracy":"数字或空字符串","analysis":"解析或手写批注（没有则空字符串）"}]}]}\n规则：\n1. figures 只列出需要保留为图片的图表/表格/统计图区域（如资料分析的统计表、统计图），bbox 是该区域在 imageIndex 对应图片上的像素坐标 [左上x, 左上y, 右下x, 右下y]，没有图表则 figures 为空数组。\n2. 材料组题（如资料分析：一段共用材料带一个或多个小题）放在同一个 group：material 只填材料本身的文字（统计数据、表格转写内容），题干所问的问题一律放进对应小题的 stem；即使只有 1 道小题也必须成组；小题题干不要重复材料；独立题（非材料组）各自一个 group，material 为空。\n3. ' + aiTypeHint(moduleHint) + '在 group 的 type 字段给出。\n4. 能看到"我的答案/我选/错选"的手写或打印标注时填 myAnswer，能看到圈出的正确答案时填 correctAnswer（大写字母）。\n5. accuracy 只有图上明确写出正确率数字时才填。\n6. stem/material 等文字内容一律去掉原题号（如"第1题""1.""（1）"等序号），题干直接从题目内容开始。' });
+  contents.push({ type: 'text', text: '这些是公务员考试行测的错题整理图片，按上传顺序编号，imageIndex 从 0 开始。请识别其中所有题目，并只输出一个严格 JSON（不要输出任何其他字符、不要用 markdown 代码块）：\n{"groups":[{"material":"共用材料文字（没有则空字符串；文字内容逐字转写；若材料只有图表没有文字则留空）","figures":[{"imageIndex":0,"bbox":[x1,y1,x2,y2]}],"type":"题型","subs":[{"stem":"题干","options":["选项A内容","选项B内容","选项C内容","选项D内容"],"myAnswer":"A 或空字符串","correctAnswer":"B 或空字符串","accuracy":"数字或空字符串","analysis":"解析或手写批注（没有则空字符串）"}]}]}\n规则：\n1. figures 只列出需要保留为图片的图表/表格/统计图区域（如资料分析的统计表、统计图），bbox 是该区域在 imageIndex 对应图片上的像素坐标 [左上x, 左上y, 右下x, 右下y]，没有图表则 figures 为空数组。\n2. 材料组题（如资料分析：一段共用材料带一个或多个小题）放在同一个 group：material 只填材料中表格以外的纯文字说明；题干所问的问题一律放进对应小题的 stem；即使只有 1 道小题也必须成组；小题题干不要重复材料；独立题（非材料组）各自一个 group，material 为空。\n3. ' + aiTypeHint(moduleHint) + '在 group 的 type 字段给出。\n4. 能看到"我的答案/我选/错选"的手写或打印标注时填 myAnswer，能看到圈出的正确答案时填 correctAnswer（大写字母）。\n5. accuracy 只有图上明确写出正确率数字时才填。\n6. stem/material 等文字内容一律去掉原题号（如"第1题""1.""（1）"等序号），题干直接从题目内容开始。\n7. 材料中为表格/统计图的内容一律不要转写成文字（不用 OCR 录入表格），只通过 figures 给出 bbox 保留截图；只需识别并录入题目所问的文字内容。' });
   const raw = await aiCallVision(ep, contents, '你是精准的试卷识别助手，忠实识别图中文字，不改写、不补充、不遗漏，输出合法 JSON。');
   const cleaned = String(raw).replace(/```json/gi, '').replace(/```/g, '').trim();
   const m = cleaned.match(/\{[\s\S]*\}/);
@@ -3779,7 +3810,7 @@ async function aiRecognizePlain(compressed, moduleHint) {
   const ep = aiCheckVisionReady();
   const contents = [];
   compressed.forEach(u => contents.push({ type: 'image_url', image_url: { url: u } }));
-  contents.push({ type: 'text', text: '这些图片是公务员行测考试的错题整理内容。请逐题识别并严格按以下格式输出，不要输出任何多余说明：\n\n每道题以"第 N 题："开头（N 从 1 递增）。\n先输出题干（保留原有文字，多行照实输出）。\n选项每行一个，格式：A. 内容\n如果有手写或打印的"我的答案/我选"标注，输出：我的答案：X\n如果有圈出的正确答案，输出：正确答案：X\n如果图片上有手写解析/批注内容，在【解析】后输出（整理成通顺文字）。\n题型：填最可能的题型。' + aiTypeHint(moduleHint) + '\n多道题之间空一行。\n如果是材料组题（一段共用材料 + 一个或多个小题，如资料分析）：该题块先输出【材料】行再输出材料原文，然后每个小题用【小题1】【小题2】依次分隔，小题内含题干、选项、我的答案、正确答案；即使只有 1 道小题也要成组。材料只放共用材料文字，题干所问放进小题；所有题干内容去掉原题号。' });
+  contents.push({ type: 'text', text: '这些图片是公务员行测考试的错题整理内容。请逐题识别并严格按以下格式输出，不要输出任何多余说明：\n\n每道题以"第 N 题："开头（N 从 1 递增）。\n先输出题干（保留原有文字，多行照实输出）。\n选项每行一个，格式：A. 内容\n如果有手写或打印的"我的答案/我选"标注，输出：我的答案：X\n如果有圈出的正确答案，输出：正确答案：X\n如果图片上有手写解析/批注内容，在【解析】后输出（整理成通顺文字）。\n题型：填最可能的题型。' + aiTypeHint(moduleHint) + '\n多道题之间空一行。\n如果是材料组题（一段共用材料 + 一个或多个小题，如资料分析）：该题块先输出【材料】行再输出材料原文，然后每个小题用【小题1】【小题2】依次分隔，小题内含题干、选项、我的答案、正确答案；即使只有 1 道小题也要成组。材料只放共用材料中表格以外的纯文字说明（表格/统计图内容不要转写），题干所问放进小题；所有题干内容去掉原题号。' });
   return aiCallVision(ep, contents, '你是精准的试卷文字识别助手，忠实识别图中文字，不做改写、不补充、不遗漏。');
 }
 
@@ -3799,7 +3830,7 @@ function aiSubLines(s) {
   return out;
 }
 
-async function aiBuildFromJson(j, compressed) {
+async function aiBuildFromJson(j, compressed, moduleHint) {
   const blocks = [];
   const groupPhotos = [];
   let n = 0;
@@ -3807,14 +3838,21 @@ async function aiBuildFromJson(j, compressed) {
     const subs = (g.subs || []).filter(s => s && String(s.stem || '').trim());
     if (!subs.length) continue;
     const material = String(g.material || '').trim();
-    if (material) {
+    if (material || moduleHint === '资料分析') {
       n++;
       let block = '';
       if (g.type) block += '题型：' + g.type + '\n';
-      block += '【材料】\n' + material + '\n\n';
+      if (material) {
+        block += '【材料】\n' + material + '\n\n';
+      } else {
+        block += '【材料】\n（材料为表格/图表，见材料截图）\n\n';
+      }
       subs.forEach((s, i) => { block += '【小题' + (i + 1) + '】\n' + aiSubLines(s) + '\n'; });
       blocks.push(block.trim());
-      groupPhotos.push({ materialPhotos: await aiCropFigures(compressed, g.figures) });
+      let matPhotos = await aiCropFigures(compressed, g.figures);
+      // 兜底：资料分析未裁出表格区域时，把首张原图整图作为材料截图保留（不转写表格内容）
+      if (!matPhotos.length && moduleHint === '资料分析' && compressed.length) matPhotos = [compressed[0]];
+      groupPhotos.push({ materialPhotos: matPhotos });
     } else {
       for (const s of subs) {
         n++;
@@ -3855,6 +3893,81 @@ async function aiCropFigures(compressedUrls, figures) {
   return out.slice(0, 3);
 }
 
+// 待识别暂存区：粘贴/选图先进列表，确认后再识别（保留原图）
+let aiPendingImages = [];
+
+function aiFileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = function() { resolve(r.result); };
+    r.onerror = function() { reject(new Error('图片读取失败')); };
+    r.readAsDataURL(file);
+  });
+}
+
+function aiAddPendingDataUrl(dataUrl) {
+  if (aiPendingImages.length >= 8) { showToast('最多同时添加 8 张图片'); return; }
+  aiPendingImages.push(dataUrl);
+  aiRenderPendingPreview();
+}
+
+function aiRenderPendingPreview() {
+  const wrap = document.getElementById('ai-pending-wrap');
+  const box = document.getElementById('ai-pending-preview');
+  if (!wrap || !box) return;
+  if (!aiPendingImages.length) { wrap.classList.add('hidden'); return; }
+  wrap.classList.remove('hidden');
+  box.innerHTML = aiPendingImages.map((d, i) => `<img src="${d}" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--border);cursor:pointer" onclick="aiRemovePending(${i})">`).join('');
+}
+
+function aiRemovePending(i) {
+  aiPendingImages.splice(i, 1);
+  aiRenderPendingPreview();
+}
+
+function aiClearPending() {
+  aiPendingImages = [];
+  aiRenderPendingPreview();
+}
+
+async function aiPasteFromClipboard() {
+  try {
+    if (!navigator.clipboard || !navigator.clipboard.read) throw new Error('当前浏览器不支持读取剪贴板，请直接使用 ⌘/Ctrl+V 粘贴');
+    const items = await navigator.clipboard.read();
+    let added = 0;
+    for (const item of items) {
+      const t = (item.types || []).find(x => x.indexOf('image') === 0);
+      if (!t) continue;
+      const blob = await item.getType(t);
+      aiAddPendingDataUrl(await aiFileToDataUrl(blob));
+      added++;
+    }
+    if (!added) showToast('剪贴板中没有图片，请先复制一张图片');
+    else showToast('已添加 ' + added + ' 张图片，确认无误后点"开始识别"');
+  } catch (e) {
+    showToast(e.message.indexOf('剪贴板') !== -1 ? e.message : '读取剪贴板失败：' + e.message + '（iPad 请直接 ⌘/Ctrl+V 粘贴）');
+  }
+}
+
+async function aiStartRecognition() {
+  if (!aiPendingImages.length) { showToast('请先添加图片'); return; }
+  if (aiRecognizing) { showToast('正在识别中…'); return; }
+  aiRecognizing = true;
+  const setBtn = t => { const b = document.getElementById('ai-start-recognize-btn'); if (b) { b.disabled = !!t; b.innerHTML = t || '<i class="fas fa-play"></i> 开始识别'; } };
+  setBtn('<i class="fas fa-spinner fa-spin"></i> 预处理中…');
+  try {
+    const compressed = [];
+    for (const d of aiPendingImages) compressed.push(await aiCompressDataUrl(d, 1600));
+    await aiRunRecognitionPipeline(compressed, setBtn);
+    aiClearPending();
+  } catch (e) {
+    showToast('识别失败：' + e.message);
+  } finally {
+    aiRecognizing = false;
+    setBtn(null);
+  }
+}
+
 async function aiRunRecognitionPipeline(compressed, statusFn) {
   const moduleHint = document.getElementById('batch-module') ? document.getElementById('batch-module').value : '';
   if (!compressed.length) throw new Error('没有可识别的图片内容');
@@ -3862,7 +3975,7 @@ async function aiRunRecognitionPipeline(compressed, statusFn) {
   let text = null;
   try {
     const j = await aiRecognizeStructured(compressed, moduleHint);
-    const built = await aiBuildFromJson(j, compressed);
+    const built = await aiBuildFromJson(j, compressed, moduleHint);
     text = built.text;
     aiPendingGroupPhotos = built.groupPhotos;
     if (!text.trim()) throw new Error('empty');
@@ -3885,40 +3998,31 @@ async function aiOnRecognizeFiles(input) {
   const setBtn = t => { const b = document.getElementById('ai-recognize-btn'); if (b) { b.disabled = !!t; b.innerHTML = t || '<i class="fas fa-camera"></i> 拍照/选图片或 PDF，AI 自动识别'; } };
   setBtn('<i class="fas fa-spinner fa-spin"></i> 预处理中…');
   try {
-    const compressed = [];
-    for (const f of files) {
-      if (f.type === 'application/pdf' || /\.pdf$/i.test(f.name)) {
+    const pdfs = files.filter(f => f.type === 'application/pdf' || /\.pdf$/i.test(f.name));
+    const imgs = files.filter(f => pdfs.indexOf(f) === -1);
+    for (const f of imgs) {
+      aiAddPendingDataUrl(await aiFileToDataUrl(f));
+    }
+    if (imgs.length) {
+      showToast('已添加 ' + imgs.length + ' 张图片，确认无误后点"开始识别"');
+    }
+    if (pdfs.length) {
+      const compressed = [];
+      for (const f of pdfs) {
         setBtn('<i class="fas fa-spinner fa-spin"></i> PDF 转换中：' + f.name + ' …');
         const pageImgs = await aiPdfToImages(f, 10);
         for (const d of pageImgs) compressed.push(await aiCompressDataUrl(d, 1600));
-      } else {
-        compressed.push(await aiCompressImage(f, 1600));
       }
+      await aiRunRecognitionPipeline(compressed, setBtn);
     }
-    await aiRunRecognitionPipeline(compressed, setBtn);
   } catch (e) {
-    showToast('识别失败：' + e.message);
+    showToast('处理失败：' + e.message);
   } finally {
     aiRecognizing = false;
     setBtn(null);
   }
 }
 
-async function aiRecognizePastedImage(file) {
-  if (aiRecognizing) { showToast('正在识别中…'); return; }
-  aiRecognizing = true;
-  const setBtn = t => { const b = document.getElementById('ai-recognize-btn'); if (b) { b.disabled = !!t; b.innerHTML = t || '<i class="fas fa-camera"></i> 拍照/选图片或 PDF，AI 自动识别'; } };
-  setBtn('<i class="fas fa-spinner fa-spin"></i> 粘贴图片识别中…');
-  try {
-    const compressed = [await aiCompressImage(file, 1600)];
-    await aiRunRecognitionPipeline(compressed, setBtn);
-  } catch (e) {
-    showToast('识别失败：' + e.message);
-  } finally {
-    aiRecognizing = false;
-    setBtn(null);
-  }
-}
 
 function renderSettings() {
   const el = document.getElementById('page-settings');
@@ -4020,7 +4124,7 @@ function renderSettings() {
         <p style="margin:0">面向公考备考人群的错题管理工具</p>
         <p style="margin:0">当前错题总数：${questions.length}</p>
         <p style="margin:0">所有数据存储在本地浏览器中，无内置错题</p>
-        <p style="margin:0">页面版本：<b style="color:var(--primary)">0901a</b>（录入整合+资料分析强制成组+识图粘贴+图片宽度调整）</p>
+        <p style="margin:0">页面版本：<b style="color:var(--primary)">0901b</b>（iPad粘贴识别+先预览后识别+表格不转写+材料截图裁剪）</p>
       </div>
     </div>
   `;
@@ -4602,4 +4706,4 @@ window.__onKatexReady = function() { try { renderPage(currentTab); if (typeof up
 init();
 </script>
 </body>
-<!-- build: 0901a --></html>
+<!-- build: 0901b --></html>
