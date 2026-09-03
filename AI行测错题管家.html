@@ -1658,6 +1658,28 @@ function parseBatchText() {
   if (!batchModule) { showToast('请先选择本批错题的模块'); return; }
   if (!batchText.trim()) { showToast('请粘贴错题内容'); return; }
   batchParsed = parseBatchContent(batchText);
+  // 仅资料分析成组：其他模块若解析出材料组，展开为独立单题（材料并入题干，材料截图转为题目照片保留）
+  if (batchModule !== '资料分析') {
+    const expanded = [];
+    batchParsed.forEach(p => {
+      if (p.material && p.subs && p.subs.length) {
+        const matText = String(p.material).trim();
+        p.subs.forEach((s, si) => {
+          const sub = subDefaults();
+          expanded.push(Object.assign(sub, {
+            question: (matText ? matText + '\n\n' : '') + (s.question || ''),
+            optionA: s.optionA || '', optionB: s.optionB || '', optionC: s.optionC || '', optionD: s.optionD || '',
+            myAnswer: s.myAnswer || '', correctAnswer: s.correctAnswer || '', accuracy: s.accuracy || '',
+            type: s.type || p.type || '', source: p.source || '',
+            errorReasons: s.errorReasons || [], analysis: s.analysis || '',
+            material: '', materialPhotos: [], subs: [],
+            photos: (p.materialPhotos && p.materialPhotos.length) ? [p.materialPhotos[si] || p.materialPhotos[0]] : []
+          }));
+        });
+      } else expanded.push(p);
+    });
+    batchParsed = expanded;
+  }
   batchParsed.forEach(p => { if (p._origType === undefined) p._origType = p.type || ''; });
   if (!batchParsed.length) {
     pv.innerHTML = '<div class="card"><p style="color:var(--danger);font-size:13px;margin:0">没有解析出有效题目。请检查：每道题以【题目1】开头，且包含题干、我的答案、正确答案三项。</p></div>';
@@ -1716,8 +1738,8 @@ function confirmBatchImport() {
   let groupIdx = 0;
   let added = 0;
   batchParsed.forEach(p => {
-    if (p.material && p.subs && p.subs.length) {
-      // 材料组题：挂载 AI 识别裁剪的材料图表截图（如有）
+    if (batchModule === '资料分析' && p.material && p.subs && p.subs.length) {
+      // 材料组题（仅资料分析）：挂载 AI 识别裁剪的材料图表截图（如有）
       let matPhotos = p.materialPhotos || [];
       if (!matPhotos.length && aiPendingGroupPhotos && aiPendingGroupPhotos[groupIdx]) {
         matPhotos = aiPendingGroupPhotos[groupIdx].materialPhotos || [];
@@ -3796,7 +3818,7 @@ async function aiRecognizeStructured(compressed, moduleHint) {
   const ep = aiCheckVisionReady();
   const contents = [];
   compressed.forEach(u => contents.push({ type: 'image_url', image_url: { url: u } }));
-  contents.push({ type: 'text', text: '这些是公务员考试行测的错题整理图片，按上传顺序编号，imageIndex 从 0 开始。请识别其中所有题目，并只输出一个严格 JSON（不要输出任何其他字符、不要用 markdown 代码块）：\n{"groups":[{"material":"共用材料文字（没有则空字符串；文字内容逐字转写；若材料只有图表没有文字则留空）","figures":[{"imageIndex":0,"bbox":[x1,y1,x2,y2]}],"type":"题型","subs":[{"stem":"题干","options":["选项A内容","选项B内容","选项C内容","选项D内容"],"myAnswer":"A 或空字符串","correctAnswer":"B 或空字符串","accuracy":"数字或空字符串","analysis":"解析或手写批注（没有则空字符串）"}]}]}\n规则：\n1. figures 只列出需要保留为图片的图表/表格/统计图区域（如资料分析的统计表、统计图），bbox 是该区域在 imageIndex 对应图片上的像素坐标 [左上x, 左上y, 右下x, 右下y]，没有图表则 figures 为空数组。\n2. 材料组题（如资料分析：一段共用材料带一个或多个小题）放在同一个 group：material 只填材料中表格以外的纯文字说明；题干所问的问题一律放进对应小题的 stem；即使只有 1 道小题也必须成组；小题题干不要重复材料；独立题（非材料组）各自一个 group，material 为空。\n3. ' + aiTypeHint(moduleHint) + '在 group 的 type 字段给出。\n4. 能看到"我的答案/我选/错选"的手写或打印标注时填 myAnswer，能看到圈出的正确答案时填 correctAnswer（大写字母）。\n5. accuracy 只有图上明确写出正确率数字时才填。\n6. stem/material 等文字内容一律去掉原题号（如"第1题""1.""（1）"等序号），题干直接从题目内容开始。\n7. 材料中为表格/统计图的内容一律不要转写成文字（不用 OCR 录入表格），只通过 figures 给出 bbox 保留截图；只需识别并录入题目所问的文字内容。' });
+  contents.push({ type: 'text', text: '这些是公务员考试行测的错题整理图片，按上传顺序编号，imageIndex 从 0 开始。请识别其中所有题目，并只输出一个严格 JSON（不要输出任何其他字符、不要用 markdown 代码块）：\n{"groups":[{"material":"共用材料文字（没有则空字符串；文字内容逐字转写；若材料只有图表没有文字则留空）","figures":[{"imageIndex":0,"bbox":[x1,y1,x2,y2]}],"type":"题型","subs":[{"stem":"题干","options":["选项A内容","选项B内容","选项C内容","选项D内容"],"myAnswer":"A 或空字符串","correctAnswer":"B 或空字符串","accuracy":"数字或空字符串","analysis":"解析或手写批注（没有则空字符串）"}]}]}\n规则：\n1. figures 只列出需要保留为图片的图表/表格/统计图区域（如资料分析的统计表、统计图），bbox 是该区域在 imageIndex 对应图片上的像素坐标 [左上x, 左上y, 右下x, 右下y]，没有图表则 figures 为空数组。\n2. 材料组题（仅限资料分析模块：一段共用材料带一个或多个小题）放在同一个 group：material 只填材料中表格以外的纯文字说明；题干所问的问题一律放进对应小题的 stem；即使只有 1 道小题也必须成组；小题题干不要重复材料。其他模块（非资料分析）一律按独立单题处理，每题一个 group，material 必须为空字符串，即使图片上有背景材料，也把材料文字并入该题的 stem。\n3. ' + aiTypeHint(moduleHint) + '在 group 的 type 字段给出。\n4. 能看到"我的答案/我选/错选"的手写或打印标注时填 myAnswer，能看到圈出的正确答案时填 correctAnswer（大写字母）。\n5. accuracy 只有图上明确写出正确率数字时才填。\n6. stem/material 等文字内容一律去掉原题号（如"第1题""1.""（1）"等序号），题干直接从题目内容开始。\n7. 材料中为表格/统计图的内容一律不要转写成文字（不用 OCR 录入表格），只通过 figures 给出 bbox 保留截图；只需识别并录入题目所问的文字内容。' });
   const raw = await aiCallVision(ep, contents, '你是精准的试卷识别助手，忠实识别图中文字，不改写、不补充、不遗漏，输出合法 JSON。');
   const cleaned = String(raw).replace(/```json/gi, '').replace(/```/g, '').trim();
   const m = cleaned.match(/\{[\s\S]*\}/);
@@ -3810,15 +3832,16 @@ async function aiRecognizePlain(compressed, moduleHint) {
   const ep = aiCheckVisionReady();
   const contents = [];
   compressed.forEach(u => contents.push({ type: 'image_url', image_url: { url: u } }));
-  contents.push({ type: 'text', text: '这些图片是公务员行测考试的错题整理内容。请逐题识别并严格按以下格式输出，不要输出任何多余说明：\n\n每道题以"第 N 题："开头（N 从 1 递增）。\n先输出题干（保留原有文字，多行照实输出）。\n选项每行一个，格式：A. 内容\n如果有手写或打印的"我的答案/我选"标注，输出：我的答案：X\n如果有圈出的正确答案，输出：正确答案：X\n如果图片上有手写解析/批注内容，在【解析】后输出（整理成通顺文字）。\n题型：填最可能的题型。' + aiTypeHint(moduleHint) + '\n多道题之间空一行。\n如果是材料组题（一段共用材料 + 一个或多个小题，如资料分析）：该题块先输出【材料】行再输出材料原文，然后每个小题用【小题1】【小题2】依次分隔，小题内含题干、选项、我的答案、正确答案；即使只有 1 道小题也要成组。材料只放共用材料中表格以外的纯文字说明（表格/统计图内容不要转写），题干所问放进小题；所有题干内容去掉原题号。' });
+  contents.push({ type: 'text', text: '这些图片是公务员行测考试的错题整理内容。请逐题识别并严格按以下格式输出，不要输出任何多余说明：\n\n每道题以"第 N 题："开头（N 从 1 递增）。\n先输出题干（保留原有文字，多行照实输出）。\n选项每行一个，格式：A. 内容\n如果有手写或打印的"我的答案/我选"标注，输出：我的答案：X\n如果有圈出的正确答案，输出：正确答案：X\n如果图片上有手写解析/批注内容，在【解析】后输出（整理成通顺文字）。\n题型：填最可能的题型。' + aiTypeHint(moduleHint) + '\n多道题之间空一行。\n所有题干内容去掉原题号，题干直接从题目内容开始。' + (moduleHint === '资料分析' ? '\n资料分析是材料组题（一段共用材料 + 一个或多个小题）：该题块先输出【材料】行再输出材料原文，然后每个小题用【小题1】【小题2】依次分隔，小题内含题干、选项、我的答案、正确答案；即使只有 1 道小题也要成组。材料只放共用材料中表格以外的纯文字说明（表格/统计图内容不要转写），题干所问放进小题。' : '') });
   return aiCallVision(ep, contents, '你是精准的试卷文字识别助手，忠实识别图中文字，不做改写、不补充、不遗漏。');
 }
 
 function aiStripQuestionNo(text) {
   return String(text || '').replace(/^\s*(?:第\s*\d+\s*题|\d+[.、．)）]|\(\d+\)|（\d+）)\s*[:：]?\s*/, '').trim();
 }
-function aiSubLines(s) {
-  let out = aiStripQuestionNo(s.stem).replace(/^\s*\d+[.、．)）]\s*/, '') + '\n';
+function aiSubLines(s, prefix) {
+  const stem = aiStripQuestionNo(s.stem).replace(/^\s*\d+[.、．)）]\s*/, '');
+  let out = (prefix ? prefix + '\n' : '') + stem + '\n';
   (s.options || []).forEach((o, oi) => {
     if (oi > 3) return;
     out += String.fromCharCode(65 + oi) + '. ' + String(o).replace(/^[A-D]\s*[.、．:：]\s*/, '') + '\n';
@@ -3838,7 +3861,7 @@ async function aiBuildFromJson(j, compressed, moduleHint) {
     const subs = (g.subs || []).filter(s => s && String(s.stem || '').trim());
     if (!subs.length) continue;
     const material = String(g.material || '').trim();
-    if (material || moduleHint === '资料分析') {
+    if (moduleHint === '资料分析') {
       n++;
       let block = '';
       if (g.type) block += '题型：' + g.type + '\n';
@@ -3854,9 +3877,11 @@ async function aiBuildFromJson(j, compressed, moduleHint) {
       if (!matPhotos.length && moduleHint === '资料分析' && compressed.length) matPhotos = [compressed[0]];
       groupPhotos.push({ materialPhotos: matPhotos });
     } else {
+      // 非资料分析模块：一律按独立单题处理；若识别出材料，将其并入首句题干，避免内容丢失
+      const matPrefix = material ? material : '';
       for (const s of subs) {
         n++;
-        let block = '第 ' + n + ' 题：\n' + aiSubLines(s).replace(/^\s*\d+[.、．)）]\s*/, '');
+        let block = '第 ' + n + ' 题：\n' + aiSubLines(s, matPrefix).replace(/^\s*\d+[.、．)）]\s*/, '');
         if (g.type) block += '题型：' + g.type + '\n';
         blocks.push(block.trim());
       }
@@ -4124,7 +4149,7 @@ function renderSettings() {
         <p style="margin:0">面向公考备考人群的错题管理工具</p>
         <p style="margin:0">当前错题总数：${questions.length}</p>
         <p style="margin:0">所有数据存储在本地浏览器中，无内置错题</p>
-        <p style="margin:0">页面版本：<b style="color:var(--primary)">0901b</b>（iPad粘贴识别+先预览后识别+表格不转写+材料截图裁剪）</p>
+        <p style="margin:0">页面版本：<b style="color:var(--primary)">0903a</b>（材料分组仅限资料分析，其他板块一律单题）</p>
       </div>
     </div>
   `;
@@ -4706,4 +4731,4 @@ window.__onKatexReady = function() { try { renderPage(currentTab); if (typeof up
 init();
 </script>
 </body>
-<!-- build: 0901b --></html>
+<!-- build: 0903a --></html>
