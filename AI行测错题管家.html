@@ -1640,11 +1640,13 @@ function parseBatchContent(text) {
     q.analysis = aLines.join('\n').trim();
     q.material = matLines.join('\n').trim();
     q.subs.forEach(s => { s.question = stripQuestionNo(s.question); });
-    // 有效小题：至少有题干且填了两个答案
-    q.subs = q.subs.filter(s => s.question && s.myAnswer && s.correctAnswer);
+    // 有效小题：有题干即可（答案缺失进预览待确认）
+    q.subs = q.subs.filter(s => s.question);
+    q.subs.forEach(s => { s._skipMy = false; });
     if (q.material && q.subs.length) {
       results.push(q); // 材料组题
-    } else if (q.question && q.myAnswer && q.correctAnswer) {
+    } else if (q.question) {
+      q._skipMy = false;
       results.push(q);
     }
   });
@@ -1680,22 +1682,63 @@ function parseBatchText() {
     });
     batchParsed = expanded;
   }
-  batchParsed.forEach(p => { if (p._origType === undefined) p._origType = p.type || ''; });
+  // 修正：识别结果把模块名当题型（如"题型：言语理解"）时清空，交给统一题型或默认
+  batchParsed.forEach(p => {
+    if (ALL_MODULES.indexOf(p.type) !== -1) p.type = '';
+    (p.subs || []).forEach(s => { if (ALL_MODULES.indexOf(s.type) !== -1) s.type = ''; });
+    if (p._origType === undefined) p._origType = p.type || '';
+  });
   if (!batchParsed.length) {
-    pv.innerHTML = '<div class="card"><p style="color:var(--danger);font-size:13px;margin:0">没有解析出有效题目。请检查：每道题以【题目1】开头，且包含题干、我的答案、正确答案三项。</p></div>';
+    pv.innerHTML = '<div class="card"><p style="color:var(--danger);font-size:13px;margin:0;line-height:1.7">没有解析出有效题目。常见原因：<br>· 缺少题干文字（只有选项/答案，没有题目正文）；<br>· 格式不符合模板：题干后每行一个选项（A. …），答案写成"【我的答案】X""【正确答案】X"；<br>· 多题之间没有用"第 N 题："或 --- 分隔。<br>可点上方"展开模板"对照格式，或用 AI 识图自动识别。</p></div>';
     return;
   }
+  renderBatchPreview();
+}
+
+// 答案选择行（单题/小题通用）
+function batchAnsRow(i, obj, subIdx) {
+  const key = subIdx == null ? '' : ',' + subIdx;
+  const opts = ['A','B','C','D'];
+  const sel = (field, cur) => `<select class="input-field" style="width:auto;padding:4px 24px 4px 8px;font-size:12px" onchange="batchSetAns(${i},'${field}',this.value${key})">
+      <option value="">待确认</option>${opts.map(o => `<option ${o===cur?'selected':''}>${o}</option>`).join('')}</select>`;
+  const skipChk = subIdx == null
+    ? `<label style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" ${obj._skipMy?'checked':''} onchange="batchSkipMy(${i},this.checked)">不记我的答案（仅收录正确解法）</label>`
+    : `<label style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" ${obj._skipMy?'checked':''} onchange="batchSkipMy(${i},this.checked,${subIdx})">不记我的答案</label>`;
+  return `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:6px">
+      <span style="font-size:12px;color:var(--muted)">我的答案</span>${sel('myAnswer', obj.myAnswer)}
+      <span style="font-size:12px;color:var(--muted)">正确答案</span>${sel('correctAnswer', obj.correctAnswer)}
+      ${skipChk}
+    </div>`;
+}
+
+function batchPendingCount() {
+  let n = 0;
+  (batchParsed || []).forEach(p => {
+    if (p.material && p.subs && p.subs.length) {
+      p.subs.forEach(s => { if ((!s.myAnswer && !s._skipMy) || !s.correctAnswer) n++; });
+    } else {
+      if ((!p.myAnswer && !p._skipMy) || !p.correctAnswer) n++;
+    }
+  });
+  return n;
+}
+
+function renderBatchPreview() {
+  const pv = document.getElementById('batch-preview');
+  if (!pv) return;
   const stdTypes = MODULE_TYPES[batchModule] || [];
   const selTypes = batchParsed.map(q => q.type || '').filter(Boolean);
   const commonType = selTypes.length && selTypes.every(t => t === selTypes[0]) ? selTypes[0] : '';
   const prevSource = (document.getElementById('batch-unify-source')||{}).value || '';
+  const pending = batchPendingCount();
   pv.innerHTML = `
     <div class="card">
-      <p style="font-size:14px;font-weight:700;margin:0 0 10px"><i class="fas fa-check-circle" style="color:var(--success)"></i> 解析成功 ${batchParsed.length} 道题</p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <p style="font-size:14px;font-weight:700;margin:0 0 6px"><i class="fas fa-check-circle" style="color:var(--success)"></i> 解析出 ${batchParsed.length} 道题，请逐题核对后导入</p>
+      <p style="font-size:12px;color:${pending?'var(--accent)':'var(--muted)'};margin:0 0 10px">${pending ? '还有 ' + pending + ' 处答案待确认（选上或勾选"不记我的答案"）' : '全部信息完整，可直接导入'}</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
         <select id="batch-unify-type" class="input-field" style="flex:1;min-width:140px;padding:6px 28px 6px 10px;font-size:13px" onchange="batchApplyType(this.value)">
           <option value="">题型不统一（按每题识别值）</option>
-          ${stdTypes.map(t => `<option value="${t}" ${commonType===t?'selected':''}>统一为：${t}</option>`).join('')}
+          ${stdTypes.map(t => `<option value="${t}" ${commonType===t?'selected':''}>统一题型为：${t}</option>`).join('')}
         </select>
       </div>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
@@ -1703,33 +1746,72 @@ function parseBatchText() {
       </div>
       ${batchParsed.map((q,i) => {
         const isGroup = q.material && q.subs && q.subs.length;
-        const qHtml = isGroup
-          ? `<div style="color:var(--muted);margin:2px 0">材料组题（${q.subs.length} 小题）</div>` + q.subs.map((s,si) => `<div style="margin:3px 0;line-height:1.6">${si+1}. ${renderMathInText(s.question)}</div>`).join('')
-          : renderMathInText(q.question).replace(/\n/g,'<br>');
-        const ansLine = isGroup ? '' : `<span style="margin-left:6px;white-space:nowrap">我答<b style="color:var(--danger)">${q.myAnswer}</b> → 正确<b style="color:var(--success)">${q.correctAnswer}</b></span>`;
-        const anaHtml = isGroup
-          ? q.subs.filter(s=>s.analysis).slice(0,1).map(s=>`<div style="color:var(--muted);margin-top:4px">小题解析预览：${formatAnalysis(s.analysis)}</div>`).join('')
-          : (q.analysis ? `<div style="color:var(--muted);margin-top:4px">解析预览：${formatAnalysis(q.analysis)}</div>` : '');
-        const typeTag = q.type ? `<span style="font-size:11px;color:#1e40af;background:rgba(59,130,246,.12);padding:1px 7px;border-radius:9px;margin-left:6px;font-weight:600">${q.type}</span>` : '';
-        return `<div style="padding:8px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.5">
-        <span style="color:var(--muted)">第${i+1}题</span>${typeTag}${ansLine}
-        <div style="margin:4px 0 2px;line-height:1.6">${qHtml}</div>${anaHtml}
-      </div>`;
+        if (isGroup) {
+          const subPending = q.subs.filter(s => (!s.myAnswer && !s._skipMy) || !s.correctAnswer).length;
+          return `<div style="border:1px solid ${subPending?'var(--accent)':'var(--border)'};border-radius:10px;padding:10px;margin-bottom:10px;background:${subPending?'rgba(249,115,22,.03)':'var(--bg)'}">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+              <span style="font-size:13px;font-weight:700">第${i+1}题 · 材料组（${q.subs.length} 小题）</span>
+              ${subPending ? `<span style="font-size:11px;color:var(--accent);font-weight:600">${subPending} 处待确认</span>` : '<span style="font-size:11px;color:var(--success);font-weight:600">完整</span>'}
+            </div>
+            ${q.material ? `<div style="font-size:12px;color:var(--muted);margin-bottom:6px;white-space:pre-line">${escHtml(q.material.slice(0,120))}${q.material.length>120?'…':''}</div>` : ''}
+            ${q.subs.map((s, si) => `<div style="border-top:1px dashed var(--border);padding:6px 0">
+              <div style="font-size:12.5px;line-height:1.6">${si+1}. ${renderMathInText(String(s.question).slice(0,400))}</div>
+              ${['A','B','C','D'].filter(o => s['option'+o]).map(o => `<div style="font-size:12px;color:var(--muted);padding-left:12px">${o}. ${escHtml(s['option'+o].slice(0,60))}</div>`).join('')}
+              ${batchAnsRow(i, s, si)}
+            </div>`).join('')}
+          </div>`;
+        }
+        const pPending = (!q.myAnswer && !q._skipMy) || !q.correctAnswer;
+        const typeTag = q.type ? `<span style="font-size:11px;color:#1e40af;background:rgba(59,130,246,.12);padding:1px 7px;border-radius:9px;font-weight:600">${q.type}</span>` : '';
+        return `<div style="border:1px solid ${pPending?'var(--accent)':'var(--border)'};border-radius:10px;padding:10px;margin-bottom:10px;background:${pPending?'rgba(249,115,22,.03)':'var(--bg)'}">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+            <span style="font-size:13px;font-weight:700">第${i+1}题</span>${typeTag}
+            ${pPending ? '<span style="font-size:11px;color:var(--accent);font-weight:600;margin-left:auto">待确认</span>' : '<span style="font-size:11px;color:var(--success);font-weight:600;margin-left:auto">完整</span>'}
+          </div>
+          <div style="font-size:12.5px;line-height:1.6">${renderMathInText(q.question).replace(/\n/g,'<br>')}</div>
+          ${['A','B','C','D'].filter(o => q['option'+o]).map(o => `<div style="font-size:12px;color:var(--muted);padding-left:12px;margin-top:2px">${o}. ${escHtml(q['option'+o].slice(0,80))}</div>`).join('')}
+          ${batchAnsRow(i, q, null)}
+          ${q.analysis ? `<div style="font-size:11px;color:var(--muted);margin-top:6px">解析：${escHtml(q.analysis.slice(0,60))}${q.analysis.length>60?'…':''}</div>` : ''}
+        </div>`;
       }).join('')}
-      <button class="btn btn-success" style="width:100%;margin-top:12px" onclick="confirmBatchImport()"><i class="fas fa-file-import"></i> 确认导入 ${batchParsed.length} 道错题</button>
+      <button class="btn btn-success" style="width:100%;margin-top:4px" onclick="confirmBatchImport()"><i class="fas fa-file-import"></i> 确认导入 ${batchParsed.length} 道错题</button>
     </div>`;
+}
+
+function batchSetAns(i, field, value, subIdx) {
+  const p = batchParsed && batchParsed[i];
+  if (!p) return;
+  if (subIdx == null) p[field] = value;
+  else if (p.subs && p.subs[subIdx]) p.subs[subIdx][field] = value;
+  renderBatchPreview();
+}
+function batchSkipMy(i, checked, subIdx) {
+  const p = batchParsed && batchParsed[i];
+  if (!p) return;
+  if (subIdx == null) p._skipMy = checked;
+  else if (p.subs && p.subs[subIdx]) p.subs[subIdx]._skipMy = checked;
+  renderBatchPreview();
 }
 
 function batchApplyType(t) {
   if (!batchParsed) return;
   batchParsed.forEach(q => { q.type = t || (q._origType || ''); });
-  parseBatchText();
+  renderBatchPreview();
   const sel = document.getElementById('batch-unify-type');
   if (sel) sel.value = t || '';
 }
 
 function confirmBatchImport() {
   if (!batchParsed || !batchParsed.length) return;
+  const pending = batchPendingCount();
+  if (pending > 0) {
+    showConfirm('还有 ' + pending + ' 处答案未确认，直接导入将把「我的答案」留空（题目仍会进入复习队列）。确定现在导入吗？', function() { doBatchImport(); });
+    return;
+  }
+  doBatchImport();
+}
+
+function doBatchImport() {
   const todayStr = new Date().toISOString().slice(0,10);
   const unifySourceEl = document.getElementById('batch-unify-source');
   const unifySource = unifySourceEl ? unifySourceEl.value.trim() : '';
@@ -1750,7 +1832,8 @@ function confirmBatchImport() {
         question: '', optionA:'', optionB:'', optionC:'', optionD:'',
         myAnswer:'', correctAnswer:'', accuracy:'', errorReasons:[], analysis:'',
         notes:'', photos:[],
-        material: p.material, materialPhotos: matPhotos, subs: p.subs,
+        material: p.material, materialPhotos: matPhotos,
+        subs: p.subs.map(function(s) { return Object.assign({}, s, { myAnswer: s._skipMy ? '' : (s.myAnswer || '') }); }),
         createDate: todayStr, errorCount: 1, reviewStatus: '待复习', lastReviewDate: null, isSeed: false
       });
       added += p.subs.length;
@@ -1763,7 +1846,7 @@ function confirmBatchImport() {
         notes:'', photos:[],
         material: '', materialPhotos: [], materialImgWidths: [],
         subs: [{ question: p.question, optionA: p.optionA, optionB: p.optionB, optionC: p.optionC, optionD: p.optionD,
-          myAnswer: p.myAnswer, correctAnswer: p.correctAnswer, accuracy: p.accuracy||'',
+          myAnswer: p._skipMy ? '' : (p.myAnswer || ''), correctAnswer: p.correctAnswer, accuracy: p.accuracy||'',
           errorReasons: p.errorReasons||[], analysis: p.analysis, reviewStatus:'待复习', errorCount:1, lastReviewDate:null }],
         createDate: todayStr, errorCount: 1, reviewStatus: '待复习', lastReviewDate: null, isSeed: false
       });
@@ -1776,7 +1859,7 @@ function confirmBatchImport() {
         source: unifySource || p.source || '',
         question: p.question,
         optionA: p.optionA, optionB: p.optionB, optionC: p.optionC, optionD: p.optionD,
-        myAnswer: p.myAnswer,
+        myAnswer: p._skipMy ? '' : (p.myAnswer || ''),
         correctAnswer: p.correctAnswer,
         accuracy: p.accuracy || '',
         errorReasons: p.errorReasons.length ? p.errorReasons : [],
@@ -3328,6 +3411,26 @@ function submitReviewAnswer() {
   `;
 }
 
+function reviewFixCorrect(v) {
+  if (!v) return;
+  const q = reviewQueue[reviewIndex];
+  if (!q) return;
+  if (q._parent) {
+    const parent = questions.find(item => item.id === q._parent.id);
+    if (parent && parent.subs && parent.subs[q._subIndex]) {
+      parent.subs[q._subIndex].correctAnswer = v;
+    }
+    q.correctAnswer = v;
+  } else {
+    const real = questions.find(item => item.id === q.id);
+    if (real) real.correctAnswer = v;
+    q.correctAnswer = v;
+  }
+  saveQuestions();
+  showToast('正确答案已补填');
+  showReviewQuestion();
+}
+
 function reviewMark(status) {
   const q = reviewQueue[reviewIndex];
   // 组题小题：作用于父记录的对应小题；单题：作用于自身
@@ -3850,7 +3953,7 @@ async function aiRecognizeStructured(compressed, moduleHint) {
   const ep = aiCheckVisionReady();
   const contents = [];
   compressed.forEach(u => contents.push({ type: 'image_url', image_url: { url: u } }));
-  contents.push({ type: 'text', text: '这些是公务员考试行测的错题整理图片，按上传顺序编号，imageIndex 从 0 开始。请识别其中所有题目，并只输出一个严格 JSON（不要输出任何其他字符、不要用 markdown 代码块）：\n{"groups":[{"material":"共用材料文字（没有则空字符串；文字内容逐字转写；若材料只有图表没有文字则留空）","figures":[{"imageIndex":0,"bbox":[x1,y1,x2,y2]}],"type":"题型","subs":[{"stem":"题干","options":["选项A内容","选项B内容","选项C内容","选项D内容"],"myAnswer":"A 或空字符串","correctAnswer":"B 或空字符串","accuracy":"数字或空字符串","analysis":"解析或手写批注（没有则空字符串）"}]}]}\n规则：\n1. figures 只列出需要保留为图片的图表/表格/统计图区域（如资料分析的统计表、统计图），bbox 是该区域在 imageIndex 对应图片上的像素坐标 [左上x, 左上y, 右下x, 右下y]，没有图表则 figures 为空数组。\n2. 材料组题（仅限资料分析模块：一段共用材料带一个或多个小题）放在同一个 group：material 只填材料中表格以外的纯文字说明；题干所问的问题一律放进对应小题的 stem；即使只有 1 道小题也必须成组；小题题干不要重复材料。其他模块（非资料分析）一律按独立单题处理，每题一个 group，material 必须为空字符串，即使图片上有背景材料，也把材料文字并入该题的 stem。\n3. ' + aiTypeHint(moduleHint) + '在 group 的 type 字段给出。\n4. 能看到"我的答案/我选/错选"的手写或打印标注时填 myAnswer，能看到圈出的正确答案时填 correctAnswer（大写字母）。\n5. accuracy 只有图上明确写出正确率数字时才填。\n6. stem/material 等文字内容一律去掉原题号（如"第1题""1.""（1）"等序号），题干直接从题目内容开始。\n7. 材料中为表格/统计图的内容一律不要转写成文字（不用 OCR 录入表格），只通过 figures 给出 bbox 保留截图；只需识别并录入题目所问的文字内容。' });
+  contents.push({ type: 'text', text: '这些是公务员考试行测的错题整理图片，按上传顺序编号，imageIndex 从 0 开始。请识别其中所有题目，并只输出一个严格 JSON（不要输出任何其他字符、不要用 markdown 代码块）：\n{"groups":[{"material":"共用材料文字（没有则空字符串；文字内容逐字转写；若材料只有图表没有文字则留空）","figures":[{"imageIndex":0,"bbox":[x1,y1,x2,y2]}],"type":"题型","subs":[{"stem":"题干","options":["选项A内容","选项B内容","选项C内容","选项D内容"],"myAnswer":"A 或空字符串","correctAnswer":"B 或空字符串","accuracy":"数字或空字符串","analysis":"解析或手写批注（没有则空字符串）"}]}]}\n规则：\n1. figures 只列出需要保留为图片的图表/表格/统计图区域（如资料分析的统计表、统计图），bbox 是该区域在 imageIndex 对应图片上的像素坐标 [左上x, 左上y, 右下x, 右下y]，没有图表则 figures 为空数组。\n2. 材料组题（仅限资料分析模块：一段共用材料带一个或多个小题）放在同一个 group：material 只填材料中表格以外的纯文字说明；题干所问的问题一律放进对应小题的 stem；即使只有 1 道小题也必须成组；小题题干不要重复材料。其他模块（非资料分析）一律按独立单题处理，每题一个 group，material 必须为空字符串，即使图片上有背景材料，也把材料文字并入该题的 stem。\n3. ' + aiTypeHint(moduleHint) + '在 group 的 type 字段给出。\n4. 我的答案(myAnswer)只依据图中明确的手写/打印标注（如"我选B""我的答案：B""错选：C"）填写；正确答案(correctAnswer)只依据图中明确的对勾√、"答案：X"或标准答案标注填写；两种标注都必须清晰可辨才能填，模糊或没有就填""（空字符串），严禁依据解析内容或常识推测填写。\n5. accuracy 只有图上明确写出正确率数字时才填。\n6. stem/material 等文字内容一律去掉原题号（如"第1题""1.""（1）"等序号），题干直接从题目内容开始。\n7. 材料中为表格/统计图的内容一律不要转写成文字（不用 OCR 录入表格），只通过 figures 给出 bbox 保留截图；只需识别并录入题目所问的文字内容。' });
   const raw = await aiCallVision(ep, contents, '你是精准的试卷识别助手，忠实识别图中文字，不改写、不补充、不遗漏，输出合法 JSON。');
   const cleaned = String(raw).replace(/```json/gi, '').replace(/```/g, '').trim();
   const m = cleaned.match(/\{[\s\S]*\}/);
@@ -3864,7 +3967,7 @@ async function aiRecognizePlain(compressed, moduleHint) {
   const ep = aiCheckVisionReady();
   const contents = [];
   compressed.forEach(u => contents.push({ type: 'image_url', image_url: { url: u } }));
-  contents.push({ type: 'text', text: '这些图片是公务员行测考试的错题整理内容。请逐题识别并严格按以下格式输出，不要输出任何多余说明：\n\n每道题以"第 N 题："开头（N 从 1 递增）。\n先输出题干（保留原有文字，多行照实输出）。\n选项每行一个，格式：A. 内容\n如果有手写或打印的"我的答案/我选"标注，输出：我的答案：X\n如果有圈出的正确答案，输出：正确答案：X\n如果图片上有手写解析/批注内容，在【解析】后输出（整理成通顺文字）。\n题型：填最可能的题型。' + aiTypeHint(moduleHint) + '\n多道题之间空一行。\n所有题干内容去掉原题号，题干直接从题目内容开始。' + (moduleHint === '资料分析' ? '\n资料分析是材料组题（一段共用材料 + 一个或多个小题）：该题块先输出【材料】行再输出材料原文，然后每个小题用【小题1】【小题2】依次分隔，小题内含题干、选项、我的答案、正确答案；即使只有 1 道小题也要成组。材料只放共用材料中表格以外的纯文字说明（表格/统计图内容不要转写），题干所问放进小题。' : '') });
+  contents.push({ type: 'text', text: '这些图片是公务员行测考试的错题整理内容。请逐题识别并严格按以下格式输出，不要输出任何多余说明：\n\n每道题以"第 N 题："开头（N 从 1 递增）。\n先输出题干（保留原有文字，多行照实输出）。\n选项每行一个，格式：A. 内容\n我的答案只依据图中清晰的手写/打印标注（如"我选B""我的答案：B"）输出【我的答案】X；标注模糊或没有就不要输出该行，严禁依据解析或常识猜测。正确答案只依据图中清晰的对勾√、"答案：X"等标注输出【正确答案】X；没有或模糊就不要输出该行，严禁猜测。\n如果图片上有手写解析/批注内容，在【解析】后输出（整理成通顺文字）。\n题型：填最可能的题型。' + aiTypeHint(moduleHint) + '\n多道题之间空一行。\n所有题干内容去掉原题号，题干直接从题目内容开始。' + (moduleHint === '资料分析' ? '\n资料分析是材料组题（一段共用材料 + 一个或多个小题）：该题块先输出【材料】行再输出材料原文，然后每个小题用【小题1】【小题2】依次分隔，小题内含题干、选项、我的答案、正确答案；即使只有 1 道小题也要成组。材料只放共用材料中表格以外的纯文字说明（表格/统计图内容不要转写），题干所问放进小题。' : '') });
   return aiCallVision(ep, contents, '你是精准的试卷文字识别助手，忠实识别图中文字，不做改写、不补充、不遗漏。');
 }
 
@@ -4182,7 +4285,7 @@ function renderSettings() {
         <p style="margin:0">面向公考备考人群的错题管理工具</p>
         <p style="margin:0">当前错题总数：${questions.length}</p>
         <p style="margin:0">所有数据存储在本地浏览器中，无内置错题</p>
-        <p style="margin:0">页面版本：<b style="color:var(--primary)">1111a</b>（修复识图 404：默认模型改为 qwen3-vl-plus）</p>
+        <p style="margin:0">页面版本：<b style="color:var(--primary)">1112a</b>（修复识图 404：默认模型改为 qwen3-vl-plus）</p>
       </div>
     </div>
   `;
@@ -4354,6 +4457,18 @@ function skOptsHtml(opts) {
 }
 function skReviewAreaHtml() {
   if (!(sketchTarget && sketchTarget.review)) return '';
+  const q = reviewQueue[reviewIndex];
+  if (q && !q.correctAnswer) {
+    return `<div id="sk-review-area" style="margin-top:10px">
+      <p style="font-size:12px;color:var(--accent);margin-bottom:6px">这道题缺少正确答案，先补上再作答</p>
+      <div style="display:flex;gap:6px;align-items:center">
+        <span style="font-size:12px;color:var(--muted)">正确答案：</span>
+        <select class="input-field" style="width:auto;padding:4px 24px 4px 8px;font-size:12px" onchange="reviewFixCorrect(this.value)">
+          <option value="">选择</option><option>A</option><option>B</option><option>C</option><option>D</option>
+        </select>
+      </div>
+    </div>`;
+  }
   return `<div id="sk-review-area" style="margin-top:10px"><button class="btn btn-accent btn-sm" style="width:100%" onclick="skSubmitReview()"><i class="fas fa-paper-plane"></i> 提交答案</button></div>`;
 }
 
@@ -4764,4 +4879,4 @@ window.__onKatexReady = function() { try { renderPage(currentTab); if (typeof up
 init();
 </script>
 </body>
-<!-- build: 1111a --></html>
+<!-- build: 1112a --></html>
