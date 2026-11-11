@@ -3535,8 +3535,35 @@ function aiEndpoints(cfg) {
 
 function aiVisionEndpoint(cfg) {
   if (cfg.provider === 'deepseek') return null;
-  if (cfg.provider === 'dashscope') return { url: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', model: cfg.visionModel || 'qwen-vl-plus' };
-  return { url: cfg.customUrl || '', model: cfg.visionModel || 'gpt-4o-mini' };
+  if (cfg.provider === 'dashscope') return { url: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', model: aiVisionModelName(cfg), provider: 'dashscope' };
+  return { url: cfg.customUrl || '', model: aiVisionModelName(cfg) || 'gpt-4o-mini', provider: 'custom' };
+}
+
+// 按服务商补充请求参数：仅阿里云百炼支持 enable_thinking，
+// 自定义接口（OpenAI 兼容）不传该字段，避免被服务端拒绝。
+// 带 thinking 后缀的是"仅思考模型"，思考无法关闭且只支持流式，传该参数可能报错，故跳过。
+function aiVisionExtraParams(ep) {
+  if (!ep || ep.provider !== 'dashscope') return {};
+  if (/-thinking/.test(String(ep.model || ''))) return {};
+  return { enable_thinking: false };
+}
+
+// 阿里云百炼已于 2026-10-10 下线 qwen-vl-plus / qwen-vl-max（调用会返回 404 Model not exist），
+// 这里把已下线的模型名自动迁移到当前可用的替代模型，避免用户手动改配置。
+const RETIRED_VISION_MODELS = {
+  'qwen-vl-plus': 'qwen3-vl-plus',
+  'qwen-vl-plus-latest': 'qwen3-vl-plus',
+  'qwen-vl-max': 'qwen3-vl-plus',
+  'qwen-vl-max-latest': 'qwen3-vl-plus'
+};
+function aiVisionModelName(cfg) {
+  const raw = String(cfg.visionModel || '').trim();
+  if (!raw) return cfg.provider === 'custom' ? 'gpt-4o-mini' : 'qwen3-vl-plus';
+  const lower = raw.toLowerCase();
+  if (RETIRED_VISION_MODELS[lower]) return RETIRED_VISION_MODELS[lower];
+  // qwen-vl-plus-2025-08-15 之类的快照版同样已下线
+  if (/^qwen-vl-(plus|max)(-\d{4}-\d{2}-\d{2})?$/.test(lower)) return 'qwen3-vl-plus';
+  return raw;
 }
 
 function saveAiConfig() {
@@ -3788,17 +3815,22 @@ async function aiCallVision(ep, contents, systemMsg) {
   const resp = await fetch(ep.url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + aiConfig.key },
-    body: JSON.stringify({
+    body: JSON.stringify(Object.assign({
       model: ep.model,
+      // 结构化识别需要低随机性，降低幻觉、提升答案字段稳定性
+      temperature: 0.2,
       messages: [
         { role: 'system', content: systemMsg },
         { role: 'user', content: contents }
       ]
-    })
+    }, aiVisionExtraParams(ep)))
   });
   if (!resp.ok) {
     let msg = 'HTTP ' + resp.status;
     try { const j = await resp.json(); msg += '：' + (j.error && j.error.message || j.message || ''); } catch (e) {}
+    if (resp.status === 404 || /model.{0,20}not exist|does not exist|invalid.{0,20}model/i.test(msg)) {
+      throw new Error('识图模型名「' + ep.model + '」不存在或已下线。请到 设置 → 识图模型名称 清空（用默认 qwen3-vl-plus）后重试。原始信息：' + msg);
+    }
     throw new Error(msg);
   }
   const j = await resp.json();
@@ -4102,7 +4134,8 @@ function renderSettings() {
         </div>
         <div>
           <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">识图模型名称（可留空用默认）</label>
-          <input id="ai-vision-model" class="input-field" placeholder="用于 AI 识图录入；默认：qwen-vl-plus（通义）或 gpt-4o-mini" value="${escHtml(aiConfig.visionModel||'')}">
+          <input id="ai-vision-model" class="input-field" placeholder="默认：qwen3-vl-plus（千问）或 gpt-4o-mini（自定义）" value="${escHtml(aiConfig.visionModel||'')}">
+          <p style="font-size:11px;color:var(--muted);margin:6px 0 0">注：阿里云已于 2026-10-10 下线 qwen-vl-plus / qwen-vl-max，填旧模型名会报 404；留空或填 qwen3-vl-plus 均可（填旧名会自动迁移）。</p>
         </div>
         <div>
           <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px">API Key</label>
@@ -4149,7 +4182,7 @@ function renderSettings() {
         <p style="margin:0">面向公考备考人群的错题管理工具</p>
         <p style="margin:0">当前错题总数：${questions.length}</p>
         <p style="margin:0">所有数据存储在本地浏览器中，无内置错题</p>
-        <p style="margin:0">页面版本：<b style="color:var(--primary)">0903a</b>（材料分组仅限资料分析，其他板块一律单题）</p>
+        <p style="margin:0">页面版本：<b style="color:var(--primary)">1111a</b>（修复识图 404：默认模型改为 qwen3-vl-plus）</p>
       </div>
     </div>
   `;
@@ -4731,4 +4764,4 @@ window.__onKatexReady = function() { try { renderPage(currentTab); if (typeof up
 init();
 </script>
 </body>
-<!-- build: 0903a --></html>
+<!-- build: 1111a --></html>
